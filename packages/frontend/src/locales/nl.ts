@@ -2,6 +2,18 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Dutch (the keys and placeholders of `strings.ts`). */
 export const nl: Strings = {
+  gitRefresh: 'Git vernieuwen',
+  gitFetch: 'Fetch (alleen downloaden)',
+  gitPull: 'main bijwerken',
+  gitMain: 'Terug naar main',
+  gitHistory: 'Commitgeschiedenis',
+  gitCheckout: 'Commit gebruiken',
+  gitMore: 'Meer laden',
+  gitDetached: 'Historische versie',
+  gitAheadBehind: 'main t.o.v. origin/main: {ahead} voor, {behind} achter',
+  gitDirty: 'Lokale wijzigingen gevonden. Versies wisselen is geblokkeerd.',
+  gitFilesNotice:
+    'Git wijzigt bestanden in deze map. Home Assistant-automatiseringen worden niet herladen.',
   title: 'FLODE',
   readOnly: 'Alleen lezen',
   open: 'Openen',

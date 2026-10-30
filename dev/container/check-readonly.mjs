@@ -19,7 +19,10 @@ async function fingerprints() {
     )
   );
 }
-const sourceFile = new URL('./fixtures/automations/examples/simple.yaml', import.meta.url);
+const sourceFile = new URL(
+  './runtime/repository/automations/examples/simple.yaml',
+  import.meta.url
+);
 const sourceBefore = await fs.readFile(sourceFile, 'utf8');
 const before = await fingerprints();
 for (const engine of ENGINES) {

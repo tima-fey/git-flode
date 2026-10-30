@@ -2,6 +2,18 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Italian (the keys and placeholders of `strings.ts`). */
 export const it: Strings = {
+  gitRefresh: 'Aggiorna Git',
+  gitFetch: 'Fetch (solo download)',
+  gitPull: 'Aggiorna main',
+  gitMain: 'Torna a main',
+  gitHistory: 'Cronologia dei commit',
+  gitCheckout: 'Usa commit',
+  gitMore: 'Carica altri',
+  gitDetached: 'Versione storica',
+  gitAheadBehind: 'main rispetto a origin/main: {ahead} avanti, {behind} indietro',
+  gitDirty: 'Modifiche locali rilevate. Il cambio di versione è bloccato.',
+  gitFilesNotice:
+    'Git modifica i file in questa cartella. Le automazioni Home Assistant non vengono ricaricate.',
   title: 'FLODE',
   readOnly: 'Sola lettura',
   open: 'Apri',

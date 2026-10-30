@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 from .file_api import async_register_file_commands
+from .git_api import async_register_git_commands
 from .panel import async_register_panel, async_unregister_panel
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await async_register_panel(hass, entry)
     hass.data[DOMAIN] = entry
     async_register_file_commands(hass)
+    async_register_git_commands(hass)
     _LOGGER.info("FLODE integration set up successfully")
     return True
 

@@ -12,4 +12,5 @@ for step in cards; do
   node "dev/gate/check-$step.mjs" || status=1
 done
 node dev/container/check-readonly.mjs || status=1
+node dev/container/check-git.mjs || status=1
 exit "$status"

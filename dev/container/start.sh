@@ -7,6 +7,7 @@ test -f custom_components/flode/www/flode-panel.js || {
   exit 1
 }
 mkdir -p dev/container/runtime/config
+bash dev/container/init-git.sh
 for file in configuration.yaml automations.yaml; do
   if [ ! -f "dev/container/runtime/config/$file" ]; then
     cp "dev/container/$file" "dev/container/runtime/config/$file"

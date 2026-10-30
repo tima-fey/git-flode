@@ -12,6 +12,7 @@ import {
 import { dump as yamlDump } from 'js-yaml';
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import './flode-canvas';
+import './flode-git';
 import './flode-inspector';
 import type { NodeDataEdit, NodesChange } from './flode-inspector';
 import './flode-debug';
@@ -3151,6 +3152,15 @@ export class FlodePanel extends LitElement {
             <p class="muted"><code>${this.fileDirectory}</code></p>
           </div>
         </header>
+        <flode-git .hass=${this.hass} .directory=${this.fileDirectory}
+          @files-changed=${() => {
+            this.tabs = [];
+            this.flow = null;
+            this.activeTabId = null;
+            this.selectedId = null;
+            void this.loadHaList();
+          }}
+        ></flode-git>
         ${this.renderAiSetup()}
         <div class="home-bar">
           <div class="kinds" role="tablist">

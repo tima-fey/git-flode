@@ -11,6 +11,18 @@ import { pt } from './locales/pt.ts';
  */
 const STRINGS = {
   de: {
+    gitRefresh: 'Git aktualisieren',
+    gitFetch: 'Fetch (nur herunterladen)',
+    gitPull: 'main aktualisieren',
+    gitMain: 'Zurück zu main',
+    gitHistory: 'Commit-Verlauf',
+    gitCheckout: 'Commit verwenden',
+    gitMore: 'Mehr laden',
+    gitDetached: 'Historische Version',
+    gitAheadBehind: 'main zu origin/main: {ahead} voraus, {behind} zurück',
+    gitDirty: 'Lokale Änderungen erkannt. Versionswechsel sind gesperrt.',
+    gitFilesNotice:
+      'Git ändert Dateien in diesem Ordner. Home-Assistant-Automatisierungen werden nicht neu geladen.',
     title: 'FLODE',
     readOnly: 'Nur lesen',
     open: 'Öffnen',
@@ -397,6 +409,18 @@ const STRINGS = {
       'Neu: Niederländisch, Französisch, Spanisch, Italienisch und Portugiesisch. FLODE folgt der Sprache, die du in Home Assistant eingestellt hast.',
   },
   en: {
+    gitRefresh: 'Refresh Git',
+    gitFetch: 'Fetch (download only)',
+    gitPull: 'Pull main',
+    gitMain: 'Return to main',
+    gitHistory: 'Commit history',
+    gitCheckout: 'Use commit',
+    gitMore: 'Load more',
+    gitDetached: 'Historical version',
+    gitAheadBehind: 'main vs origin/main: {ahead} ahead, {behind} behind',
+    gitDirty: 'Local changes detected. Switching versions is blocked.',
+    gitFilesNotice:
+      'Git changes files in this folder. Home Assistant automations are not reloaded.',
     title: 'FLODE',
     readOnly: 'Read only',
     open: 'Open',

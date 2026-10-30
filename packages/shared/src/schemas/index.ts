@@ -36,6 +36,14 @@ export {
   type FileAutomationRef,
   FileAutomationRefSchema,
 } from './file-source';
+export {
+  type GitAction,
+  GitActionSchema,
+  type GitHistory,
+  GitHistorySchema,
+  type GitStatus,
+  GitStatusSchema,
+} from './git-source';
 // Graph schemas
 export {
   type FlowGraph,

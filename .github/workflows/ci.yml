@@ -57,7 +57,7 @@ jobs:
           src: custom_components
 
   python-tests:
-    name: File Backend Tests
+    name: Backend Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -67,7 +67,7 @@ jobs:
           docker run --rm -e PYTHONDONTWRITEBYTECODE=1 \
             -v "$PWD:/work:ro" -w /work --entrypoint sh \
             ghcr.io/home-assistant/home-assistant:2026.10.1 \
-            -c 'uv pip install --system pytest==8.4.2 && python -m pytest -p no:cacheprovider tests/test_file_source.py -q'
+            -c 'uv pip install --system pytest==8.4.2 && python -m pytest -p no:cacheprovider tests -q'
 
   publish-check:
     name: Publish Check
