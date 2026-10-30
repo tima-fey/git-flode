@@ -4,11 +4,31 @@
     "step": {
       "user": {
         "title": "Configurar o FLODE",
-        "description": "O FLODE é um editor visual de automações para o Home Assistant. Ele permite criar e gerenciar suas automações com um editor visual de fluxos.\n\nClique em Enviar para adicionar o FLODE ao seu Home Assistant."
+        "description": "Escolha uma pasta raiz absoluta existente. As automações são lidas apenas de automations/climate/heating.yaml. objects/ fica reservada para uso futuro.",
+        "data": {
+          "config_directory": "Pasta raiz do FLODE"
+        }
       }
     },
     "abort": {
       "already_configured": "O FLODE já está configurado"
+    },
+    "error": {
+      "invalid_directory": "Escolha uma raiz absoluta existente com automations/."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pasta raiz do FLODE",
+        "description": "Escolha uma pasta raiz absoluta existente. As automações são lidas apenas de automations/climate/heating.yaml. objects/ fica reservada para uso futuro.",
+        "data": {
+          "config_directory": "Pasta raiz do FLODE"
+        }
+      }
+    },
+    "error": {
+      "invalid_directory": "Escolha uma raiz absoluta existente com automations/."
     }
   }
 }

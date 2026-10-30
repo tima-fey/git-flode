@@ -4,11 +4,31 @@
     "step": {
       "user": {
         "title": "FLODE instellen",
-        "description": "FLODE is een visuele editor voor automatiseringen in Home Assistant. Hiermee maak en beheer je je automatiseringen in een visuele flow-editor.\n\nKlik op Verzenden om FLODE aan je Home Assistant toe te voegen."
+        "description": "Kies een bestaande absolute FLODE-hoofdmap. Automatiseringen worden alleen gelezen uit automations/climate/heating.yaml. objects/ is gereserveerd voor later.",
+        "data": {
+          "config_directory": "FLODE-configuratiehoofdmap"
+        }
       }
     },
     "abort": {
       "already_configured": "FLODE is al geconfigureerd"
+    },
+    "error": {
+      "invalid_directory": "Kies een bestaande absolute hoofdmap met automations/."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "FLODE-configuratiehoofdmap",
+        "description": "Kies een bestaande absolute FLODE-hoofdmap. Automatiseringen worden alleen gelezen uit automations/climate/heating.yaml. objects/ is gereserveerd voor later.",
+        "data": {
+          "config_directory": "FLODE-configuratiehoofdmap"
+        }
+      }
+    },
+    "error": {
+      "invalid_directory": "Kies een bestaande absolute hoofdmap met automations/."
     }
   }
 }

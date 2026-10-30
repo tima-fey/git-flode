@@ -4,11 +4,31 @@
     "step": {
       "user": {
         "title": "FLODE einrichten",
-        "description": "FLODE ist ein visueller Automatisierungseditor für Home Assistant. Erstelle und verwalte deine Automatisierungen mit einem grafischen Flow-Editor.\n\nKlicke auf Senden, um FLODE zu deinem Home Assistant hinzuzufügen."
+        "description": "Wähle einen vorhandenen absoluten FLODE-Stammordner. Automatisierungen werden nur aus automations/climate/heating.yaml gelesen. objects/ ist für später reserviert.",
+        "data": {
+          "config_directory": "FLODE-Konfigurationswurzel"
+        }
       }
     },
     "abort": {
       "already_configured": "FLODE ist bereits eingerichtet"
+    },
+    "error": {
+      "invalid_directory": "Wähle einen vorhandenen absoluten Stammordner mit automations/."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "FLODE-Konfigurationswurzel",
+        "description": "Wähle einen vorhandenen absoluten FLODE-Stammordner. Automatisierungen werden nur aus automations/climate/heating.yaml gelesen. objects/ ist für später reserviert.",
+        "data": {
+          "config_directory": "FLODE-Konfigurationswurzel"
+        }
+      }
+    },
+    "error": {
+      "invalid_directory": "Wähle einen vorhandenen absoluten Stammordner mit automations/."
     }
   }
 }

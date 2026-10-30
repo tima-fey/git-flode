@@ -3,6 +3,7 @@ import type { Strings } from '../strings.ts';
 /** FLODE's own UI strings in French (the keys and placeholders of `strings.ts`). */
 export const fr: Strings = {
   title: 'FLODE',
+  readOnly: 'Lecture seule',
   open: 'Ouvrir',
   back: 'Retour',
   save: 'Enregistrer',
@@ -13,7 +14,7 @@ export const fr: Strings = {
   progressOpenAutomation: "Ouverture de l'automatisation",
   progressOpenScript: 'Ouverture du script',
   progressMerge: 'Fusion des automatisations',
-  progressConfig: 'Chargement de la configuration depuis Home Assistant …',
+  progressConfig: 'Lecture du fichier d’automatisation …',
   progressParse: 'Construction du flux …',
   progressRegistry: 'Chargement de la pièce, de la catégorie et des étiquettes …',
   progressOpen: "Ouverture de l'éditeur …",

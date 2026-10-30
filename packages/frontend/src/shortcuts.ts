@@ -77,6 +77,27 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'minimap', group: 'view', keys: ['shift+m'], label: 'minimap', notInText: true },
 ];
 
+/** Commands that only inspect data or change the viewport. */
+const VIEWING_COMMANDS = new Set([
+  'palette',
+  'shortcuts',
+  'copy',
+  'fit',
+  'minimap',
+  'runs',
+  'haCardText',
+  'autoSide',
+  'home',
+  'showYaml',
+  'copyYaml',
+  'exportJson',
+  'map',
+]);
+
+export function isViewingCommand(id: string): boolean {
+  return VIEWING_COMMANDS.has(id);
+}
+
 export function isMac(): boolean {
   return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 }

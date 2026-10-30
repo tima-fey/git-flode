@@ -326,6 +326,7 @@ function zoomClass(zoom: number): string {
 
 export class FlodeCanvas extends LitElement {
   static properties = {
+    readOnly: { type: Boolean, reflect: true },
     graph: { attribute: false },
     hass: { attribute: false },
     selectedId: { attribute: false },
@@ -345,6 +346,7 @@ export class FlodeCanvas extends LitElement {
     tinting: { state: true },
   };
 
+  declare readOnly: boolean;
   declare graph: FlowGraph;
   declare hass: HomeAssistant | undefined;
   declare selectedId: string | null;
@@ -402,6 +404,7 @@ export class FlodeCanvas extends LitElement {
 
   constructor() {
     super();
+    this.readOnly = false;
     this.selectedId = null;
     this.viewport = { x: 0, y: 0, zoom: 1 };
     this.drag = null;
@@ -748,10 +751,12 @@ export class FlodeCanvas extends LitElement {
   }
 
   private emitGraph(graph: FlowGraph): void {
+    if (this.readOnly) return;
     this.dispatchEvent(new CustomEvent('graph-change', { detail: { graph } }));
   }
 
   private emitAddAt(detail: AddAt): void {
+    if (this.readOnly) return;
     this.dispatchEvent(new CustomEvent<AddAt>('add-next', { detail }));
   }
 
@@ -776,6 +781,7 @@ export class FlodeCanvas extends LitElement {
   }
 
   private dispatchCanvasMenu(menu: Omit<CanvasMenuDetail, 'position'>): void {
+    if (this.readOnly) return;
     this.dispatchEvent(
       new CustomEvent<CanvasMenuDetail>('canvas-menu', {
         detail: { ...menu, position: this.toFlow(menu.clientX, menu.clientY) },
@@ -827,7 +833,7 @@ export class FlodeCanvas extends LitElement {
     index: number,
     insert: { at: Point } | null
   ): void {
-    if (event.button !== 0) return;
+    if (this.readOnly || event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
     if (event.currentTarget instanceof Element)
@@ -947,6 +953,7 @@ export class FlodeCanvas extends LitElement {
   }
 
   private emitSelectionAction(action: SelectionAction): void {
+    if (this.readOnly) return;
     this.dispatchEvent(new CustomEvent<SelectionAction>('selection-action', { detail: action }));
   }
 
@@ -1010,6 +1017,7 @@ export class FlodeCanvas extends LitElement {
   }
 
   private renderSelectionBar() {
+    if (this.readOnly) return nothing;
     if (this.multiIds.length < 1) return nothing;
     const language = this.hass?.language ?? 'en';
     const button = (action: SelectionAction, icon: string, label: string) =>
@@ -1099,6 +1107,7 @@ export class FlodeCanvas extends LitElement {
   }
 
   private onAnnotationPreview(event: CustomEvent<{ graph: FlowGraph }>): void {
+    if (this.readOnly) return;
     event.stopPropagation();
     this.graph = event.detail.graph;
   }
@@ -1120,6 +1129,7 @@ export class FlodeCanvas extends LitElement {
 
   private renderAnnotations(kind: 'frames' | 'notes') {
     return html`<flode-annotations
+      .inert=${this.readOnly}
       class="nopan"
       .kind=${kind}
       .graph=${this.graph}
@@ -1139,6 +1149,11 @@ export class FlodeCanvas extends LitElement {
 
   private onNodePointerDown(event: PointerEvent, node: FlowNode): void {
     if (event.button !== 0) return;
+    if (this.readOnly) {
+      event.stopPropagation();
+      this.emitSelect(node.id);
+      return;
+    }
     event.stopPropagation();
     // A second finger while a card is being dragged: the first drag keeps going
     // (taking it over would leave that card's preview position behind).
@@ -1252,6 +1267,7 @@ export class FlodeCanvas extends LitElement {
   // ---- connecting --------------------------------------------------------
 
   private onHandlePointerDown(event: PointerEvent, node: FlowNode, handle: string | null): void {
+    if (this.readOnly) return;
     if (event.button !== 0) return;
     event.stopPropagation();
     capturePointer(event);
@@ -1318,6 +1334,13 @@ export class FlodeCanvas extends LitElement {
   // ---- keyboard / pane ---------------------------------------------------
 
   private onKeyDown(event: KeyboardEvent): void {
+    if (this.readOnly) {
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      return;
+    }
     if (event.key === 'Escape' && this.multiIds.length > 0) {
       this.emitSelectionAction('clear');
       return;
@@ -1463,7 +1486,7 @@ export class FlodeCanvas extends LitElement {
               );
           }}></path>
         <path class="edge-line" d=${path} marker-end=${faulty ? 'url(#arrow-faulty)' : 'url(#arrow)'}></path>
-        ${selected && selectable ? this.renderBendHandles(key, from, laid, to) : nothing}
+        ${!this.readOnly && selected && selectable ? this.renderBendHandles(key, from, laid, to) : nothing}
       </g>`;
   }
 
@@ -1493,6 +1516,7 @@ export class FlodeCanvas extends LitElement {
 
   /** A "+" that adds a step: after a card's output, or after a whole block. */
   private renderAdd(label: string, kind: string, style: string, add: (e: MouseEvent) => void) {
+    if (this.readOnly) return nothing;
     return html`<button
       class="add-next ${kind}"
       style=${style}
@@ -1703,6 +1727,7 @@ export class FlodeCanvas extends LitElement {
   }
 
   static styles = css`
+    :host([readonly]) .handle { pointer-events: none; }
     :host {
       display: block;
       position: relative;

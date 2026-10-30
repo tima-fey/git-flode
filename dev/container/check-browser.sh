@@ -6,10 +6,10 @@ export FLODE_GATE_URL=http://127.0.0.1:18123
 export FLODE_GATE_TOKEN_FILE="$PWD/dev/container/runtime/token"
 mkdir -p .gate
 node dev/gate/ready.mjs 60
-node dev/gate/seed.mjs
-trap 'node dev/gate/cleanup.mjs' EXIT
+node dev/container/prepare-files.mjs
 status=0
-for step in cards roundtrip actions visual; do
+for step in cards; do
   node "dev/gate/check-$step.mjs" || status=1
 done
+node dev/container/check-readonly.mjs || status=1
 exit "$status"

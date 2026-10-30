@@ -10,4 +10,5 @@ services:
     volumes:
       - ./runtime/config:/config
       - ../../custom_components/flode:/config/custom_components/flode:ro
+      - ./fixtures:/flode-config:ro
     restart: "no"

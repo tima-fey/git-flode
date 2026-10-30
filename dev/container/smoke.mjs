@@ -11,7 +11,7 @@ const { browser, page, errors } = await openBrowser('chromium');
 try {
   await gotoPanel(page);
   errors.length = 0;
-  await openFlow(page, 'FLODE test simple automation');
+  await openFlow(page, 'File ventilation start');
   const cards = await readCards(page);
   if (cards.length !== 2) throw new Error(`Expected trigger and delay cards, got ${cards.length}`);
   await page.locator('.node[data-node-id]').first().click();

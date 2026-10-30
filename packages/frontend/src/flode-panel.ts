@@ -51,8 +51,9 @@ import {
   withoutStaleOffsets,
 } from './branch-view';
 import { defineElement } from './define-element';
+import { listFileAutomations, loadFileAutomation } from './file-source';
 import type { AddAt, CanvasMenuDetail, FlodeCanvas, SelectionAction } from './flode-canvas';
-import { type FlodeHaList, HA_LIST_TAGS } from './flode-ha-list';
+import type { FlodeHaList } from './flode-ha-list';
 import { downloadFlowJson, type ImportedFlow, pickFlowJson } from './flode-io';
 import type { PaletteEntry } from './flode-palette';
 import type { Progress } from './flode-progress';
@@ -144,6 +145,7 @@ import {
 import {
   haDialogShowing,
   isInDialog,
+  isViewingCommand,
   labelWithHint,
   matchShortcut,
   type ShortcutId,
@@ -350,6 +352,8 @@ function newFlowName(language: string, kind: FlowKind): string {
  * transpiler, so what lands in HA is plain, native automation/script YAML.
  */
 export class FlodePanel extends LitElement {
+  /** Viewing is the default for the fork; no UI action enables editing. */
+  readOnly = true;
   static properties = {
     hass: { attribute: false },
     narrow: { attribute: false },
@@ -389,6 +393,8 @@ export class FlodePanel extends LitElement {
     mergeMode: { state: true },
     mergeIds: { state: true },
     haList: { state: true },
+    fileItems: { state: true },
+    fileDirectory: { state: true },
     welcome: { state: true },
     templateVars: { state: true },
     aiSetupHidden: { state: true },
@@ -457,6 +463,8 @@ export class FlodePanel extends LitElement {
   declare mergeIds: string[];
   /** HA's own list page is available (null = still loading it). */
   declare haList: boolean | null;
+  private fileItems: AutomationListItem[] = [];
+  private fileDirectory = '';
   /** Start sheet: welcome on the first visit, what's new after an update. */
   declare welcome: WelcomeMode | null;
   /** Variables handed over from a run step ("test a template with these"). */
@@ -531,6 +539,8 @@ export class FlodePanel extends LitElement {
 
   /** Tabs from before a reload; unchanged ones are refreshed from HA when shown. */
   private restoreTabs(): void {
+    // Preserve existing editor drafts without displaying or overwriting them.
+    if (this.readOnly) return;
     const stored = readTabs();
     if (!stored || stored.tabs.length === 0) return;
     for (const tab of stored.tabs) this.knownTabIds.add(tab.id);
@@ -543,6 +553,7 @@ export class FlodePanel extends LitElement {
   private persistTabs(): void {
     window.clearTimeout(this.persistTimer);
     this.persistTimer = undefined;
+    if (this.readOnly) return;
     const viewport = this.canvas?.viewport;
     const stored = writeTabs(
       {
@@ -592,6 +603,7 @@ export class FlodePanel extends LitElement {
   private aiChoiceRead = 0;
 
   private async loadAiChoice(): Promise<void> {
+    if (this.readOnly) return;
     const hass = this.hass;
     if (!hass) return;
     const read = ++this.aiChoiceRead;
@@ -648,6 +660,7 @@ export class FlodePanel extends LitElement {
       variables?: Record<string, unknown>;
     }>
   ): Promise<void> {
+    if (this.readOnly) return;
     const hass = this.hass;
     const flow = this.flow;
     if (!hass || !flow) return;
@@ -699,6 +712,7 @@ export class FlodePanel extends LitElement {
 
   /** An imported flow (pasted YAML, FLODE file) opens as a new, unsaved draft. */
   private async openImported(flow: ImportedFlow): Promise<void> {
+    if (this.readOnly) return;
     const name = flow.graph.name || newFlowName(this.language, flow.kind);
     this.yamlImportOpen = false;
     const graph = await this.inDefaultDirection(flow.graph);
@@ -719,6 +733,7 @@ export class FlodePanel extends LitElement {
   }
 
   private async importJson(): Promise<void> {
+    if (this.readOnly) return;
     try {
       const flow = await pickFlowJson();
       if (flow) await this.openImported(flow);
@@ -739,6 +754,7 @@ export class FlodePanel extends LitElement {
 
   /** "Save as copy": the same flow as a new automation/script — HA's save dialog asks for the name. */
   private saveCopy(): void {
+    if (this.readOnly) return;
     const flow = this.flow;
     if (!flow) return;
     const name = t(this.language, 'ioCopyOf').replace('{name}', flow.graph.name);
@@ -752,6 +768,7 @@ export class FlodePanel extends LitElement {
   }
 
   private async mergeSelected(): Promise<void> {
+    if (this.readOnly) return;
     const hass = this.hass;
     if (!hass || this.mergeIds.length < 2) return;
     const items = listFlows(hass, 'automation').filter((item) =>
@@ -950,6 +967,7 @@ export class FlodePanel extends LitElement {
 
   /** Right-click on a card or the empty canvas — the same actions as the shortcuts. */
   private renderCanvasMenu(flow: OpenFlow) {
+    if (this.readOnly) return nothing;
     const menu = this.canvasMenu;
     if (!menu) return nothing;
     const language = this.language;
@@ -1230,6 +1248,7 @@ export class FlodePanel extends LitElement {
 
   /** Opens the run dialog for `id`: the card and everything after it, or the card alone. */
   private startRun(id: string, scope: SequenceScope): void {
+    if (this.readOnly) return;
     this.runScope = scope;
     this.runFromId = id;
   }
@@ -1264,7 +1283,7 @@ export class FlodePanel extends LitElement {
           this.assistOpen = true;
           this.debugOpen = false;
         });
-      if (!flow.isNew)
+      if (!flow.isNew && !flow.item.source)
         command('runs', t(language, 'showRuns'), 'mdi:timeline-clock-outline', () => {
           this.debugOpen = true;
           this.assistOpen = false;
@@ -1366,11 +1385,12 @@ export class FlodePanel extends LitElement {
     command('shortcuts', t(language, 'shortcutsTitle'), 'mdi:keyboard-outline', () => {
       this.shortcutsOpen = true;
     });
-    command('map', mapT(language, 'title'), 'mdi:graph-outline', () => {
-      this.parkActiveTab();
-      this.showHome = true;
-      this.homeKind = 'map';
-    });
+    if (!this.readOnly)
+      command('map', mapT(language, 'title'), 'mdi:graph-outline', () => {
+        this.parkActiveTab();
+        this.showHome = true;
+        this.homeKind = 'map';
+      });
     command('new', t(language, 'newAutomation'), 'mdi:plus', () => this.startNew('automation'));
     command('newScript', t(language, 'newScript'), 'mdi:script-text-outline', () =>
       this.startNew('script')
@@ -1383,7 +1403,7 @@ export class FlodePanel extends LitElement {
     const vertical = this.verticalDefaultEntry();
     command(vertical.id, vertical.label, vertical.icon, vertical.run);
     if (hass) {
-      for (const item of [...listFlows(hass, 'automation'), ...listFlows(hass, 'script')]) {
+      for (const item of this.fileItems) {
         entries.push({
           id: `open-${item.kind}-${item.configId}`,
           group: 'open',
@@ -1395,7 +1415,9 @@ export class FlodePanel extends LitElement {
         });
       }
     }
-    return entries;
+    return this.readOnly
+      ? entries.filter((entry) => entry.group === 'open' || isViewingCommand(entry.id))
+      : entries;
   }
 
   /**
@@ -1406,6 +1428,7 @@ export class FlodePanel extends LitElement {
   private async onAssistApply(
     event: CustomEvent<{ graph: FlowGraph; present?: string[] }>
   ): Promise<void> {
+    if (this.readOnly) return;
     const { graph: proposal, present } = event.detail;
     const flow = this.flow;
     if (flow) await this.applyAssist(flow.graph.id, proposal, present && new Set(present));
@@ -1417,6 +1440,7 @@ export class FlodePanel extends LitElement {
     proposal: FlowGraph,
     present: Set<string> | undefined
   ): Promise<void> {
+    if (this.readOnly) return;
     const flow = this.flow;
     if (!flow || flow.graph.id !== graphId) {
       this.notify(t(this.language, 'assistNotApplied'));
@@ -1444,6 +1468,7 @@ export class FlodePanel extends LitElement {
   private async onAiDraft(
     event: CustomEvent<{ graph: FlowGraph; unknownEntityIds: string[]; kind: FlowKind }>
   ): Promise<void> {
+    if (this.readOnly) return;
     const { unknownEntityIds, kind } = event.detail;
     this.aiOpen = false;
     const graph = await this.inDefaultDirection(event.detail.graph);
@@ -1483,7 +1508,7 @@ export class FlodePanel extends LitElement {
     const flow = this.tabFlow(tab);
     if (flow.isNew || this.tabSaveState(tab) !== 'saved' || !this.refreshing.start(id)) return;
     try {
-      const config = await loadFlowConfig(hass, flow.item.kind, flow.item.configId);
+      const config = await loadFileAutomation(hass, flow.item);
       if (flow.haVersion === configFingerprint(config)) return;
       const fresh = await this.loadFlow(hass, this.currentItem(flow.item), undefined, config);
       // Only if nothing happened to the tab meanwhile (an edit, a save).
@@ -1491,21 +1516,21 @@ export class FlodePanel extends LitElement {
       if (now && this.tabSaveState(now) === 'saved' && this.tabFlow(now) === flow) {
         this.adoptFromHa(id, fresh);
       }
-    } catch {
-      // Deleted or unreachable in HA — keep what the tab shows.
+    } catch (error) {
+      this.message = `${flow.item.source?.file ?? flow.item.name}: ${errorMessage(error)}`;
     } finally {
       this.refreshing.end(id);
     }
   }
 
-  /** `item` as HA lists it now (renamed in HA meanwhile, new entity id …). */
+  /** The selected item from the most recent directory listing. */
   private currentItem(item: AutomationListItem): AutomationListItem {
-    const hass = this.hass;
-    return (hass && listFlows(hass, item.kind).find((other) => sameFlow(other, item))) || item;
+    return this.fileItems.find((other) => sameFlow(other, item)) || item;
   }
 
   /** Re-checks the open flow against HA (window focus, tab visible again). */
   private refreshActiveTab(): void {
+    void this.loadHaList();
     if (this.activeTabId && !this.showHome) void this.refreshFromHa(this.activeTabId);
   }
 
@@ -1573,7 +1598,7 @@ export class FlodePanel extends LitElement {
       if (!changed.get('hass') && this.activeTabId) void this.refreshFromHa(this.activeTabId);
       if (!changed.get('hass')) void this.loadAiChoice();
       if (!changed.get('hass')) void this.loadHaList();
-      void this.syncScripts(this.hass);
+      if (!this.readOnly) void this.syncScripts(this.hass);
     }
   }
 
@@ -1584,8 +1609,24 @@ export class FlodePanel extends LitElement {
 
   /** The start screen is HA's own automation list — FLODE's cards stay the fallback. */
   private async loadHaList(): Promise<void> {
-    const ready = await ensureAutomationEditors(this.hass);
-    this.haList = ready && HA_LIST_TAGS.every((tag) => customElements.get(tag) !== undefined);
+    if (!this.hass) return;
+    try {
+      const result = await listFileAutomations(this.hass);
+      if (this.fileDirectory && this.fileDirectory !== result.directory) {
+        this.tabs = [];
+        this.flow = null;
+        this.activeTabId = null;
+        this.showHome = true;
+      }
+      this.fileItems = result.items;
+      this.fileDirectory = result.directory;
+      this.message = result.errors.map(({ file, error }) => `${file}: ${error}`).join('; ') || null;
+    } catch (error) {
+      this.fileItems = [];
+      this.message = errorMessage(error);
+    } finally {
+      this.haList = false;
+    }
   }
 
   /** The tool strip and its buttons as they grow (HA's buttons take their size late). */
@@ -1640,20 +1681,22 @@ export class FlodePanel extends LitElement {
 
   // ---- open / save -----------------------------------------------------------
 
-  /** Loads an automation from HA as a flow (HA blocks kept as blocks). */
+  /** Loads a file automation as a flow (HA blocks kept as blocks). */
   /** `report(step, value)`: how far loading got, 0–1. */
   private async loadFlow(
     hass: HomeAssistant,
     item: AutomationListItem,
     report: (step: string, value: number) => void = () => undefined,
-    /** HA's config when it was just read. */
+    /** File config when it was just read. */
     loaded?: Record<string, unknown>
   ): Promise<OpenFlow> {
     const language = this.language;
     report(t(language, 'progressConfig'), 0.1);
-    const config = loaded ?? (await loadFlowConfig(hass, item.kind, item.configId));
+    const config = loaded ?? (await loadFileAutomation(hass, item));
     // A blueprint flow is shown read-only: the blueprint's steps with its inputs filled in.
     const blueprint = usesBlueprint(config) ? (blueprintPath(config) ?? '') : undefined;
+    if (item.source && blueprint !== undefined)
+      throw new Error('File-based blueprints are not expanded yet');
     const steps =
       blueprint === undefined ? config : await substituteBlueprint(hass, item.kind, config);
     report(t(language, 'progressParse'), 0.35);
@@ -1669,7 +1712,7 @@ export class FlodePanel extends LitElement {
           );
     if (!result.success || !result.graph) throw new Error(result.errors?.join('\n') ?? 'parse');
     report(t(language, 'progressRegistry'), 0.8);
-    const registryEntry = await getRegistryEntry(hass, item.entityId);
+    const registryEntry = item.source ? null : await getRegistryEntry(hass, item.entityId);
     const graph = await this.inDefaultDirection(result.graph);
     report(t(language, 'progressOpen'), 1);
     return {
@@ -1735,6 +1778,7 @@ export class FlodePanel extends LitElement {
    * requested while the name dialog is open joins that save.
    */
   private save(named = false): Promise<void> {
+    if (this.readOnly) return Promise.resolve();
     const tabId = this.activeTabId;
     return this.saves
       .enqueue(
@@ -1759,6 +1803,7 @@ export class FlodePanel extends LitElement {
   }
 
   private async writeFlow(tabId: string | null): Promise<void> {
+    if (this.readOnly) return;
     const hass = this.hass;
     const flow = this.flow;
     if (!hass || !flow) return;
@@ -1960,6 +2005,7 @@ export class FlodePanel extends LitElement {
 
   /** HA's own "run": the version saved in HA (fields → HA's dialog to fill them in). */
   private async runSavedScript(): Promise<void> {
+    if (this.readOnly) return;
     const hass = this.hass;
     const flow = this.flow;
     const host = this.renderRoot.querySelector('.dialog-host');
@@ -1988,6 +2034,7 @@ export class FlodePanel extends LitElement {
   private startNew(
     kind: FlowKind = this.flow?.item.kind ?? (this.homeKind === 'script' ? 'script' : 'automation')
   ): void {
+    if (this.readOnly) return;
     const name = newFlowName(this.language, kind);
     this.message = null;
     this.openTab({
@@ -2176,6 +2223,7 @@ export class FlodePanel extends LitElement {
 
   /** Opens HA's rename or mode dialog; resolves `false` when cancelled. */
   private async editSettings(kind: 'alias' | 'mode'): Promise<boolean> {
+    if (this.readOnly) return false;
     const hass = this.hass;
     const flow = this.flow;
     const host = this.renderRoot.querySelector('.dialog-host');
@@ -2203,6 +2251,7 @@ export class FlodePanel extends LitElement {
 
   /** Name, description and mode from one of HA's dialogs — one undo step. */
   private applySettings(settings: AutomationSettings, registryUpdate?: RegistryUpdate): void {
+    if (this.readOnly) return;
     const current = this.flow;
     if (!current) return;
     const { alias, description, mode, max, max_exceeded, icon } = settings;
@@ -2235,6 +2284,7 @@ export class FlodePanel extends LitElement {
    * (a card's form), so typing in HA's editor isn't an undo step per key.
    */
   private commit(next: FlowGraph, editKey?: string): void {
+    if (this.readOnly) return;
     const flow = this.flow;
     // A script always begins somewhere (its start node is hidden, see flow-model).
     const graph = ensureScriptEntry(next);
@@ -2253,6 +2303,7 @@ export class FlodePanel extends LitElement {
   }
 
   private undo(): void {
+    if (this.readOnly) return;
     const flow = this.flow;
     const previous = this.past.at(-1);
     if (!flow || !previous) return;
@@ -2264,6 +2315,7 @@ export class FlodePanel extends LitElement {
   }
 
   private redo(): void {
+    if (this.readOnly) return;
     const flow = this.flow;
     const [next, ...rest] = this.future;
     if (!flow || !next) return;
@@ -2312,6 +2364,7 @@ export class FlodePanel extends LitElement {
   }
 
   private async openAddDialog(kind: StepKind, at: AddAt | null = null): Promise<void> {
+    if (this.readOnly) return;
     this.addOpen = false;
     this.pendingAdd = at;
     if (!(await ensureAutomationEditors(this.hass))) return;
@@ -2553,6 +2606,7 @@ export class FlodePanel extends LitElement {
   }
 
   private shortcutAction(id: ShortcutId): (() => void) | null {
+    if (this.readOnly && !isViewingCommand(id)) return () => undefined;
     switch (id) {
       case 'palette':
         return () => {
@@ -2644,6 +2698,8 @@ export class FlodePanel extends LitElement {
       <code>${flow.blueprint}</code>
       <ha-button
         slot="action"
+        ?hidden=${this.readOnly}
+        .disabled=${this.readOnly}
         appearance="plain"
         @click=${() => navigateInHa(`/config/${kind}/edit/${encodeURIComponent(configId)}`)}
       >
@@ -2921,20 +2977,25 @@ export class FlodePanel extends LitElement {
               ${item.name}
             </div>
             <div class="item-meta">
+              ${item.source ? html`<code>${item.source.file} · ${item.source.id}</code>` : nothing}
               ${
-                item.kind === 'script'
-                  ? html`<ha-icon icon="mdi:script-text-outline"></ha-icon>`
-                  : html`<span class="dot ${item.enabled ? 'on' : ''}"></span>
+                item.source
+                  ? nothing
+                  : item.kind === 'script'
+                    ? html`<ha-icon icon="mdi:script-text-outline"></ha-icon>`
+                    : html`<span class="dot ${item.enabled ? 'on' : ''}"></span>
                       ${item.enabled ? t(this.language, 'on') : t(this.language, 'off')}`
               }
               <span class="spacer"></span>
               ${
-                item.lastTriggered
-                  ? new Date(item.lastTriggered).toLocaleString(this.language, {
-                      dateStyle: 'short',
-                      timeStyle: 'short',
-                    })
-                  : t(this.language, 'never')
+                item.source
+                  ? nothing
+                  : item.lastTriggered
+                    ? new Date(item.lastTriggered).toLocaleString(this.language, {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      })
+                    : t(this.language, 'never')
               }
             </div>
           </ha-card>
@@ -2950,11 +3011,7 @@ export class FlodePanel extends LitElement {
 
   private homeTabs(): HomeTab[] {
     const language = this.language;
-    return [
-      { view: 'automation', label: t(language, 'automations') },
-      { view: 'script', label: t(language, 'scripts') },
-      { view: 'map', label: mapT(language, 'title') },
-    ];
+    return [{ view: 'automation', label: t(language, 'automations') }];
   }
 
   private homeMenu(): MenuEntry[] {
@@ -2994,6 +3051,7 @@ export class FlodePanel extends LitElement {
   }
 
   private startMerge(): void {
+    if (this.readOnly) return;
     this.homeKind = 'automation';
     this.mergeMode = true;
     this.mergeIds = [];
@@ -3064,16 +3122,16 @@ export class FlodePanel extends LitElement {
     const hass = this.hass;
     const q = this.query.trim().toLowerCase();
     const view = this.homeKind;
-    const kind: FlowKind = view === 'script' ? 'script' : 'automation';
+    const kind: FlowKind = 'automation';
     const items =
       hass && view !== 'map'
-        ? listFlows(hass, kind).filter((a) => !q || a.name.toLowerCase().includes(q))
+        ? this.fileItems.filter((a) => !q || a.name.toLowerCase().includes(q))
         : [];
     // Active automations first, deactivated ones in their own group below (both A–Z).
     const active = items.filter((item) => item.enabled);
     const inactive = items.filter((item) => !item.enabled);
     // HA's own table (filters, grouping, search) instead of FLODE's cards.
-    const haTable = this.haList === true && view !== 'map';
+    const haTable = !this.readOnly && this.haList === true && view !== 'map';
     return html`
       <div class="home-scroll ${haTable ? 'fill' : ''}">
         <header class="home-toolbar">
@@ -3084,12 +3142,13 @@ export class FlodePanel extends LitElement {
               : nothing
           }
           <div class="home-toolbar-title">${t(this.language, 'title')}</div>
+          <ha-icon-button .label=${this.hass?.localize('ui.common.refresh') || 'Refresh'} @click=${() => this.refreshActiveTab()}><ha-icon icon="mdi:refresh"></ha-icon></ha-icon-button>
         </header>
         <div class="home">
         <header class="home-head">
           <div>
             <h1>${t(this.language, 'title')}</h1>
-            <p class="muted">${t(this.language, 'homeHint')}</p>
+            <p class="muted"><code>${this.fileDirectory}</code></p>
           </div>
         </header>
         ${this.renderAiSetup()}
@@ -3108,7 +3167,7 @@ export class FlodePanel extends LitElement {
               </button>`
             )}
           </div>
-          <div class="home-actions">
+          <div class="home-actions" ?hidden=${this.readOnly} inert=${this.readOnly || nothing}>
             ${
               this.aiEntityId
                 ? html`<button class="save ai" @click=${() => {
@@ -3162,6 +3221,68 @@ export class FlodePanel extends LitElement {
     `;
   }
 
+  private renderCanvasTools(flow: OpenFlow) {
+    const language = this.language;
+    return html`
+      <ha-icon-button .label=${t(language, 'zoomOut')} @click=${() => this.canvas?.zoomBy(1 / 1.2)}>
+        <ha-icon icon="mdi:magnify-minus-outline"></ha-icon>
+      </ha-icon-button>
+      <ha-icon-button .label=${t(language, 'zoomIn')} @click=${() => this.canvas?.zoomBy(1.2)}>
+        <ha-icon icon="mdi:magnify-plus-outline"></ha-icon>
+      </ha-icon-button>
+      <ha-icon-button .label=${labelWithHint(t(language, 'fit'), 'fit')} @click=${() => this.canvas?.fitView()}>
+        <ha-icon icon="mdi:fit-to-screen-outline"></ha-icon>
+      </ha-icon-button>
+      ${
+        this.readOnly
+          ? nothing
+          : html`
+        <ha-icon-button
+          .label=${labelWithHint(t(language, 'tidy'), 'tidy')}
+          .disabled=${visibleGraph(flow.graph).nodes.length < 2}
+          @click=${() => void this.tidy()}
+        ><ha-icon icon="mdi:auto-fix"></ha-icon></ha-icon-button>
+        ${this.renderDirectionMenu(flow)}
+      `
+      }
+      <ha-icon-button
+        class="minimap-toggle ${this.minimapVisible ? 'active' : ''}"
+        .label=${labelWithHint(t(language, 'minimap'), 'minimap')}
+        @click=${() => this.toggleMinimap()}
+      ><ha-icon icon="mdi:map-outline"></ha-icon></ha-icon-button>
+      <ha-icon-button
+        class=${this.haCardText ? 'active' : ''}
+        .label=${t(language, 'haCardText')}
+        @click=${() => this.toggleHaCardText()}
+      ><ha-icon icon="mdi:home-assistant"></ha-icon></ha-icon-button>`;
+  }
+
+  private renderViewingToolbar(flow: OpenFlow) {
+    const language = this.language;
+    return html`
+      <ha-icon-button .label=${t(language, 'back')} @click=${() => {
+        this.parkActiveTab();
+        this.showHome = true;
+      }}><ha-icon icon="mdi:arrow-left"></ha-icon></ha-icon-button>
+      <div class="name"><span title=${flow.item.source ? `${flow.item.source.file} · ${flow.item.source.id}` : flow.graph.name}>${flow.graph.name}</span>
+        <span class="status">${t(language, 'readOnly')}</span>
+        ${this.renderLastRun(flow)}
+      </div>
+      <div class="tools">
+        <div class="tool-group">${this.renderCanvasTools(flow)}</div>
+        <ha-icon-button .label=${t(language, 'ioShowYaml')} @click=${() => {
+          this.yamlViewOpen = true;
+        }}><ha-icon icon="mdi:code-braces"></ha-icon></ha-icon-button>
+        ${
+          flow.item.source
+            ? nothing
+            : html`<ha-icon-button .label=${t(language, 'showRuns')} @click=${() => {
+                this.debugOpen = !this.debugOpen;
+              }}><ha-icon icon="mdi:timeline-clock-outline"></ha-icon></ha-icon-button>`
+        }
+      </div>`;
+  }
+
   private renderEditor(flow: OpenFlow) {
     const language = this.language;
     // Branch cards (steps inside a choose / if) can be opened like any card.
@@ -3173,6 +3294,10 @@ export class FlodePanel extends LitElement {
     return html`
       <div class="editor">
         <header class="toolbar">
+          ${
+            this.readOnly
+              ? this.renderViewingToolbar(flow)
+              : html`
           <ha-icon-button .label=${t(language, 'back')} @click=${() => {
             // Back to the start screen; the tabs stay open.
             this.parkActiveTab();
@@ -3231,39 +3356,7 @@ export class FlodePanel extends LitElement {
               </ha-icon-button>
             </div>
             <span class="tool-sep"></span>
-            <div class="tool-group">
-              <ha-icon-button .label=${t(language, 'zoomOut')} @click=${() => this.canvas?.zoomBy(1 / 1.2)}>
-                <ha-icon icon="mdi:magnify-minus-outline"></ha-icon>
-              </ha-icon-button>
-              <ha-icon-button .label=${t(language, 'zoomIn')} @click=${() => this.canvas?.zoomBy(1.2)}>
-                <ha-icon icon="mdi:magnify-plus-outline"></ha-icon>
-              </ha-icon-button>
-              <ha-icon-button .label=${labelWithHint(t(language, 'fit'), 'fit')} @click=${() => this.canvas?.fitView()}>
-                <ha-icon icon="mdi:fit-to-screen-outline"></ha-icon>
-              </ha-icon-button>
-              <ha-icon-button
-                .label=${labelWithHint(t(language, 'tidy'), 'tidy')}
-                .disabled=${visibleGraph(flow.graph).nodes.length < 2}
-                @click=${() => void this.tidy()}
-              >
-                <ha-icon icon="mdi:auto-fix"></ha-icon>
-              </ha-icon-button>
-              ${this.renderDirectionMenu(flow)}
-              <ha-icon-button
-                class="minimap-toggle ${this.minimapVisible ? 'active' : ''}"
-                .label=${labelWithHint(t(language, 'minimap'), 'minimap')}
-                @click=${() => this.toggleMinimap()}
-              >
-                <ha-icon icon="mdi:map-outline"></ha-icon>
-              </ha-icon-button>
-              <ha-icon-button
-                class=${this.haCardText ? 'active' : ''}
-                .label=${t(language, 'haCardText')}
-                @click=${() => this.toggleHaCardText()}
-              >
-                <ha-icon icon="mdi:home-assistant"></ha-icon>
-              </ha-icon-button>
-            </div>
+            <div class="tool-group">${this.renderCanvasTools(flow)}</div>
             <span class="tool-sep"></span>
             <div class="tool-group">
               <ha-icon-button .label=${t(language, 'rename')} @click=${() => void this.editSettings('alias')}>
@@ -3369,6 +3462,8 @@ export class FlodePanel extends LitElement {
                 : []),
             ])}
           </div>
+`
+          }
         </header>
         ${this.renderTabs()}
         ${this.renderSaveProblem()}
@@ -3377,6 +3472,7 @@ export class FlodePanel extends LitElement {
         <div class="work" @pointerdown=${this.closeCanvasMenuOutside}>
           <flode-canvas
             .graph=${flow.graph}
+            .readOnly=${this.readOnly}
             .minimap=${this.minimapVisible}
             .haText=${this.haCardText}
             .hass=${this.hass}
@@ -3465,6 +3561,7 @@ export class FlodePanel extends LitElement {
                   }}
                 ></flode-debug>`
                 : html`          <flode-inspector
+              .readOnly=${this.readOnly}
               style=${this.inspectorWidth ? `--inspector-width: ${this.inspectorWidth}px` : ''}
               .hass=${this.hass}
               .node=${selected}
@@ -3513,7 +3610,7 @@ export class FlodePanel extends LitElement {
 
   /** No AI yet: how to set it up in HA (HA's own alert, links into HA's settings). */
   private renderAiSetup() {
-    if (this.aiEntityId || this.aiSetupHidden || !this.hass) return nothing;
+    if (this.readOnly || this.aiEntityId || this.aiSetupHidden || !this.hass) return nothing;
     const language = this.language;
     return html`<ha-alert alert-type="info" .title=${t(language, 'aiSetupTitle')}>
       ${t(language, this.aiNeedsDefault ? 'aiSetupDefault' : 'aiSetupText')}
@@ -3543,6 +3640,7 @@ export class FlodePanel extends LitElement {
 
   /** "Last run: 20:14" from HA's state — a click opens the runs. */
   private renderLastRun(flow: OpenFlow) {
+    if (flow.item.source) return nothing;
     const last = this.hass?.states[flow.item.entityId]?.attributes.last_triggered;
     if (flow.isNew || typeof last !== 'string') return nothing;
     const when = new Date(last).toLocaleString(this.language, {
@@ -3588,7 +3686,7 @@ export class FlodePanel extends LitElement {
             </div>
           `;
         })}
-        <ha-icon-button .label=${t(language, 'newTab')} @click=${() => this.startNew()}>
+        <ha-icon-button ?hidden=${this.readOnly} .disabled=${this.readOnly} .label=${t(language, 'newTab')} @click=${() => this.startNew()}>
           <ha-icon icon="mdi:plus"></ha-icon>
         </ha-icon-button>
       </nav>
@@ -3624,6 +3722,7 @@ export class FlodePanel extends LitElement {
         }}
       ></flode-yaml-view>
       <flode-shortcuts
+        .readOnly=${this.readOnly}
         .hass=${this.hass}
         .open=${this.shortcutsOpen}
         @closed=${() => {
@@ -3699,6 +3798,7 @@ export class FlodePanel extends LitElement {
   }
 
   static styles = css`
+    [hidden] { display: none !important; }
     :host {
       display: block;
       /* HA's partial-panel-resolver has no definite height, so 100% collapsed

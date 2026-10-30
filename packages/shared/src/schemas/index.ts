@@ -30,6 +30,12 @@ export {
 } from './base';
 // Edge schemas
 export { type ConditionEdge, ConditionEdgeSchema, EdgeSchema, type FlowEdge } from './edges';
+export {
+  FileAutomationConfigSchema,
+  FileAutomationListSchema,
+  type FileAutomationRef,
+  FileAutomationRefSchema,
+} from './file-source';
 // Graph schemas
 export {
   type FlowGraph,

@@ -70,6 +70,8 @@ export function friendlyName(hass: HomeAssistant | undefined, entityId: string):
 export type FlowKind = 'automation' | 'script';
 
 export interface AutomationListItem {
+  /** File provenance; independent of HA entity/config identifiers. */
+  source?: import('@flode/shared').FileAutomationRef;
   /** Automation or script — they have separate config APIs and ids. */
   kind: FlowKind;
   entityId: string;

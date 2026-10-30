@@ -100,10 +100,29 @@ if (!entries.some((entry) => entry.domain === 'flode')) {
     { handler: 'flode', show_advanced_options: false },
     token
   );
-  const result = await request(`/api/config/config_entries/flow/${flow.flow_id}`, {}, token);
+  const result = await request(
+    `/api/config/config_entries/flow/${flow.flow_id}`,
+    { config_directory: '/flode-config' },
+    token
+  );
   if (result.type !== 'create_entry')
     throw new Error(`Unexpected FLODE setup result: ${result.type}`);
 }
+// Configure the already-created test integration through HA's normal options flow.
+const current = (await request('/api/config/config_entries/entry', undefined, token)).find(
+  (entry) => entry.domain === 'flode'
+);
+const options = await request(
+  '/api/config/config_entries/options/flow',
+  { handler: current.entry_id },
+  token
+);
+const configured = await request(
+  `/api/config/config_entries/options/flow/${options.flow_id}`,
+  { config_directory: '/flode-config' },
+  token
+);
+if (configured.type !== 'create_entry') throw new Error('Test file directory was not accepted');
 console.log(
   `Test HA initialized: ${base}/flode (credentials and token stored privately in runtime/)`
 );

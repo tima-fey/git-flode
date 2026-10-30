@@ -1,7 +1,7 @@
 import { css, html, LitElement } from 'lit';
 import { defineElement } from './define-element';
 import type { HomeAssistant } from './ha';
-import { formatKeys, SHORTCUTS, type ShortcutGroup } from './shortcuts';
+import { formatKeys, isViewingCommand, SHORTCUTS, type ShortcutGroup } from './shortcuts';
 import { t } from './strings';
 
 const GROUPS: readonly ShortcutGroup[] = ['general', 'edit', 'view'];
@@ -14,20 +14,27 @@ const GROUP_LABEL = {
 /** "?": every keyboard shortcut, listed from the same table that binds them. */
 export class FlodeShortcuts extends LitElement {
   static properties = {
+    readOnly: { type: Boolean },
     hass: { attribute: false },
     open: { type: Boolean },
   };
 
+  declare readOnly: boolean;
   declare hass: HomeAssistant | undefined;
   declare open: boolean;
 
   constructor() {
     super();
+    this.readOnly = false;
     this.open = false;
   }
 
   render() {
     const language = this.hass?.language ?? 'en';
+    const shortcuts = SHORTCUTS.filter(
+      (shortcut) => !this.readOnly || isViewingCommand(shortcut.id)
+    );
+    const groups = GROUPS.filter((group) => shortcuts.some((shortcut) => shortcut.group === group));
     return html`<ha-dialog
       .open=${this.open}
       .headerTitle=${t(language, 'shortcutsTitle')}
@@ -35,17 +42,19 @@ export class FlodeShortcuts extends LitElement {
       @closed=${() => this.dispatchEvent(new CustomEvent('closed'))}
     >
       <p class="muted">${t(language, 'shortcutsIntro')}</p>
-      ${GROUPS.map(
+      ${groups.map(
         (group) => html`<h4>${t(language, GROUP_LABEL[group])}</h4>
           <div class="rows">
-            ${SHORTCUTS.filter((shortcut) => shortcut.group === group).map(
-              (shortcut) => html`<div class="row">
+            ${shortcuts
+              .filter((shortcut) => shortcut.group === group)
+              .map(
+                (shortcut) => html`<div class="row">
                 <span>${t(language, shortcut.label)}</span>
                 <span class="keys">
                   ${shortcut.keys.map((keys) => html`<kbd>${formatKeys(keys)}</kbd>`)}
                 </span>
               </div>`
-            )}
+              )}
           </div>`
       )}
     </ha-dialog>`;

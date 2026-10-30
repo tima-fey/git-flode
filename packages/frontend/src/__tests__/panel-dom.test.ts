@@ -21,7 +21,7 @@ const action: FlowNode = {
   id: 'action_1',
   type: 'action',
   position: { x: 360, y: 0 },
-  data: { action: 'light.turn_on', target: { entity_id: 'light.kitchen' } },
+  data: { service: 'light.turn_on', target: { entity_id: 'light.kitchen' } },
 };
 
 function draft(
@@ -51,8 +51,9 @@ function draft(
   };
 }
 
-async function mountPanel(flow: OpenFlow): Promise<FlodePanel> {
+async function mountPanel(flow: OpenFlow, readOnly = false): Promise<FlodePanel> {
   const panel = new FlodePanel();
+  panel.readOnly = readOnly;
   document.body.appendChild(panel);
   await panel.updateComplete;
   // The welcome sheet of a first visit is a dialog: while it shows, shortcuts stay off.
@@ -198,5 +199,74 @@ describe('panel in the DOM', () => {
     await panel.updateComplete;
     expect(panel.flow?.graph.nodes).toHaveLength(2);
     expect(cardIds(panel).sort()).toEqual(['action_1', 'trigger_1']);
+  });
+});
+
+describe('viewing mode', () => {
+  const viewingFlow = () =>
+    draft('automation', [trigger, action], [{ id: 'e1', source: trigger.id, target: action.id }]);
+
+  it('defaults to viewing and blocks document edits through commands and events', async () => {
+    expect(new FlodePanel().readOnly).toBe(true);
+    const panel = await mountPanel(viewingFlow(), true);
+    const graph = panel.flow?.graph;
+    const tabs = panel.tabs.length;
+    panel['duplicateCard'](action);
+    panel['removeCard'](action.id);
+    panel['toggleCard'](action);
+    panel['startNew']();
+    panel['saveCopy']();
+    panel['startRun'](action.id, 'only');
+    const canvas = panel.shadowRoot?.querySelector('flode-canvas');
+    canvas?.dispatchEvent(
+      new CustomEvent('graph-change', {
+        detail: { graph: { ...graph, nodes: [] } },
+      })
+    );
+    await panel['save']();
+    await panel.updateComplete;
+    expect(panel.flow?.graph).toBe(graph);
+    expect(panel.tabs).toHaveLength(tabs);
+    expect(panel.runFromId).toBeNull();
+    expect(cardIds(panel).sort()).toEqual([action.id, trigger.id]);
+  });
+
+  it('blocks mutation shortcuts and omits editing palette commands', async () => {
+    const panel = await mountPanel(viewingFlow(), true);
+    panel.selectedId = action.id;
+    const graph = panel.flow?.graph;
+    for (const key of ['d', 'e', 'v', 's', 'z', 'b']) pressOnWindow(key, true);
+    await panel.updateComplete;
+    expect(panel.flow?.graph).toBe(graph);
+    expect(panel.addOpen).toBe(false);
+    const ids = panel['paletteEntries']().map((entry) => entry.id);
+    expect(ids).toContain('fit');
+    expect(ids).toContain('showYaml');
+    for (const id of [
+      'new',
+      'save',
+      'saveCopy',
+      'duplicate',
+      'runFrom',
+      'merge',
+      'importYaml',
+      'tidy',
+    ])
+      expect(ids).not.toContain(id);
+  });
+
+  it('keeps card inspection without editable forms, run buttons, or layout handles', async () => {
+    const panel = await mountPanel(viewingFlow(), true);
+    panel.selectedId = action.id;
+    await panel.updateComplete;
+    const canvas = panel.shadowRoot?.querySelector('flode-canvas');
+    const inspector = panel.shadowRoot?.querySelector('flode-inspector');
+    await inspector?.updateComplete;
+    expect(canvas?.readOnly).toBe(true);
+    expect(inspector?.readOnly).toBe(true);
+    expect(inspector?.shadowRoot?.querySelector('pre')?.textContent).toContain('light.turn_on');
+    expect(inspector?.shadowRoot?.querySelector('ha-icon-button')).toBeNull();
+    expect(canvas?.shadowRoot?.querySelector('.add-next')).toBeNull();
+    expect(panel.shadowRoot?.querySelector('.toolbar .save')).toBeNull();
   });
 });

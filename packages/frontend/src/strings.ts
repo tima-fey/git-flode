@@ -12,6 +12,7 @@ import { pt } from './locales/pt.ts';
 const STRINGS = {
   de: {
     title: 'FLODE',
+    readOnly: 'Nur lesen',
     open: 'Öffnen',
     back: 'Zurück',
     save: 'Speichern',
@@ -22,7 +23,7 @@ const STRINGS = {
     progressOpenAutomation: 'Automation wird geöffnet',
     progressOpenScript: 'Skript wird geöffnet',
     progressMerge: 'Automationen werden zusammengeführt',
-    progressConfig: 'Konfiguration aus Home Assistant laden …',
+    progressConfig: 'Automatisierungsdatei lesen …',
     progressParse: 'Ablauf aufbauen …',
     progressRegistry: 'Bereich, Kategorie und Labels laden …',
     progressOpen: 'Editor öffnen …',
@@ -397,6 +398,7 @@ const STRINGS = {
   },
   en: {
     title: 'FLODE',
+    readOnly: 'Read only',
     open: 'Open',
     back: 'Back',
     save: 'Save',
@@ -407,7 +409,7 @@ const STRINGS = {
     progressOpenAutomation: 'Opening automation',
     progressOpenScript: 'Opening script',
     progressMerge: 'Merging automations',
-    progressConfig: 'Loading configuration from Home Assistant …',
+    progressConfig: 'Reading automation file …',
     progressParse: 'Building the flow …',
     progressRegistry: 'Loading area, category and labels …',
     progressOpen: 'Opening the editor …',
