@@ -256,7 +256,7 @@ async function run(engine) {
         await dialog.getByText(stop, { exact: true }).first().click();
         await page.waitForTimeout(800);
         expect((await cardCount(page)) === n + 1, 'no card added');
-        await page.getByRole('button', { name: await label(page, 'save') }).click();
+        await page.getByRole('button', { name: await label(page, 'save'), exact: true }).click();
         await page.waitForTimeout(1500);
         const saved = await rest('GET', `config/automation/config/${scratch.id}`);
         expect(

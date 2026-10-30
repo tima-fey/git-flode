@@ -58,6 +58,17 @@ function stepTarget(step: Record<string, unknown>): object | undefined {
   return step.entity_id === undefined ? undefined : { entity_id: step.entity_id };
 }
 
+/** HA's state-trigger descriptions pass from/to values to Intl.ListFormat. */
+function canDescribe(kind: StepKind, step: Record<string, unknown>): boolean {
+  if (kind !== 'trigger' || (step.trigger ?? step.platform) !== 'state') return true;
+  return [step.from, step.to, step.not_from, step.not_to].every(
+    (value) =>
+      value == null ||
+      typeof value === 'string' ||
+      (Array.isArray(value) && value.every((item) => typeof item === 'string'))
+  );
+}
+
 interface Request {
   key: string;
   kind: StepKind;
@@ -100,6 +111,9 @@ export class HaDescriptions {
     }
     const kind = stepKind(node.type);
     const step = nodeToStep(node);
+    // Attribute states may be numbers, lists of numbers, or mappings. Keep
+    // FLODE's summary rather than mounting a row HA cannot describe safely.
+    if (!canDescribe(kind, step)) return own;
     const key = `${kind}:${JSON.stringify(step)}`;
     const text = this.texts.get(key);
     if (text) {

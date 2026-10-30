@@ -67,7 +67,7 @@ async function saveAndCompare(page, flow, before, dirty, where) {
     result.fail(`${where}: the flow is not marked as changed (${state})`);
     return;
   }
-  await page.getByRole('button', { name: await label(page, 'save') }).click();
+  await page.getByRole('button', { name: await label(page, 'save'), exact: true }).click();
   await waitForPanel(page, (panel) => panel.saveState === 'saved').catch(() =>
     result.fail(`${where}: save did not finish`)
   );

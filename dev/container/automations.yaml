@@ -1,0 +1,11 @@
+- id: flode_test_simple
+  alias: FLODE test simple automation
+  description: Synthetic fixture without real devices.
+  triggers:
+    - trigger: state
+      entity_id: input_boolean.flode_test
+      to: "on"
+  conditions: []
+  actions:
+    - delay: "00:00:01"
+  mode: single

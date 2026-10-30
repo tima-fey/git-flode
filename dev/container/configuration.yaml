@@ -1,0 +1,21 @@
+homeassistant:
+  name: FLODE Test
+  latitude: 0
+  longitude: 0
+  elevation: 0
+  unit_system: metric
+  time_zone: Europe/Amsterdam
+  country: NL
+
+frontend:
+config:
+api:
+http:
+history:
+logbook:
+recorder:
+automation: !include automations.yaml
+script: !include scripts.yaml
+input_boolean:
+  flode_test:
+    name: FLODE test helper
