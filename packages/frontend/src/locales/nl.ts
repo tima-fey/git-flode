@@ -2,6 +2,18 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Dutch (the keys and placeholders of `strings.ts`). */
 export const nl: Strings = {
+  testsRun: 'Tests uitvoeren',
+  testsScope: 'Voert vertrouwde Python-unittest-tests uit de map tests/ van het project uit.',
+  testsPassed: 'Tests geslaagd.',
+  testsFailed: 'Tests mislukt.',
+  testsTimeout: 'Tests overschreden de limiet van 60 seconden.',
+  testsTruncated: 'Uitvoer beperkt tot 64 KiB.',
+  haCheck: 'Configuratie controleren',
+  haReload: 'Snel herladen',
+  haValid: 'De configuratie is geldig.',
+  haInvalid: 'De configuratie is ongeldig.',
+  haReloaded: 'Snel herladen voltooid.',
+  haScope: 'Controleert en herlaadt de YAML-configuratie die met Home Assistant is verbonden.',
   gitRefresh: 'Git vernieuwen',
   gitFetch: 'Fetch (alleen downloaden)',
   gitPull: 'main bijwerken',

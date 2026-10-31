@@ -17,8 +17,8 @@ mkdir -p "$root"
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
 git init --template= --bare --initial-branch=main "$remote"
 git init --template= --initial-branch=main "$checkout"
-cp -R dev/container/fixtures/automations dev/container/fixtures/objects "$checkout/"
-git -C "$checkout" add automations objects
+cp -R dev/container/fixtures/automations dev/container/fixtures/objects dev/container/fixtures/tests "$checkout/"
+git -C "$checkout" add automations objects tests
 git -C "$checkout" -c user.name='FLODE Test' -c user.email=test@example.invalid commit -m 'Initial test automations'
 printf 'Disposable configuration checkout for FLODE Git tests.\n' > "$checkout/README.md"
 git -C "$checkout" add README.md

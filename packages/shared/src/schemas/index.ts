@@ -1,3 +1,5 @@
+export { type HaConfigCheck, HaConfigCheckSchema } from './ha-config';
+export { type ProjectTestResult, ProjectTestResultSchema } from './project-tests';
 // Type guards
 
 export {

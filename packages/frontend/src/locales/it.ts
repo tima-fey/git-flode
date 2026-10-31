@@ -2,6 +2,18 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Italian (the keys and placeholders of `strings.ts`). */
 export const it: Strings = {
+  testsRun: 'Esegui test',
+  testsScope: 'Esegue i test Python unittest attendibili dalla cartella tests/ del progetto.',
+  testsPassed: 'Test superati.',
+  testsFailed: 'Test falliti.',
+  testsTimeout: 'I test hanno superato il limite di 60 secondi.',
+  testsTruncated: 'Output limitato a 64 KiB.',
+  haCheck: 'Verifica configurazione',
+  haReload: 'Ricaricamento rapido',
+  haValid: 'La configurazione è valida.',
+  haInvalid: 'La configurazione non è valida.',
+  haReloaded: 'Ricaricamento rapido completato.',
+  haScope: 'Verifica e ricarica la configurazione YAML collegata a Home Assistant.',
   gitRefresh: 'Aggiorna Git',
   gitFetch: 'Fetch (solo download)',
   gitPull: 'Aggiorna main',

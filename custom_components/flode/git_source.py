@@ -4,11 +4,10 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-import threading
 from pathlib import Path
 from typing import Any
 
-_LOCKS: dict[str, threading.Lock] = {}
+from .project_lock import project_lock
 
 
 class GitError(ValueError):
@@ -95,9 +94,9 @@ class GitRepository:
         self, action: str, *, expected_head: str = "", revision: str = "", offset: int = 0
     ) -> dict[str, Any]:
         """Serialize clients; stale requests cannot change a newer checkout."""
-        lock = _LOCKS.setdefault(str(self.root), threading.Lock())
+        lock = project_lock(str(self.root))
         if not lock.acquire(timeout=1):
-            raise GitError("Another Git request is running; try again when it finishes")
+            raise GitError("Another Git or test request is running; try again when it finishes")
         try:
             if action == "status":
                 return self._status()

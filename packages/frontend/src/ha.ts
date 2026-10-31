@@ -28,6 +28,7 @@ export interface HassService {
 }
 
 export interface HomeAssistant {
+  user?: { is_admin: boolean };
   states: Record<string, HassEntityState>;
   language: string;
   /** The user's profile formats (Profile → Number / Time format). */

@@ -11,8 +11,11 @@ import {
 } from '@flode/shared';
 import { dump as yamlDump } from 'js-yaml';
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
+import { live } from 'lit/directives/live.js';
+import { repeat } from 'lit/directives/repeat.js';
 import './flode-canvas';
 import './flode-git';
+import './flode-ha-controls';
 import './flode-inspector';
 import type { NodeDataEdit, NodesChange } from './flode-inspector';
 import './flode-debug';
@@ -26,7 +29,13 @@ import './flode-runfrom';
 import './flode-shortcuts';
 import './flode-ha-list';
 import './flode-progress';
-import { chooseAiTask, keepAiTask, mergeAutomations, randomId } from '@flode/ui-core';
+import {
+  chooseAiTask,
+  groupAutomationsByFolder,
+  keepAiTask,
+  mergeAutomations,
+  randomId,
+} from '@flode/ui-core';
 import {
   addFrame,
   addFrameAround,
@@ -465,6 +474,7 @@ export class FlodePanel extends LitElement {
   /** HA's own list page is available (null = still loading it). */
   declare haList: boolean | null;
   private fileItems: AutomationListItem[] = [];
+  private collapsedFolders = new Set<string>();
   private fileDirectory = '';
   /** Start sheet: welcome on the first visit, what's new after an update. */
   declare welcome: WelcomeMode | null;
@@ -3069,9 +3079,30 @@ export class FlodePanel extends LitElement {
     inactive: AutomationListItem[],
     view: HomeView
   ) {
-    return html`${this.renderItemGroup(active)}
+    return html`${
+      this.readOnly
+        ? repeat(
+            groupAutomationsByFolder([...active, ...inactive], this.language),
+            (group) => group.folder,
+            (group) => html`<details class="folder-group" data-folder=${group.folder}
+              .open=${live(Boolean(this.query.trim()) || !this.collapsedFolders.has(group.folder))}>
+              <summary class="folder-title" @click=${(event: Event) => {
+                if (this.query.trim() || !(event.currentTarget instanceof HTMLElement)) return;
+                const folder = event.currentTarget.parentElement;
+                if (!(folder instanceof HTMLDetailsElement)) return;
+                if (folder.open) this.collapsedFolders.add(group.folder);
+                else this.collapsedFolders.delete(group.folder);
+              }}><ha-icon icon="mdi:folder-outline"></ha-icon>
+                <span>${group.folder || 'automations/'}</span>
+                <span class="folder-count">(${group.items.length})</span>
+              </summary>
+              ${this.renderItemGroup(group.items)}
+            </details>`
+          )
+        : this.renderItemGroup(active)
+    }
       ${
-        inactive.length > 0
+        !this.readOnly && inactive.length > 0
           ? html`<h2 class="group-title">${t(this.language, 'disabledGroup')} (${inactive.length})</h2>
               ${this.renderItemGroup(inactive)}`
           : nothing
@@ -3126,7 +3157,9 @@ export class FlodePanel extends LitElement {
     const kind: FlowKind = 'automation';
     const items =
       hass && view !== 'map'
-        ? this.fileItems.filter((a) => !q || a.name.toLowerCase().includes(q))
+        ? this.fileItems.filter(
+            (item) => !q || `${item.name} ${item.source?.file ?? ''}`.toLowerCase().includes(q)
+          )
         : [];
     // Active automations first, deactivated ones in their own group below (both A–Z).
     const active = items.filter((item) => item.enabled);
@@ -3161,6 +3194,7 @@ export class FlodePanel extends LitElement {
             void this.loadHaList();
           }}
         ></flode-git>
+        <flode-ha-controls .hass=${this.hass}></flode-ha-controls>
         ${this.renderAiSetup()}
         <div class="home-bar">
           <div class="kinds" role="tablist">
@@ -4007,6 +4041,21 @@ export class FlodePanel extends LitElement {
       font: inherit;
       font-size: 15px;
     }
+    .folder-group > .grid { margin-top: 12px; }
+    .folder-title {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0 0;
+      font-size: 16px;
+      overflow-wrap: anywhere;
+    }
+    .folder-title::before { content: '▸'; }
+    .folder-group[open] > .folder-title::before { content: '▾'; }
+    .folder-title:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 4px; }
+    .folder-title ha-icon { color: var(--primary-color); flex-shrink: 0; }
+    .folder-count { color: var(--secondary-text-color); font-size: 14px; }
     .group-title {
       margin: 8px 0 0;
       font-size: 14px;

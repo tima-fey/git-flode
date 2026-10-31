@@ -2,6 +2,7 @@ export * from './ai-assist';
 export * from './ai-draft';
 export * from './ai-markdown';
 export * from './ai-task';
+export * from './automation-folders';
 export * from './automation-merge';
 export * from './dependency-map';
 export * from './jinja-rename';

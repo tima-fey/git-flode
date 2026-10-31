@@ -28,10 +28,17 @@ flode-config/
     security/
       vacation_alarm.yaml
   objects/
+  tests/
+    test_automations.py
 ```
 
 Each YAML file holds a list of independent automations. The file references
 shown in the panel are relative to the project root, including `automations/`.
+Cards are grouped by their full directory below `automations/`, including nested
+paths. Files directly in `automations/` appear under that heading. Search matches
+automation names and file paths; empty groups are hidden. Folder headings can
+be collapsed by mouse or keyboard. Search expands matching folders temporarily
+and restores their previous state when cleared.
 
 Unsupported YAML directives such as `!include` and `!secret` produce errors;
 they are not resolved through HA or outside the configured root. Errors never
@@ -60,6 +67,36 @@ directory is writable so HA can maintain its own storage. The panel defaults
 to viewing: editor writes and action execution are disabled, and the inspector
 shows the selected step as YAML. The configuration checkout is writable for
 explicit Git pull/version-switch operations.
+
+## Home Assistant controls
+
+The administrator-only Home Assistant card calls the native
+`POST /api/config/core/check_config` endpoint and displays its errors and
+warnings. Quick reload calls `homeassistant.reload_all`, which validates the
+configuration before reloading supported YAML domains. It does not restart HA.
+These operations apply to HA's connected YAML configuration; the standalone
+FLODE checkout is included only when HA configuration explicitly references it.
+Neither operation runs automatically after a Git action or while browsing.
+`check-ha.mjs` exercises both controls in the disposable instance.
+
+## Project tests
+
+Run tests executes Python `unittest` discovery in the configured root's `tests/`
+folder (`test_*.py`; use `__init__.py` for nested test packages). The example
+`tests/test_automations.py` reads the synthetic automation YAML without running
+HA actions. Tests use the HA Python environment; no dependencies are installed
+at runtime. The process uses the project root as its working directory and can
+import project helpers. Empty suites and import errors count as failures.
+
+Only administrators can start a run. Runs are explicit, share a lock with Git,
+and never happen automatically on fetch, pull, or reload. Output is limited to
+64 KiB and runs stop after 60 seconds by terminating the worker process group. Python
+bytecode is disabled to keep the checkout clean. The UI displays console output,
+pass/fail, and timeout results. Symlinks in `tests/` are rejected.
+
+These are trusted Python programs running with HA's permissions, not a sandbox.
+Only use test code and dependencies you trust. Tests may access files, network,
+and HA services if their code does so; the example only reads YAML.
 
 ## Git controls
 

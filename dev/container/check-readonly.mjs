@@ -51,6 +51,37 @@ for (const engine of ENGINES) {
     await gotoPanel(page, { reload: true });
     await result.check(`${engine}: inspect, shortcuts, drag, and mobile viewing`, async () => {
       errors.length = 0;
+      const groups = page.locator('flode-panel .folder-group');
+      await groups.first().waitFor();
+      assert.deepEqual(
+        await groups.evaluateAll((elements) => elements.map((element) => element.dataset.folder)),
+        ['climate', 'examples']
+      );
+      assert.equal(await groups.locator('ha-card.item').count(), 14);
+      assert.equal(
+        await page.locator('flode-panel .folder-group[data-folder="climate"] ha-card.item').count(),
+        12
+      );
+      const climate = page.locator('flode-panel .folder-group[data-folder="climate"]');
+      await climate.locator('summary').click();
+      await climate.locator('.grid').waitFor({ state: 'hidden' });
+      assert.equal(await climate.locator('ha-card.item').first().isVisible(), false);
+      const search = page.locator('flode-panel .home > label.search > input');
+      await search.fill('climate/heating.yaml');
+      await page.waitForFunction(
+        () => window.flodeGate.panel()?.shadowRoot.querySelectorAll('.item').length === 5
+      );
+      assert.equal(await groups.count(), 1);
+      await climate.locator('.grid').waitFor({ state: 'visible' });
+      await search.fill('');
+      await page.waitForFunction(
+        () => window.flodeGate.panel()?.shadowRoot.querySelectorAll('.item').length === 14
+      );
+      await climate.locator('.grid').waitFor({ state: 'hidden' });
+      await climate.locator('summary').focus();
+      await page.keyboard.press('Enter');
+      await climate.locator('.grid').waitFor({ state: 'visible' });
+      await groups.first().screenshot({ path: `dev/container/runtime/folders-${engine}.png` });
       await openFlow(page, 'File ventilation start');
       assert.equal(await inPanel(page, (panel) => panel.readOnly), true);
       assert.equal(
