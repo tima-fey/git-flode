@@ -131,6 +131,9 @@ and HA services if their code does so; the example only reads YAML.
 
 ## Git controls
 
+Operator procedures and recovery nuances are in
+[Git operations and recovery](../../docs/git-workflow.md).
+
 The configured directory must be the configuration checkout root with an
 existing local **prod** branch. HA works on prod; the external writer works on
 **main**. There is no legacy main-only mode or automatic branch migration.

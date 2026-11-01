@@ -125,6 +125,10 @@ and a disposable configuration checkout with a local Git remote.
 
 ## Git and applying changes
 
+See [Git operations and recovery](docs/git-workflow.md) for conflict resolution,
+merge undo and reapplication, unexpected prod divergence, and historical-checkout
+pitfalls.
+
 Configure Git identity where the HA process can read it, for example:
 
 ```sh
