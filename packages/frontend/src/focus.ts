@@ -8,6 +8,13 @@ function canFocus(value: unknown): value is { focus: () => void } {
   );
 }
 
+function containsFocus(field: Element): boolean {
+  const tree = field.getRootNode();
+  return (
+    ('activeElement' in tree && tree.activeElement === field) || field.matches(':focus-within')
+  );
+}
+
 const FIELDS = 'ha-code-editor, input, textarea, ha-textarea, ha-textfield, ha-input';
 
 /**
@@ -15,14 +22,33 @@ const FIELDS = 'ha-code-editor, input, textarea, ha-textarea, ha-textfield, ha-i
  * opens. HA's dialog animates in and its code editor loads CodeMirror first,
  * so it tries again until the field has the focus (for up to ~2 s). Typing
  * then goes into the field instead of triggering HA's single-key shortcuts.
+ * Cancel when the dialog closes; detached roots stop retrying automatically.
  */
-export function focusFirstField(root: ParentNode, tries = 20): void {
-  window.setTimeout(() => {
-    const field = root.querySelector(FIELDS);
-    // HA's code editor keeps its CodeMirror view as `codemirror` (there once loaded).
-    const target = field?.localName === 'ha-code-editor' ? Reflect.get(field, 'codemirror') : field;
-    if (canFocus(target)) target.focus();
-    // Not there yet, or the dialog took the focus back while animating in: once more.
-    if (!field?.matches(':focus-within') && tries > 0) focusFirstField(root, tries - 1);
-  }, 80);
+export function focusFirstField(root: ParentNode & Node, tries = 20): () => void {
+  const view = root.ownerDocument?.defaultView;
+  let timer: number | undefined;
+  let cancelled = false;
+
+  function cancel(): void {
+    cancelled = true;
+    if (timer !== undefined) view?.clearTimeout(timer);
+    timer = undefined;
+  }
+
+  function attempt(remaining: number): void {
+    if (cancelled || !view || !root.isConnected) return;
+    timer = view.setTimeout(() => {
+      timer = undefined;
+      if (cancelled || !root.isConnected) return;
+      const field = root.querySelector(FIELDS);
+      // HA's code editor exposes its CodeMirror view once it has loaded.
+      const target =
+        field?.localName === 'ha-code-editor' ? Reflect.get(field, 'codemirror') : field;
+      if (canFocus(target)) target.focus();
+      if ((!field || !containsFocus(field)) && remaining > 0) attempt(remaining - 1);
+    }, 80);
+  }
+
+  attempt(tries);
+  return cancel;
 }

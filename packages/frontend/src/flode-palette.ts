@@ -46,6 +46,8 @@ export class FlodePalette extends LitElement {
   declare query: string;
   declare index: number;
 
+  private cancelFocus: (() => void) | undefined;
+
   constructor() {
     super();
     this.entries = [];
@@ -59,11 +61,18 @@ export class FlodePalette extends LitElement {
   }
 
   protected updated(changed: PropertyValues<this>): void {
-    if (changed.has('open') && this.open) {
+    if (!changed.has('open')) return;
+    this.cancelFocus?.();
+    if (this.open) {
       this.query = '';
       this.index = 0;
-      focusFirstField(this.renderRoot);
+      this.cancelFocus = focusFirstField(this.renderRoot);
     }
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.cancelFocus?.();
   }
 
   /** Matching entries, grouped in display order. */
@@ -82,6 +91,7 @@ export class FlodePalette extends LitElement {
   }
 
   private close(): void {
+    this.cancelFocus?.();
     this.dispatchEvent(new CustomEvent('closed'));
   }
 

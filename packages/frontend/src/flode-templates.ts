@@ -52,6 +52,7 @@ export class FlodeTemplates extends LitElement {
 
   private stop: (() => void) | undefined;
   private timer: number | undefined;
+  private cancelFocus: (() => void) | undefined;
 
   constructor() {
     super();
@@ -66,6 +67,7 @@ export class FlodeTemplates extends LitElement {
 
   protected updated(changed: PropertyValues<this>): void {
     if (!this.open) {
+      this.cancelFocus?.();
       this.stopPreview();
       return;
     }
@@ -76,6 +78,7 @@ export class FlodeTemplates extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this.cancelFocus?.();
     this.stopPreview();
   }
 
@@ -141,10 +144,19 @@ export class FlodeTemplates extends LitElement {
     }
   }
 
+  private focusField(): void {
+    this.cancelFocus?.();
+    if (this.open) this.cancelFocus = focusFirstField(this.renderRoot);
+  }
+
+  private close(): void {
+    this.cancelFocus?.();
+    this.stopPreview();
+    this.dispatchEvent(new CustomEvent('closed'));
+  }
+
   /** ⌘↩ is the workshop's OK. */
-  private readonly submitKey = submitOnModEnter(() =>
-    this.dispatchEvent(new CustomEvent('closed'))
-  );
+  private readonly submitKey = submitOnModEnter(() => this.close());
 
   render() {
     const language = this.language;
@@ -152,9 +164,9 @@ export class FlodeTemplates extends LitElement {
       .open=${this.open}
       .headerTitle=${t(language, 'tplTitle')}
       width="large"
-      @after-show=${() => focusFirstField(this.renderRoot)}
+      @after-show=${() => this.focusField()}
       @keydown=${this.submitKey}
-      @closed=${() => this.dispatchEvent(new CustomEvent('closed'))}
+      @closed=${() => this.close()}
     >
       <p class="muted intro">${t(language, 'tplIntro')}</p>
       <div class="columns" @keydown=${(event: KeyboardEvent) => event.stopPropagation()}>
