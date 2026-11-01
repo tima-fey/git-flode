@@ -19,7 +19,8 @@
     "format:biome": "biome format --write .",
     "check": "biome check . ; yarn typecheck ; yarn lint:biome ; yarn format:check",
     "check:fix": "biome check --write --unsafe . ; yarn lint:fix ; yarn format",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "check:biome": "biome ci ."
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.2",

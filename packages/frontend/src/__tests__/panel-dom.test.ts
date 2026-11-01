@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { FlodePanel } from '../flode-panel';
 import { isMac, shortcutKeys } from '../shortcuts';
 import type { OpenFlow } from '../tabs';
+
 const trigger: FlowNode = {
   id: 'trigger_1',
   type: 'trigger',

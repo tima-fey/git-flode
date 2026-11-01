@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FileAutomationConfigSchema } from '@flode/shared';
 import { describe, expect, it } from 'vitest';
-import { YamlParser } from '../parser/YamlParser';
 import { FlowTranspiler } from '../FlowTranspiler';
-import { normalizeHaConfig, internalKeysIn } from '../ha-equal';
+import { internalKeysIn, normalizeHaConfig } from '../ha-equal';
+import { YamlParser } from '../parser/YamlParser';
 import { buildAutomationSaveConfig } from '../save-config';
 import { loadHaYaml } from '../yaml';
 

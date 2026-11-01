@@ -43,15 +43,15 @@ before changing graph, parser, transpiler, storage, or execution behavior.
 
 ## Checks
 
-Run each check and inspect its result. The aggregate `yarn check` uses
-semicolons and can hide an earlier failure behind a later successful command.
+Run each check and inspect its result. `yarn check:biome` runs the same lint,
+formatting, and import/export organization checks as CI. The aggregate
+`yarn check` uses semicolons and can hide an earlier failure behind a later successful command.
 
 ```sh
 yarn build
 yarn test --run
 yarn typecheck
-yarn lint:biome
-yarn format:check
+yarn check:biome
 ```
 
 Run backend tests in the same pinned HA environment as CI:

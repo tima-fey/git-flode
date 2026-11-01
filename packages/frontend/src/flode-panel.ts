@@ -145,6 +145,7 @@ import {
   writeTabs,
 } from './tabs';
 import { isNarrow, isTouch } from './viewport';
+
 const INSPECTOR_WIDTH_KEY = 'flode3.inspectorWidth';
 const INSPECTOR_MIN = 300;
 /** Width the user dragged the inspector to last time (per browser). */

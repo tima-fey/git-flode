@@ -31,7 +31,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Lint & format check (Biome)
-        run: yarn biome ci .
+        run: yarn check:biome
 
       - name: Type checking
         run: yarn typecheck

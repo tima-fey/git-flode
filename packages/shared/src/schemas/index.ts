@@ -38,8 +38,8 @@ export {
   FileAutomationListSchema,
   type FileAutomationRef,
   FileAutomationRefSchema,
-  FileAutomationSnapshotSchema,
   type FileAutomationSnapshot,
+  FileAutomationSnapshotSchema,
 } from './file-source';
 export {
   type GitAction,
