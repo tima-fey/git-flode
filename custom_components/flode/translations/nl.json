@@ -1,14 +1,33 @@
 {
   "config": {
-    "title": "FLODE",
     "step": {
       "user": {
-        "title": "FLODE instellen",
-        "description": "FLODE is een visuele editor voor automatiseringen in Home Assistant. Hiermee maak en beheer je je automatiseringen in een visuele flow-editor.\n\nKlik op Verzenden om FLODE aan je Home Assistant toe te voegen."
+        "title": "git-flode instellen",
+        "description": "Kies een bestaande absolute projectmap met automations/. git-flode bewerkt bestaande YAML-automatiseringen in de submappen. objects/ bevat handmatig geëxporteerde HA-objecten; tests/ bevat Python-projecttests.",
+        "data": {
+          "config_directory": "git-flode-configuratiehoofdmap"
+        }
       }
     },
     "abort": {
-      "already_configured": "FLODE is al geconfigureerd"
+      "already_configured": "git-flode is al geconfigureerd"
+    },
+    "error": {
+      "invalid_directory": "Kies een bestaande absolute hoofdmap met automations/."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "git-flode-configuratiehoofdmap",
+        "description": "Kies een bestaande absolute projectmap met automations/. git-flode bewerkt bestaande YAML-automatiseringen in de submappen. objects/ bevat handmatig geëxporteerde HA-objecten; tests/ bevat Python-projecttests.",
+        "data": {
+          "config_directory": "git-flode-configuratiehoofdmap"
+        }
+      }
+    },
+    "error": {
+      "invalid_directory": "Kies een bestaande absolute hoofdmap met automations/."
     }
   }
 }

@@ -6,10 +6,10 @@ import { chromium, webkit } from 'playwright';
 import { t } from '../../packages/frontend/src/strings.ts';
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-export const HA_URL = process.env.FLODE_GATE_URL ?? 'http://localhost:8123';
-/** Folder of the test HA (tools/ha-venv.sh) (holds `config/` and the access token file). */
+export const HA_URL = process.env.FLODE_GATE_URL ?? 'http://127.0.0.1:18123';
+/** Disposable HA runtime directory (configuration and generated access token). */
 export const TEST_DIR = path.resolve(
-  process.env.FLODE_GATE_DIR ?? path.join(REPO, '../flode-test')
+  process.env.FLODE_GATE_DIR ?? path.join(REPO, 'dev/container/runtime')
 );
 export const OUT_DIR = path.join(REPO, '.gate');
 /** Everything the gate creates in HA starts with this, so it can clean up after itself. */
@@ -17,7 +17,7 @@ export const GATE_PREFIX = 'flode_gate_';
 
 export function token() {
   if (process.env.FLODE_GATE_TOKEN) return process.env.FLODE_GATE_TOKEN;
-  const file = process.env.FLODE_GATE_TOKEN_FILE ?? path.join(TEST_DIR, '.claude-token');
+  const file = process.env.FLODE_GATE_TOKEN_FILE ?? path.join(TEST_DIR, 'token');
   return fs.readFileSync(file, 'utf8').trim();
 }
 
@@ -40,14 +40,21 @@ export async function ws(message) {
       socket.close();
       reject(new Error(`ws ${message.type}: timeout`));
     }, 15000);
-    socket.onerror = () => reject(new Error(`ws ${message.type}: connection failed`));
+    socket.onerror = () => {
+      clearTimeout(timer);
+      socket.close();
+      reject(new Error(`ws ${message.type}: connection failed`));
+    };
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'auth_required')
         socket.send(JSON.stringify({ type: 'auth', access_token: token() }));
       else if (data.type === 'auth_ok') socket.send(JSON.stringify({ id: 1, ...message }));
-      else if (data.type === 'auth_invalid') reject(new Error('ws: token rejected'));
-      else if (data.id === 1) {
+      else if (data.type === 'auth_invalid') {
+        clearTimeout(timer);
+        socket.close();
+        reject(new Error('ws: token rejected'));
+      } else if (data.id === 1) {
         clearTimeout(timer);
         socket.close();
         if (data.success) resolve(data.result);
@@ -57,43 +64,7 @@ export async function ws(message) {
   });
 }
 
-/**
- * Waits until HA has an entity for each saved flow (`{ id, kind, name, config }`) and returns
- * the ones still missing. HA creates the entities a moment after the config is saved (longer
- * right after a restart). Sometimes HA's reload sometimes catches automations.yaml
- * mid-write and skips one — such an automation is saved again.
- */
-export async function awaitEntities(flows) {
-  let missing = flows;
-  for (let round = 0; round < 3 && missing.length > 0; round++) {
-    if (round > 0) {
-      for (const flow of missing)
-        await rest('POST', configRoute(flow), configBody(flow, flow.config));
-    }
-    const deadline = Date.now() + 30000;
-    while (Date.now() < deadline) {
-      const names = new Set(
-        (await rest('GET', 'states')).map((state) => state.attributes.friendly_name)
-      );
-      missing = flows.filter((flow) => !names.has(flow.name));
-      if (missing.length === 0) break;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-  return missing;
-}
-
-/** HA's config route of a seeded flow (`{ id, kind }`): automations and scripts live in different places. */
-export function configRoute(flow) {
-  return `config/${flow.kind ?? 'automation'}/config/${flow.id}`;
-}
-
-/** The body HA's config API takes for `flow`: an automation carries its id, a script must not. */
-export function configBody(flow, config) {
-  return flow.kind === 'script' ? config : { ...config, id: flow.id };
-}
-
-/** The automations the gate seeded (`seed.mjs` writes this list). */
+/** File-backed scenarios prepared by dev/container/prepare-files.mjs. */
 export function seededFlows() {
   return JSON.parse(fs.readFileSync(path.join(OUT_DIR, 'seeded.json'), 'utf8'));
 }
@@ -241,7 +212,7 @@ export async function gotoPanel(page, { reload = false } = {}) {
     await page.goto(`${HA_URL}/flode`);
     page.gateNavigating = false;
   }
-  await waitForPanel(page, (panel) => panel.hass && panel.haList !== null, undefined, 30000);
+  await waitForPanel(page, (panel) => panel.hass && panel.filesLoaded, undefined, 30000);
 }
 
 /** Opens a flow by its name through FLODE's command palette (⌘K), like a user would. */
@@ -373,7 +344,7 @@ export function report(step) {
         try {
           await fn();
         } catch (error) {
-          self.fail(`${name}: ${error.message.split('\n')[0]}`);
+          self.fail(`${name}: ${error.stack ?? error.message}`);
         }
         return failures.splice(mark);
       };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isInDialog } from '../shortcuts';
+import { isInDialog, SHORTCUTS } from '../shortcuts';
 
 /** A stand-in for an element in an event's path. */
 const el = (localName: string): EventTarget => Object.assign(new EventTarget(), { localName });
@@ -12,7 +12,6 @@ describe('isInDialog', () => {
       'ha-md-dialog',
       'dialog-box',
       'dialog',
-      'flode-ai-dialog',
       'ha-bottom-sheet',
     ]) {
       expect(isInDialog([el('input'), el(tag), el('body')])).toBe(true);
@@ -24,4 +23,10 @@ describe('isInDialog', () => {
       false
     );
   });
+});
+
+it('lists only the available file-editor shortcuts', () => {
+  expect(SHORTCUTS.some((shortcut) => shortcut.keys.includes('mod+shift+s'))).toBe(false);
+  expect(SHORTCUTS.some((shortcut) => shortcut.id === 'save')).toBe(true);
+  expect(SHORTCUTS.some((shortcut) => shortcut.id === 'templates')).toBe(true);
 });

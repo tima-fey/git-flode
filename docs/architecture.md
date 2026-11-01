@@ -1,58 +1,93 @@
-# FLODE Internals
+# git-flode internals
 
-How FLODE reads, draws, edits, writes and runs Home Assistant automations.
+How git-flode reads, edits, and stores Home Assistant automation YAML.
+Graph/parser/transpiler explanations retain their upstream lineage; see
+[credits](../CREDITS.md) for authorship and project history.
 
-This document describes the inner workings of FLODE as of release 26.10.15 (October 2026). It is written for people who want to understand, question or contribute to FLODE: what the flow on the canvas really is, which parts of it are stored, how it becomes Home Assistant YAML and back, and what happens when a run is shown or started from the editor.
-
-It is not a user manual. The README and the website cover what FLODE does; this document covers how.
-
-**How to read it.** Sections 1 to 4 are the core: what FLODE is, how the code is organised, what the flow graph holds, and which cards and lines are stored versus merely drawn. Section 8 explains how an edit travels through the editor and section 10 how to run, test and release FLODE. Sections 5 to 7 (parser, transpiler, runs) are reference material to read when working on those parts. The appendices show complete examples.
+Read [README.md](../README.md) for first use and
+[the container guide](../dev/container/README.md) for disposable checks. Graph
+conversion remains shared with the upstream lineage; the product exposes file
+editing, Git, object export, project tests, templates, and HA maintenance.
 
 ## 1. What FLODE is, in one page
 
-FLODE is a visual editor for Home Assistant automations and scripts. It runs as a panel inside Home Assistant and shows an automation as a flow of cards and lines. Every card is edited with Home Assistant's own editor forms, and the result is saved as a plain Home Assistant automation.
+git-flode runs as an administrator panel inside Home Assistant. It reuses
+FLODE's visual canvas and native HA step editors, while editing existing
+automations loaded from a configurable project directory.
 
-Three facts explain most of FLODE's design:
-
-1. **Home Assistant's configuration is the only truth.** FLODE has no database and no file format of its own. An automation opened in FLODE is read from Home Assistant's config API, and saving writes a complete automation back to that API. The only thing FLODE adds is a small block of layout metadata inside the automation's `variables:`, so cards come back where the user left them.
-
-2. **FLODE has no runtime.** It never executes anything itself. Home Assistant runs the automation, exactly as it runs any other automation. "Run from here" sends a sequence of steps to Home Assistant with the same command Home Assistant's own editor uses for "Run action". What the canvas shows about a run is read from Home Assistant's trace.
-
-3. **The flow graph is a view on HA's step list, not a different model.** Triggers, top-level conditions and the steps of the action sequence become cards. Home Assistant's building blocks (`if`, `choose`, `repeat`, `parallel`, `sequence`) stay one card each, holding their HA step verbatim. The branches of an `if` or `choose` are drawn with their steps as cards, but those drawn cards and the lines into them are derived from the block's step and are never stored separately. This is the difference between a "flow card" and a "branch card" that section 4 explains in full.
+1. **Project YAML is the source of truth.** Definitions come exclusively from
+   `automations/**/*.yaml` and `.yml`. An entry is addressed by project root,
+   relative file path, and its existing automation ID. Reads and saves use FLODE
+   file commands, with no fallback to HA's automation config API. Layout metadata
+   still uses `variables._flode_metadata`; no separate layout store is implemented.
+2. **Saving and applying are separate.** Saving changes the original file.
+   Commit, push, object export, project tests, native HA configuration check,
+   and Quick reload are explicit actions. HA executes automations only when its
+   own configuration includes them. HA loads and executes them through its own configured include.
+3. **The graph remains a view of native HA steps.** Blocks such as `if`,
+   `choose`, `repeat`, and `parallel` keep their native structure. Derived branch
+   cards do not replace that representation. The inherited parser/transpiler
+   sections explain this shared model.
 
 One asymmetry follows from the third point and is worth stating once. FLODE never takes an existing block apart: whatever Home Assistant stored as an `if`, a `choose` or a `repeat` stays that block. But FLODE does translate in the other direction: when the user draws a condition card with a Yes and a No path, or several lines out of one card, or a line back to an earlier card, saving turns those shapes into an `if`, a `parallel` or a `repeat` (section 6.3). On the next open they come back as blocks with branch cards (section 4.6). The user draws with FLODE's cards; Home Assistant stores HA's blocks; FLODE shows HA's blocks.
 
-FLODE started as a fork of C.A.F.E. (Complex Automation Flow Editor) by Federico Zivolo. The transpiler, the state machine strategy and the YAML parser come from that lineage and were reworked over several releases; the editor was rebuilt on Lit and Home Assistant's own elements in FLODE 3. Some identifiers in the code (`CafeMetadata`, the fixture names `*-cafe.yaml`, the legacy `_cafe_metadata` key) still show that origin.
+FLODE originated from C.A.F.E. (Complex Automation Flow Editor) by Federico Zivolo. The transpiler, the state machine strategy and the YAML parser come from that lineage and were reworked over several releases; the editor was rebuilt on Lit and Home Assistant's own elements in FLODE 3. Some identifiers in the code (`CafeMetadata`, the fixture names `*-cafe.yaml`, the legacy `_cafe_metadata` key) still show that origin.
 
 ## 2. Architecture
 
 ### 2.1 Packages
 
-FLODE is a Yarn 4 workspace with four TypeScript packages and one small Python integration.
+git-flode is a Yarn 4 workspace with four TypeScript packages and a Python HA integration.
 
 | Package | Role | Depends on |
 |---|---|---|
 | `@flode/shared` | The data model: Zod schemas and TypeScript types for the flow graph, HA triggers, conditions and actions, FLODE's metadata block, scripts, pass-through steps. Pure data and guards, no logic that needs HA. | zod |
-| `@flode/transpiler` | Both directions between HA YAML and the flow graph: `YamlParser` (YAML → graph), `FlowTranspiler` with two strategies (graph → YAML), topology analysis, auto layout (ELK), script reshaping, "run from here" sequences. Also a small CLI. | shared, js-yaml, graphlib, elkjs |
-| `@flode/ui-core` | Logic the UI needs but that has no DOM: card texts in plain language (de/en), trace path mapping, the dependency map over all automations, AI prompts and reply handling, template preview, trigger ID rules, merging automations, variable renaming in Jinja. Unit-testable without a browser. | shared, i18next |
-| `@flode/frontend` | The panel: Lit web components, built with Vite into one file, `custom_components/flode/www/flode-panel.js`. Canvas, tabs, inspector, runs, palette, dialogs. Every form, picker and dialog is Home Assistant's own element. | shared, transpiler, ui-core, lit, @xyflow/system |
-| `custom_components/flode` | The Home Assistant integration. It registers the panel and serves the built file. It has no API of its own and no state. | Home Assistant |
+| `@flode/transpiler` | Both directions between HA YAML and the flow graph: `YamlParser` (YAML → graph), `FlowTranspiler` with two strategies (graph → YAML), topology analysis, auto layout (ELK), script reshaping and sequence primitives. Also a small CLI. | shared, js-yaml, graphlib, elkjs |
+| `@flode/ui-core` | Logic the UI needs but that has no DOM: card texts and locales, template preview, trigger ID rules, and Jinja identifier handling. Unit-testable without a browser. | shared, i18next |
+| `@flode/frontend` | The panel: Lit web components, built with Vite into one file, `custom_components/flode/www/flode-panel.js`. Canvas, tabs, inspector, palette, dialogs. Every form, picker and dialog is Home Assistant's own element. | shared, transpiler, ui-core, lit, @xyflow/system |
+| `custom_components/flode` | Panel registration, configured file storage, Git, manual object export, and project test execution. | Home Assistant, ruamel.yaml, Git executable |
 
 The dependency direction is strictly downward: `frontend → ui-core → transpiler → shared`. Nothing below the frontend knows about Lit, the DOM or a `hass` object; where such logic needs Home Assistant (friendly names, a websocket call), it receives a function.
 
 ### 2.2 The round trip
 
-Everything in FLODE sits on one loop:
+The file workflow keeps native automation YAML throughout:
 
-![Figure 1. The round trip. FLODE stores nothing of its own; the graph exists only while a flow is open.](images/architecture-round-trip.svg)
+```mermaid
+flowchart LR
+  YAML["automations/**/*.yaml"] --> API["FLODE file commands"]
+  API --> Parser["YamlParser"]
+  Parser --> Graph["FlowGraph and HA editors"]
+  Graph --> Writer["FlowTranspiler and file_writer"]
+  Writer --> YAML
+```
 
-1. **Open.** The panel fetches the automation config (`GET config/automation/config/<id>`, or the script config). A blueprint automation first has its inputs substituted by Home Assistant (`blueprint/substitute`) and is then shown read-only.
-2. **Parse.** `YamlParser` turns the config into a `FlowGraph`: cards for triggers, conditions and steps, lines between them, positions from the saved metadata or from an automatic layout.
-3. **Edit.** The canvas and the inspector change the graph through pure functions (`flow-model.ts`, `branch-view.ts`). Every change is a new immutable graph; the panel keeps the undo history per tab (section 8.3).
-4. **Transpile.** On save, `FlowTranspiler` validates the graph, analyses its shape and writes a complete automation config with one of two strategies, then adds `_flode_metadata` with the layout.
-5. **Save.** The config goes back with `POST config/automation/config/<id>`. Home Assistant stores it in `automations.yaml` and reloads the automation. For scripts the same happens under `config/script/config/<id>`.
+1. **Open.** `flode/files/list` supplies file provenance. `flode/files/open`
+   loads one existing automation with its configured root and whole-file revision.
+2. **Parse.** `YamlParser` builds the graph with `keepBlocks: true`, using saved
+   layout metadata or automatic layout.
+3. **Edit.** The canvas and inspector update immutable graphs. The panel owns
+   each tab's source identity, revision, undo history, and unsaved draft.
+4. **Transpile.** Shared save helpers and `FlowTranspiler` produce a native
+   automation config and editor metadata.
+5. **Save.** `flode/files/save` replaces the addressed entry in its original
+   YAML list through `ruamel.yaml`. It checks root, path, ID, supported values,
+   and revision, validates the serialized file, and uses atomic file replacement.
+   It creates neither a new automation nor a new file and never calls HA's
+   automation configuration endpoint.
 
-Because the loop always goes through Home Assistant's own config format, an automation never "belongs" to FLODE. Open it in Home Assistant's editor, edit it there, come back: FLODE reads whatever is stored. Uninstall FLODE and every automation keeps working.
+IDs must be globally unique across the HA-included project. Listing reports
+cross-file collisions while retaining entries for repair; project validation
+rejects them. Other files must remain unchanged;
+neighboring entries and unmodeled fields must retain their semantics. Text
+formatting may normalize in the saved file. Anchors, aliases, blueprints,
+symlinked paths, and unsupported scalar/key values are refused for editing.
+A no-op save should not rewrite the file. Detected external changes reject the
+save; these checks do not provide a cross-process compare-and-swap guarantee.
+
+HA reads these files only through its separately configured includes. Save
+never commits, pushes, reloads HA, or runs actions. Native HA frontend APIs are
+still used for editors, entity context, and explicit maintenance controls.
 
 ### 2.3 Where the code is
 
@@ -65,7 +100,7 @@ Because the loop always goes through Home Assistant's own config format, an auto
 | Direction-independent geometry (`Axis`) | `packages/shared/src/axis.ts` |
 | YAML → graph | `packages/transpiler/src/parser/YamlParser.ts`, `layout.ts` |
 | Graph → YAML | `packages/transpiler/src/FlowTranspiler.ts`, `analyzer/topology.ts`, `strategies/{native,state-machine,steps,base}.ts` |
-| Save config, scripts, run-from-here sequence | `packages/transpiler/src/{save-config,script,sequence}.ts` |
+| Save config, script reshaping, sequence helpers | `packages/transpiler/src/{save-config,script,sequence}.ts` |
 | Branch cards of if/choose, the drawn graph | `packages/frontend/src/branch-view.ts` |
 | Pure edit operations and line geometry | `packages/frontend/src/flow-model.ts` |
 | Node data ↔ HA editor step | `packages/frontend/src/ha-step.ts` |
@@ -73,10 +108,14 @@ Because the loop always goes through Home Assistant's own config format, an auto
 | Canvas: cards, lines, pan/zoom, pointer input | `packages/frontend/src/flode-canvas.ts`, `hold.ts` |
 | Inspector (HA's editor for the selected card) | `packages/frontend/src/flode-inspector.ts`, `ha-context.ts` |
 | Command palette, shortcuts, UI strings | `packages/frontend/src/{flode-palette,shortcuts,strings}.ts` |
-| Runs and traces | `packages/frontend/src/{flode-debug,trace,manual-runs}.ts`, `packages/ui-core/src/trace-mapping.ts` |
-| Run from here | `packages/frontend/src/flode-runfrom.ts` |
 | HA API calls | `packages/frontend/src/ha.ts` |
 | Integration | `custom_components/flode/{__init__,panel,config_flow}.py` |
+| File source and targeted writes | `custom_components/flode/{file_source,file_api,file_writer}.py` |
+| Git and shared operation lock | `custom_components/flode/{git_source,git_api,project_lock}.py` |
+| Object metadata capture and export | `custom_components/flode/{object_catalog,object_source,object_api}.py` |
+| Project test subprocess | `custom_components/flode/{test_source,test_api,run_project_tests}.py` |
+| Git/HA UI and shared contracts | `packages/frontend/src/flode-{git,ha-controls}.ts`, `packages/shared/src/schemas` |
+| Portable reference checker | `dev/container/fixtures/tests/test_object_references.py` |
 | Local setup, commands, release gate | `CONTRIBUTING.md`, `CLAUDE.md`, `dev/gate/README.md` |
 
 ## 3. The flow graph
@@ -189,7 +228,7 @@ Before FLODE 3, a `choose` or `if` block was taken apart into FLODE's own struct
 
 ### 3.7 Scripts and automations without triggers
 
-A script has no triggers. FLODE still edits it as a flow, by giving it a single hidden entry: a trigger node whose `data.trigger` is `flode_script_start`, carrying the script's `fields:`. Opening a script reshapes it into an automation (`scriptToAutomationConfig`) before parsing; saving transpiles the flow as an automation and reshapes it back (`automationToScriptConfig`): the start node's fields become `fields:`, top-level conditions lead the `sequence:` as condition steps, actions follow. Parser, transpiler, layout and metadata work unchanged.
+The shared parser can represent scripts, although the panel opens automation files only. A script has no triggers; the parser represents it as a flow, by giving it a single hidden entry: a trigger node whose `data.trigger` is `flode_script_start`, carrying the script's `fields:`. Opening a script reshapes it into an automation (`scriptToAutomationConfig`) before parsing; saving transpiles the flow as an automation and reshapes it back (`automationToScriptConfig`): the start node's fields become `fields:`, top-level conditions lead the `sequence:` as condition steps, actions follow. Parser, transpiler, layout and metadata work unchanged.
 
 An automation without triggers (Home Assistant allows it; it runs only when started by hand or by another automation) gets the same treatment with a `flode_manual_start` node, which saving drops again. Once the user adds a real trigger, the hidden start goes away with its connections.
 
@@ -254,12 +293,10 @@ Every edit of a branch card is an edit of the block card's step. `branch-view.ts
 | Add a step via the "+" at the end of a branch | `insertBranchStep` at that index |
 | Drag a connection from a branch output or branch card onto a free flow card | `adoptIntoBranch`: the card moves into the branch and stops being a flow card. A plain chain after it (cards that each have exactly one predecessor and one successor) comes along; a card something else leads to, or a chain that forks, stays |
 | Drag the card | `moveBranchCard`: an offset relative to its computed place, in `branchOffsets` |
-| "Run this card" | the step alone runs in Home Assistant through `execute_script` (7.3); the block's step is not changed |
 
 And what does not work, with the reason:
 
 - **Selecting the line into or between branch steps.** There is no edge to select, so there is nothing to delete or rewire. Since 26.10.11 these lines show no pointer cursor and open no menu. The real connections around a block are the one into the block card and the ones from the block's end to what follows; those are selectable even where they are drawn from a branch's last card, because the drawn line remembers the stored edge it stands for (4.7).
-- **"Run from here" on a branch step.** Run from here walks `graph.edges` from a node (section 7.3). A branch step is not a node, so there is no start point. Running from the block card runs the whole block, which is what Home Assistant would do too. "Run this card" does work on a branch step: it needs no edges, the step is taken from the drawn graph (7.3).
 - **Connecting a branch card to something else.** Its successors are fixed by the branch: the next step in the list, or the end of the block. To take a step out of the branch there is "Disconnect".
 - **Steps inside `repeat`, `parallel` and `sequence` blocks** are not drawn at all. Those blocks are a single card, and their inside is edited only in HA's nested editor.
 
@@ -308,7 +345,7 @@ The lane geometry (where a branch's cards sit, where its line turns, how far a b
 
 ## 5. Reading Home Assistant YAML: the parser
 
-`YamlParser.parse()` turns an automation config into a `FlowGraph`. The editor calls it on every open; the same code runs for pasted YAML, imported files and the YAML an AI reply contains.
+`YamlParser.parse()` turns an automation config into a `FlowGraph`. The editor calls it on every file open.
 
 ### 5.1 Steps
 
@@ -368,7 +405,7 @@ The frontend turns validation errors into readable messages that name the card (
 
 ## 6. Writing Home Assistant YAML: the transpiler
 
-`FlowTranspiler.transpile()` turns a `FlowGraph` into an automation config. It is the same code for saving, for the YAML view in the editor, for exporting, for "Run from here" and for the CLI.
+`FlowTranspiler.transpile()` turns a `FlowGraph` into an automation config. It is the same code for saving, for the YAML view in the editor, for exporting, and for the CLI.
 
 ### 6.1 Pipeline
 
@@ -483,33 +520,11 @@ FLODE does not try to detect at edit time whether a condition can become false; 
 - A condition is written with `condition` first, FLODE's internal keys and empty form fields removed, nested `and`/`or`/`not` conditions converted the same way, a one-item `id` list collapsed to a string.
 - A pass-through step (`_raw`) is returned as it came, with the card's own enabled switch applied.
 
-## 7. Runs, traces and "Run from here"
+## 7. Template context
 
-### 7.1 Runs of a saved automation
-
-Home Assistant records a trace for every run of an automation or script. The Runs panel (`flode-debug.ts`) lists them with `trace/list` and loads one with `trace/get`. The whole trace object goes into Home Assistant's own trace elements (the timeline), so FLODE shows exactly what HA's trace view shows. The logbook entries of the run are fetched by context id with `logbook/get_events`.
-
-### 7.2 Mapping a trace onto the cards
-
-A trace is keyed by **step paths** such as `trigger/0`, `condition/1`, `action/2`, `action/0/then/1`, `action/3/choose/1/sequence/0`. `createTracePathResolver` in `ui-core` maps each path to a card by walking the graph the same way the native strategy lays it out: which conditions were promoted to `conditions:`, which condition became an `if` with nested `then`/`else`, where two branches meet again. A step inside a block card resolves to that card, and `branchCardForPath` additionally finds the branch card for a step inside an `if` or `choose` lane. The canvas then marks every card the run touched: done, failed (a condition that was false) or error.
-
-Traces of older runs may belong to a different version of the automation. `configShape` reduces a config to its layout (how many triggers, conditions and steps, of which kind, nested how) so that a run is only drawn on the cards when its shape still matches; otherwise the timeline is shown without the marks.
-
-Scripts record `sequence/N`; FLODE maps that onto `action/N` because it lays scripts out like automations.
-
-Shapes the resolver does not follow (the inside of a `repeat`, a `parallel` fan-out, trigger-id routing, a state machine) resolve to the containing card or to nothing; those steps count as unmapped and the timeline still shows them.
-
-### 7.3 Run from here
-
-"Run from here" on a card runs that card and everything after it, for real, in Home Assistant. There is no simulation. It can be started from three places: the card's menu (`renderCanvasMenu` in the panel), the command palette (⌘K), and the play button in the inspector; all three set `runFromId` on the panel, which opens the `flode-runfrom` dialog.
-
-1. `buildSequenceFlow` cuts the sub-graph: everything reachable from the chosen node along `graph.edges` (loops included, and on past any merge point), minus the triggers, with one synthetic trigger in front. Choosing a trigger means "everything after this trigger", that is, the targets of that trigger's own edges; other triggers play no part.
-2. `transpileSequence` runs the normal transpiler on that sub-flow and unwraps the result into a flat action list: the flow's own variables (`userVariables`, plus a state machine's variables if one was needed) as a leading `variables` step, the automation's top-level conditions as condition steps (a false one stops the sequence, as in an automation), then the actions. The metadata block is not part of it. The same strategies apply, so a sub-flow with a loop becomes a `repeat` or a state machine.
-3. The dialog shows how many steps will run. If any step reads `trigger.…`, FLODE borrows the `trigger` variable from the automation's last trace, says when that run was, and passes it as `variables`; without a previous run it warns that `trigger` will be empty.
-4. On confirmation the panel calls the websocket command `execute_script` with the sequence, the same command Home Assistant's editor uses for "Run action". The call returns when the sequence has finished, delays included.
-5. Home Assistant keeps no trace for `execute_script`, so FLODE lists these runs itself under Runs (`manual-runs.ts`): status, the cards that ran (marked on the canvas), and the logbook entries that carry the run's context id, polled a few times because the logbook is written with a short delay.
-
-**Run this card** (since 26.10.15) is the same machinery with the scope `only`: `buildSequenceFlow` keeps just the chosen card behind the synthetic trigger, so the sequence is that one step (a condition card becomes a single condition step; a trigger has no step and gets no entry). It is offered in the same three places. On a branch card it works too, where "Run from here" cannot: the panel hands the dialog the drawn graph (4.7), in which the branch card is a node with its step, and the scope `only` needs no edges. The run is listed under Runs like any manual run, with only that card marked.
+The template workshop uses HA's template rendering subscription and its live
+context. Configuration validation errors use a shared path resolver to locate
+the matching graph node or branch step.
 
 ## 8. The editor
 
@@ -523,13 +538,19 @@ HA's editors talk to their surroundings through Lit contexts (trigger descriptio
 
 ### 8.2 The panel
 
-`flode-panel.ts` is the root element. It owns:
+`flode-panel.ts` owns open tabs, graph/undo state, file provenance, the
+configured root, file revisions, and editor drafts. Restored drafts retain the
+original revision and root, so reloading the browser cannot bypass stale-save
+checks. Merge and revert are blocked while unsaved editor drafts exist.
 
-- the **open flows**, one per tab, each with its graph, its save state, its undo history and its viewport (`tabs.ts` holds the tab model and remembers open tabs across a page reload);
-- the **menus**: the card menu, the connection menu and the canvas menu are one HA menu rendered by the panel (`renderCanvasMenu`); the canvas only reports where and on what the user clicked or held;
-- **saving** (`writeFlow`, section 2.2 steps 4 and 5): validate, check for a conflict, transpile, POST. Before writing, FLODE compares a fingerprint of the stored config with the one it opened or last saved (`configFingerprint`). A different fingerprint means the automation was changed in HA meanwhile, and the user chooses between loading HA's version and overwriting it. Blueprint automations are never written;
-- the **Runs** panel, "Run from here", the assistant, the command palette (⌘K), the template workshop (⌘J), import/export and merging;
-- the list of automations and scripts, read from the entity registry and HA's config API.
+File saves use the backend contract in section 2.2. A conflict requires loading
+the current file and reconciling the draft; there is no HA-config overwrite
+fallback. The file list comes from `flode/files/list`, with search and
+collapsible grouping by the directory below `automations/`.
+
+Git and explicit maintenance actions live in `flode-git.ts` and
+`flode-ha-controls.ts`. The file workflow edits existing automations and
+provides YAML viewing/export and a template workshop.
 
 ### 8.3 How an edit becomes a new graph
 
@@ -549,49 +570,90 @@ Because the rules are pure functions, they are unit-tested without a DOM, and th
 
 ### 8.5 Card texts
 
-Cards describe their step in plain language ("Bed light changes to On" rather than `light.bed_light / to: on`). `node-summary.ts` in `ui-core` builds these texts from the step data with i18next locales (de, en); everything that needs Home Assistant (friendly names, units, state translations, number and time formats) comes in through a context object. The setting "Card text like Home Assistant" instead asks HA's own describe functions for the text. UI strings of the panel itself live in `strings.ts` (de and en); keyboard shortcuts and their hints in `shortcuts.ts`.
+Cards describe their step in plain language ("Bed light changes to On" rather than `light.bed_light / to: on`). `node-summary.ts` in `ui-core` builds these texts from the step data with i18next locales (seven supported locales); everything that needs Home Assistant (friendly names, units, state translations, number and time formats) comes in through a context object. The setting "Card text like Home Assistant" instead asks HA's own describe functions for the text. UI strings of the panel itself live in `strings.ts` (de and en); keyboard shortcuts and their hints in `shortcuts.ts`.
 
-### 8.6 The rest of the toolbox
+### 8.6 YAML and templates
 
-- **Template workshop**: Jinja in HA's code editor, rendered live by Home Assistant through the `render_template` subscription, with the result type, what the template listens to, and optionally the variables of a real run.
-- **AI assistant and drafts**: built on Home Assistant's `ai_task.generate_data`, which uses whatever model the user configured in HA. FLODE never talks to an AI provider itself. A reply is parsed like any YAML; a proposed change is a preview until "Apply", then one undo step. Nothing is saved automatically.
-- **Relations (dependency map)**: works on the raw configs of all automations and scripts, not on FLODE graphs, so it also covers automations never opened in FLODE. It finds what each one listens to, checks and controls, which set each other off, conflicting controls of one entity, and references to entities that no longer exist.
-- **Merging automations**: several automations become one flow with prefixed node ids; clashing variable names inside Jinja templates are renamed with a tokenizer that only touches identifiers inside `{{ }}` and `{% %}`.
-- **Import and export**: HA YAML or a FLODE JSON file opens as a new draft; the YAML view shows what saving would write, without the metadata block.
+The YAML viewer shows generated native automation YAML. Export downloads YAML
+or the graph JSON without creating a new automation. The template workshop
+renders Jinja through HA and exposes the result and dependency information.
 
 ## 9. The Home Assistant integration
 
-The Python side is deliberately tiny (about 150 lines):
+The Python integration registers the administrator panel and backend commands.
+`config_flow.py` validates an existing absolute project root containing
+`automations/`; its options flow can change that root. The default is
+`flode-config` under HA's configuration directory.
 
-- `config_flow.py`: a single config entry, created from the UI with no options.
-- `panel.py`: on setup it checks that the built `flode-panel.js` exists (a missing build fails the setup with a clear message instead of retrying), registers the `www` folder as a static path once per Home Assistant run, and registers a custom panel with `require_admin=True`. The module URL carries a timestamp so an update is picked up without clearing the browser cache.
-- `__init__.py`: sets up and unloads the panel.
-- `diagnostics.py`: the version and nothing personal.
+File writes, Git, exports, and project tests share a lock keyed by canonical
+project root. Filesystem work and subprocesses run outside HA's event loop.
+Commands enforce administrator access independently of the panel's visibility.
+Root checks and revision/review tokens reject stale operations. Git uses an
+existing prod checkout, origin/authentication, and author configuration in the HA
+runtime. Only HA writes prod; external updates enter through a dedicated
+`--no-ff` merge of fetched origin/main. Conflicts abort and restore the previous
+prod. The latest FLODE merge at the tip can be reverted with first-parent
+semantics; no local main branch or legacy main-only API is required. Push targets
+prod only and rejects unexpected remote prod changes. History is inspected with `git show`, without changing HEAD or working files.
+Externally detached checkouts refuse file saves, export, and Quick reload.
+A recovery action returns to prod only after checking ignored and untracked
+files. It never resets, stashes, or
+force-pushes automatically.
 
-There is no backend logic, no websocket command of FLODE's own and no storage. Everything the panel needs comes from Home Assistant's existing APIs:
+| Purpose | Interface |
+| --- | --- |
+| List, open, save existing automation files | `flode/files/list`, `flode/files/open`, `flode/files/save` |
+| Git status, history, review, explicit action | `flode/git/status`, `flode/git/history`, `flode/git/changes`, `flode/git/action` |
+| Manual registry metadata snapshot | `flode/objects/export` |
+| Run trusted Python project tests | `flode/tests/run` |
+| Native HA configuration validation | REST `POST config/core/check_config` |
+| Quick reload | `flode/ha/reload`, holding the project lock through `homeassistant.reload_all` |
+| Native editors and entity context | Running HA frontend elements and APIs |
 
-| Purpose | API |
-|---|---|
-| Read and write an automation or script | REST `config/automation/config/<id>`, `config/script/config/<id>` |
-| List, rename, relabel | websocket `config/entity_registry/*` |
-| Blueprint automations | `blueprint/substitute` |
-| Runs | `trace/list`, `trace/get`, `logbook/get_events` |
-| Run from here | `execute_script` |
-| Template workshop | `render_template` subscription |
-| AI | `ai_task.generate_data` |
-| HA's editor elements and translations | loaded from the running frontend |
+Object capture copies selected config-entry, device, entity, area, and label
+metadata on HA's event loop, then classifies helpers using native integration
+metadata. It includes registry-only disabled entries and live unregistered
+entities. It excludes connection settings/options, credentials, current state
+values, and arbitrary attributes. The executor builds a complete tree before
+replacing `objects/`, removing obsolete records. An index provides canonical
+paths by original ID. No export occurs on startup or as a side effect of tests,
+Git, or navigation.
 
-This is also why FLODE needs no update for a new Home Assistant release as long as these APIs and the editor elements stay compatible, and why a change in HA's frontend internals is the usual reason for a FLODE fix.
+The test runner discovers `test_*.py` under the project's `tests/` in a separate
+HA Python process. It installs no dependencies, disables bytecode, limits output
+to 64 KiB, and terminates runs after 60 seconds. It executes trusted code with
+the HA process's permissions; process isolation is not a security sandbox.
+The portable reference test reads the last exported catalog, parses static
+Jinja references without executing templates, and reports unresolved dynamic
+references. Snapshot existence does not establish live availability.
+
+Reviewed commits are built from a private index and bound to the reviewed tree,
+then published with a compare-and-swap branch update. Concurrent external writes
+remain local changes. Git mutations protect ignored untracked paths against checkout/merge
+overwrites. Fetch and push URLs must identify the same origin;
+push results are reconciled against fetched remote state rather than fabricated
+tracking refs.
 
 ## 10. Working on FLODE
 
 ### 10.1 Running it locally
 
-FLODE runs only inside Home Assistant; there is no standalone dev server. The setup is described in `CONTRIBUTING.md`: `yarn install`, then `yarn dev`, which rebuilds the panel into `custom_components/flode/www` on every change. That folder is mounted or copied into a test Home Assistant (`tools/ha-venv.sh` runs one from a venv); reloading the browser picks up the new build. `yarn build:ha` builds everything once; `yarn test`, `yarn typecheck` and `yarn lint:biome` are the checks. The coding rules (strict TypeScript, no `any` or `as`, HA's own elements, no duplicated logic, no IIFEs) are in `CLAUDE.md` and `CONTRIBUTING.md`.
+The panel runs inside HA. `yarn install --immutable`, `yarn build`, and
+`yarn dev` use the pinned Yarn workspace tooling; there is no standalone dev
+server. Use [CONTRIBUTING.md](../CONTRIBUTING.md) and
+[the isolated HA Container setup](../dev/container/README.md). The inherited
+`tools/ha-venv.sh` is an alternative upstream harness, not the container runner.
 
 ### 10.2 Tests
 
-Vitest runs the unit tests of all four packages (at the time of writing 69 test files: 36 in the transpiler, 17 in the frontend, 12 in ui-core, 4 in shared). They cover round trips of YAML fixtures, topology cases, both strategies, parser edge cases, the flow model, the branch view, trace mapping onto cards and the tab model. Frontend tests build graphs as plain objects and call the pure functions; a branch view test, for example, constructs a graph with a `_raw` choose step and asserts on `branchView(graph)`. A few tests mount the real elements in a DOM (happy-dom, switched on per file with `// @vitest-environment happy-dom`): the canvas draws a card per node and a line per connection, the branch cards of a block nested in a block, Backspace and Delete on a card or a line; the palette closes on Escape; the panel opens a draft, duplicates and pastes cards under unique ids, refuses a trigger pasted into a script with its hint, shows the card menu with the shortcut hints and closes it on Escape, and undoes with the shortcut. Nothing of Home Assistant is mocked for that: the panel runs without `hass` as on its start screen.
+Vitest covers YAML round trips, graph operations, branch views, card summaries,
+file-source contracts, UI guards, and controls. Python tests under `tests/`
+cover loading/writing isolation, stale requests, Git with local bare remotes,
+metadata export and rollback, and the portable project checker. Backend tests
+run against the pinned HA Python image. Container checks exercise file editing,
+Git, object exports, and Python test output in Chromium and WebKit. Current
+commands live in CONTRIBUTING.md and the container guide; counts are intentionally
+not fixed here.
 
 The fixtures in `__tests__/yaml-automation-fixtures` (39 at the time of writing) are real-world automations, including state machine ones from the C.A.F.E. days; `dev/gate/flows/` holds more, written for one pattern each (an `or` in the middle of a flow, a `parallel` with conditions, a trigger FLODE keeps verbatim, a script with `fields` …). Two invariants are checked over all of them:
 
@@ -600,20 +662,20 @@ The fixtures in `__tests__/yaml-automation-fixtures` (39 at the time of writing)
 
 ### 10.3 The release gate
 
-No release goes out without a green run of `dev/gate/gate.sh` for exactly the commit that is released. The gate takes about three minutes and runs, in order:
+`dev/gate/gate.sh` runs static checks, Python backend regressions, and the
+Container file-workflow browser suites in Chromium and WebKit. HA includes the
+synthetic project's actual files. The gate verifies save isolation, Git,
+metadata, project tests, maintenance controls, and screenshot comparisons.
+It never seeds or saves automations through HA's configuration API.
 
-1. **static**: Biome, type check, all unit tests, build;
-2. **test HA**: copies the build into a test Home Assistant (`tools/ha-venv.sh`), restarts it, and loads every fixture that HA itself accepts plus a few gate flows (automations kept in `dev/gate/flows/` for the browser checks);
-3. **cards** (Chromium and WebKit): opens every automation like a user and checks for console errors, unexpected reloads, warnings about unread parts, and broken card texts;
-4. **roundtrip**: opens every flow (automations and scripts), saves it once as it is and once after moving one card, and after each save compares what Home Assistant stores with the original, apart from the metadata block and HA's own key migrations (`ha-equal.ts`, the same definition as the unit tests). Accepted differences are listed with a reason in `known.json`. This is the hard rule of 10.2 in the real editor and the real Home Assistant: not only the graph but the config Home Assistant stores must come back unchanged;
-5. **actions**: select, duplicate, undo, redo, disable, tidy up, minimap, branch cards, add a step through HA's dialog and save, the runs view, a phone-sized window, the "What's new" sheet;
-6. **visual**: screenshots of typical automations in both browsers, compared with the last release; differences are shown to a person, never failed automatically.
-
-The result, `.gate/gate-<commit>.json`, lists every test of every step (a fixture in a browser, one editor action, one picture) as `ok`, `failed`, `flaky` (red once, green when run again on its own: not red, but listed so a pattern shows up), `new` (a picture without a baseline yet) or `changed` (a picture for a person to look at), with a log per test that was not ok. Only `failed` makes the gate red. `gate.sh --only <step>` runs one step while working on something; only the full run counts for a release.
+Only a full successful run on the exact clean release commit certifies it.
+The report uses the full SHA and verifies unchanged HEAD and clean state after
+completion. See [the gate guide](../dev/gate/README.md) for required steps,
+visual review, partial runs, and baseline handling.
 
 ### 10.4 Releases and versions
 
-Since October 2026 FLODE uses calendar versions `YY.M.N` (year, month, number of the release in that month), for example `26.10.14`; `dev/next-version` prints the next one. They sort after every 3.x version, so updates through HACS continue to work. A release means: update the "What's new" sheet (`flode-welcome.ts` and its strings), bump the version in `custom_components/flode/manifest.json` and `packages/frontend/package.json`, commit, run the gate, tag with the bare version number, push, and create the GitHub release with notes compiled from the commits. The full checklist is in `CLAUDE.md`.
+Upstream FLODE uses calendar versions `YY.M.N` (year, month, number of the release in that month), for example `26.10.14`; `dev/next-version` prints the next one. Existing metadata retains that numbering; it does not imply that a corresponding git-flode release has been published. A release means: update the "What's new" sheet (`flode-welcome.ts` and its strings), bump the version in `custom_components/flode/manifest.json` and `packages/frontend/package.json`, commit, run the gate, tag with the bare version number, push, and create the GitHub release with notes compiled from the commits. The full checklist is in `CLAUDE.md`.
 
 ## 11. Glossary
 
@@ -638,8 +700,7 @@ Since October 2026 FLODE uses calendar versions `YY.M.N` (year, month, number of
 | **Trigger-id routing** | `condition: trigger` nodes after the triggers that pick a path by which trigger fired; written as sequential `if` blocks. |
 | **Metadata block** | `_flode_metadata` in `variables:`: positions, branch offsets, direction, graph id, strategy. |
 | **Manual start, script start** | The hidden entry node of a script or of an automation without triggers. |
-| **Trace, step path** | HA's record of a run, keyed by paths such as `action/0/then/1`. |
-| **Run from here** | Executes a card and everything after it through HA's `execute_script`. |
+| **Configuration path** | A native step address such as `action/0/then/1`, used to locate validation errors. |
 | **Gate, gate flows** | The release check in `dev/gate`, and the automations it loads into the test HA for its browser checks. |
 | **C.A.F.E.** | Complex Automation Flow Editor, the project FLODE was forked from. |
 
@@ -753,7 +814,7 @@ variables:
 
 The condition `c` was not promoted into `conditions:` because it has a No path. The merge point of its two outputs is `n`, so the `if` ends there and `n` follows it. The `if` step is recorded as coming from `c`.
 
-Reopened, the automation has **three** cards: the trigger, one If block card (the `if` step, verbatim, `_raw`) and the notification. The former `a` and `b` are now branch cards in the block's "Then" and "Else" lanes, with the possibilities of section 4.4; "Run from here" is available on the block, not on them. The trigger keeps `t`, the block card gets `c` and its position, the notification keeps `n` and its position. The automation itself is the same automation, before and after; only how FLODE lets the user edit the then/else steps has changed.
+Reopened, the automation has **three** cards: the trigger, one If block card (the `if` step, verbatim, `_raw`) and the notification. The former `a` and `b` are now branch cards in the block's "Then" and "Else" lanes, with the possibilities of section 4.4; the block remains the stored unit. The trigger keeps `t`, the block card gets `c` and its position, the notification keeps `n` and its position. The automation itself is the same automation, before and after; only how FLODE lets the user edit the then/else steps has changed.
 
 ## Appendix C. A shape that needs the state machine
 

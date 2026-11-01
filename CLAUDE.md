@@ -1,199 +1,101 @@
-## Coding Guidelines
+# git-flode development guide
 
-- **Never use IIFEs (Immediately Invoked Function Expressions) in TypeScript files.**
-  - Always extract logic into a named helper function, method or element instead of using IIFEs.
-  - Use plain variables or helper functions for local logic, but prefer separate elements for UI logic.
-  - IIFEs are forbidden in all TypeScript code.
+Read `AGENTS.md`, `CONTRIBUTING.md`, and `docs/architecture.md` before changing
+storage, graph conversion, or execution behavior. Retain project attribution in
+`CREDITS.md` and source headers.
 
-# Project Overview
+## Product and structure
 
-**FLODE** (Flow + Node Editor) is a visual flow editor for Home Assistant automations, inspired by Node-RED. It allows users to design automations as diagrams and transpiles them to 100% native Home Assistant YAML—no vendor lock-in. Automations remain editable in HA's built-in editor.
+The administrator panel edits existing automation YAML under a configured
+configuration repository's `automations/`. Saves preserve unknown fields and
+neighboring entries. Git operates on that repository's `prod`, bringing external
+changes from `origin/main`. Save, review/commit, push, metadata export, project
+tests, HA configuration validation, and reload are explicit actions. Historical
+inspection reads a commit diff without changing the live checkout.
 
-# Repository Structure
+- `packages/shared`: strict TypeScript types and Zod schemas.
+- `packages/transpiler`: native YAML parsing, graph analysis, and generation.
+- `packages/ui-core`: framework-free card summaries, graph and template helpers,
+  configuration-path mapping, and translations.
+- `packages/frontend`: Lit HA panel, native HA editors, file and Git controls.
+- `custom_components/flode`: administrator APIs, file storage, Git, object
+  exports, trusted Python tests, and coordinated HA reload.
+- `tests`: Python integration regressions; configuration-project tests live
+  separately under that project's `tests/`.
+- `dev/container`: disposable HA with synthetic configuration and a local remote.
+- `dev/gate`: full file-workflow release certification and visual comparison.
 
-```
-flode/
-├── packages/
-│   ├── shared/          # @flode/shared - Types and Zod schemas
-│   ├── transpiler/      # @flode/transpiler - YAML parser/generator
-│   ├── ui-core/         # @flode/ui-core - Framework-free UI logic (card texts, AI, traces, dependency map)
-│   └── frontend/        # @flode/frontend - The HA panel (Lit + HA's own components), built into custom_components/flode/www
-├── custom_components/flode/  # Home Assistant integration (Python)
-└── .github/workflows/        # CI/CD pipelines
-```
+## Implementation
 
-# Package Descriptions
+Write repository prose, comments, and commit/PR text in English. Preserve
+intentional UI translations. Keep TypeScript strict: use `unknown` and type
+guards, avoid `any`, suppression comments, and assertions except unavoidable
+external API boundaries. Do not use IIFEs.
 
-- **@flode/shared**: Zod schemas, TypeScript types, validation utilities
-- **@flode/transpiler**: YAML parsing, topology analysis, transpilation strategies
-- **@flode/ui-core**: Logic without UI framework — card summaries + i18next locales, AI assist/draft via HA `ai_task`, trace mapping, dependency map, template preview, automation merge
-- **@flode/frontend**: Lit web components; canvas pan/zoom/minimap from `@xyflow/system`; every form, dialog, picker and menu is Home Assistant's own element (`ha-dialog`, `ha-dropdown`, `ha-automation-*` editors …)
+Search for existing implementations before adding helpers. Reuse `@flode/*`
+imports, shared contracts, and framework-free ui-core logic. Keep one Lit element
+per `flode-*.ts` file with reactive properties. The panel owns tabs and undo.
+Use HA's native forms, pickers, and dialogs, compatible with `hacs.json`.
+Add translation keys to every supported language and preserve placeholders.
 
-# Key Domains/Features
+Never lose native YAML fields or modify neighboring files. Use deterministic
+fixtures for semantic round trips and separate byte-preservation checks. File,
+Git, export, test, and reload operations share the canonical project lock.
+Do filesystem/subprocess work outside HA's event loop. Keep root, HEAD, revision,
+and review guards; never introduce a fallback to HA's automation config API.
+Never commit tokens, credentials, runtime files, or HA storage.
 
-- Flow Canvas (trigger, condition, action, delay, wait nodes; HA blocks like if/choose stay HA blocks)
-- YAML Parsing & Transpilation (YamlParser, FlowTranspiler) — must round-trip users' automations losslessly
-- Home Assistant Integration (WebSocket API, HA's automation/script editor dialogs, traces, logbook)
-- Runs & debugging (HA traces, run from here), AI assistant (HA `ai_task`), dependency map, template workshop
+## Checks
 
-# Build System & Tooling
+Use Node 24 and Yarn 4 from the repository root. The pinned Yarn executable is
+configured in `.yarnrc.yml`. Install with `yarn install --immutable`, then build
+workspace dependencies before tests. There is no standalone frontend server:
+`yarn dev` rebuilds `custom_components/flode/www` for a test HA.
 
-- Yarn 4 workspaces + Turbo for orchestration
-- TypeScript 6 with strict mode
-- Vite for frontend builds
-- Vitest for testing, make sure to use the --run flag to avoid issues with watch mode
-- Biome for linting, and for formatting
-
-# Coding Conventions
-
-In addition to strict TypeScript rules:
-
-- **Zod for Schema Validation**: All data structures use Zod schemas in `@flode/shared`
-- **HA-native UI**: Use Home Assistant's own elements and dialogs wherever one exists; no own design system. Minimum HA version is in `hacs.json` — check new HA internals against it
-- **Lit Patterns**: One element per file (`flode-*.ts`), state via reactive properties, the panel (`flode-panel.ts`) owns the open flows and undo history
-- **Strings**: UI text lives in `packages/frontend/src/strings.ts` (de + en) and `packages/frontend/src/locales/<lang>.ts` (nl, fr, es, it, pt); card texts in `@flode/ui-core` locales (same seven languages); HA's config flow in `custom_components/flode/translations`. A new key goes into every language — `strings.test.ts` and `locales.test.ts` check keys, placeholders and plural forms
-- **Import Aliases**: `@flode/*` for packages
-
-# Common Commands
-
-```bash
-yarn dev          # Watch mode (rebuilds the panel into custom_components/flode/www)
-yarn build        # Build all packages
-yarn build:ha     # Build + copy to custom_components
-yarn test         # Run tests
-yarn typecheck    # Type checking
-yarn lint:biome   # Linting
-dev/gate/gate.sh  # Release gate: browser checks against the test HA (tools/ha-venv.sh, no Docker) (before every release, always in full)
-dev/next-version  # Next release version (calendar version YY.M.N)
+```sh
+yarn build
+yarn test --run
+yarn typecheck
+yarn check:biome
 ```
 
-# Development Guidelines
+Inspect every result; aggregate `yarn check` uses semicolons. Backend tests,
+Ruff, browser checks, and disposable HA startup commands are in
+`CONTRIBUTING.md` and `dev/container/README.md`. Never test against production HA.
 
-## Release and Commit Policy
+## Git authorization
 
-**IMPORTANT**: Never cut a new release or commit changes without first asking the user for permission.
+Ask for user authorization before commits, pushes, version bumps, tags,
+releases, and other Git mutations. An explicit user request authorizing an
+action supplies permission. Creating temporary Git repositories for regression
+tests is part of testing and does not publish or alter application history.
+Documentation and code edits do not authorize a release.
 
-Always ask before:
+## Authorized releases
 
-- Creating git commits
-- Pushing changes to the repository
-- Bumping version numbers
-- Creating new releases/tags
-- Running any git operations that modify the repository
+1. Derive user-facing notes from commits since the last release. The first
+   standalone git-flode release is `1.0.0`. Use the maintainer-selected version
+   for later releases; the inherited `dev/next-version` calendar helper does not
+   determine git-flode release versions. Keep
+   `custom_components/flode/manifest.json` and `packages/frontend/package.json`
+   synchronized. Update the welcome sheet and all associated translations.
+   Preserve `CHANGELOG.md` as git-flode's change history and upstream archive;
+   update git-flode entries when relevant.
+2. Commit the release changes with an English message. Inspect all static,
+   backend, and browser checks required by the gate.
+3. Run the **full** `dev/gate/gate.sh` after that commit, before tagging or
+   pushing. Only `.gate/gate-<full-commit-sha>.json` with
+   `counts_for_release: true` for the exact release commit qualifies.
+   The tree must be clean before and after the run. Any subsequent source edit
+   requires a new commit and a new full gate. Partial and baseline runs do not
+   count. Read `dev/gate/README.md` for the disposable file-workflow coverage.
+4. Review `.gate/visual/report.html` with the user if pictures changed. Report
+   new pictures and flaky checks. Do not publish with failed checks.
+5. With the authorized release commit certified, tag the bare version (no `v`),
+   push main and that tag, and create the GitHub release with notes derived
+   from history. Write multiline release notes to a file and use `--notes-file`.
+6. Verify the published release and run
+   `dev/gate/gate.sh --only visual --baseline` to record its visual baseline.
 
-The user should have full control over when changes are committed and released.
-
-## TypeScript Code Quality
-
-**STRICT TYPING REQUIRED**: Always maintain strict TypeScript types throughout the codebase.
-
-**FORBIDDEN PRACTICES**:
-
-- Never use `as` type assertions unless absolutely necessary for external API boundaries
-- Never use `any` type - use proper type definitions or `unknown` with type guards
-- Avoid type casting hacks or workarounds
-- Don't suppress TypeScript errors with `@ts-ignore` or `@ts-expect-error`
-
-**REQUIRED PRACTICES**:
-
-- Define proper interfaces and types for all data structures
-- Use type guards for runtime type checking
-- Leverage TypeScript's strict mode features
-- Create proper type definitions for external libraries if needed
-- Use generic types appropriately for reusable components
-
-The codebase should compile with zero TypeScript errors and maintain type safety throughout.
-
-# Best Practices
-
-## Code Reusability (DRY) - VITAL AND MANDATORY
-
-**⚠️ THIS IS A NON-NEGOTIABLE REQUIREMENT ⚠️**
-
-**ZERO TOLERANCE FOR CODE DUPLICATION.** Every single piece of duplicated code is a violation of this project's core principles. Before writing ANY code, you MUST check if similar logic already exists and reuse it.
-
-**MANDATORY PRACTICES**:
-
-- **Helper Functions/Utilities**: Extract common logic into reusable helper functions or utility modules. If you write the same logic twice, you have failed.
-- **Generic Elements**: Design Lit elements and helpers to be as generic and reusable as possible, accepting properties to customize behavior and appearance. They MUST be designed for reuse from the start.
-- **Shared Types/Schemas**: Leverage `@flode/shared` for all common types, interfaces, and Zod schemas to ensure consistency and avoid duplication across `frontend` and `transpiler`.
-- **Shared Logic**: Logic both the panel and tests need, and anything framework-free, belongs in `@flode/ui-core`. ANY repeated stateful pattern MUST become a shared helper.
-- **Before Writing Code**: ALWAYS search the codebase first to check if similar functionality exists. Reuse and extend existing code rather than creating new duplicates.
-- **Refactor Immediately**: If you discover existing duplication while working, refactor it into a shared abstraction before proceeding.
-
-**ABSOLUTELY FORBIDDEN - VIOLATIONS WILL NOT BE ACCEPTED**:
-
-- **Copy-pasting code**: NEVER duplicate blocks of code under any circumstances. If you find yourself copying and pasting, STOP and create a reusable function or element instead.
-- **Redundant Type Definitions**: NEVER redefine types or interfaces that already exist in `@flode/shared` or can be derived from existing schemas.
-- **Similar but slightly different implementations**: If two pieces of code do similar things, they MUST be unified into a single parameterized implementation.
-- **Duplicated constants or configuration**: All shared values MUST be defined once and imported where needed.
-- **Repeated UI patterns**: Any UI pattern used more than once MUST be extracted into a reusable component.
-
-**THE RULE IS SIMPLE: If code appears more than once, it's wrong. No exceptions.**
-
-# Cutting a New Release
-
-To cut a new release, follow these steps:
-
-**Important:** Before tagging and releasing, always bump the version in `custom_components/flode/manifest.json` to match the new release version.
-
-**All information for the release (version number and release notes) must be automatically derived from the git commit history since the last release.**
-
-**Release gate (mandatory):** after the release commit (version bump, "What's new", changelog) and before tagging or pushing, run `dev/gate/gate.sh` (see `dev/gate/README.md`). Release only if `.gate/gate-<commit>.json` says `"counts_for_release": true` for exactly that commit. The JSON lists every test; `flaky` ones (green on the second try) and `new` pictures are not red, but mention them. If the visual step reports differences, show `.gate/visual/report.html` to the user first. After the release is out, run `dev/gate/gate.sh --baseline` so the next release is compared with this one.
-
-- **Versions are calendar versions `YY.M.N`** (since October 2026, after 3.4.1): `YY` = two-digit year, `M` = month without leading zero, `N` = number of the release within that month, starting at 1 (every GitHub release published in that month counts, old X.Y.Z ones too; bare tags without a release do not). Every release — feature or bugfix — gets the next number; there is no patch/minor/major distinction any more. Get it with `dev/next-version` (e.g. `26.10.11`; a new month starts at `.1` again). Never use leading zeros (`26.3.1`, not `26.03.1`) — they are invalid semver and break `package.json`.
-- The release notes should be compiled from user-facing changes in the commit history (new features, bug fixes, breaking changes), without requiring user input.
-
-0. **Update the "What's new" sheet** (`packages/frontend/src/flode-welcome.ts`)
-
-- Replace `WHATS_NEW` with this release's user-facing features (icon + title + text, 2–4 entries); add their `newXYZ…` strings in every language (`strings.ts` + `locales/*.ts`) and drop the previous release's.
-- Bump `version` in `packages/frontend/package.json` together with `manifest.json` — the sheet shows once per version to everyone who used an older one.
-
-1. **Commit your changes**
-
-- Ensure all changes are staged and committed with a clear message.
-- Bump the version in `custom_components/flode/manifest.json` to the new release version from `dev/next-version` (e.g., "26.10.11").
-- Example:
-  ```bash
-  # Edit manifest.json and update the version field
-  git add .
-  git commit -m "Release: 26.10.11 - <short description>"
-  ```
-
-2. **Create a new git tag**
-
-- Use the calendar version from `dev/next-version`, **without a leading "v"** (e.g., 26.10.11) — since 3.0.8 tags, release titles and the version badge are just the number.
-- Example:
-  ```bash
-  git tag "$(dev/next-version)"
-  ```
-
-3. **Push changes to remote**
-
-- Push your commits and tags to the remote repository.
-- Example:
-  ```bash
-  git push origin main
-  git push origin --tags
-  ```
-
-4. **Create a GitHub release**
-
-- Use the GitHub CLI (`gh`) to create a release.
-- **Include the changelog in the GitHub release notes. Do NOT create a literal CHANGELOG.md file.**
-- The changelog must be compiled automatically from the git commit history since the last release, focusing on user-facing changes:
-  - New features
-  - Bug fixes
-  - Breaking changes
-- Example:
-
-```bash
-# IMPORTANT: Use real newlines in the --notes argument, not literal \n. For multiline notes, write each line on a new line inside the string.
-gh release create 26.10.11 --title "26.10.11" --notes "<release notes>"
-```
-
-5. **Verify release on GitHub**
-
-- Check the Releases page to confirm the new release is published.
-
-**Note:** Do not cut a release without explicit user approval. Always confirm before pushing tags or creating releases.
+Do not create extra release commits after certification or certify a different
+commit than the one being tagged and pushed.

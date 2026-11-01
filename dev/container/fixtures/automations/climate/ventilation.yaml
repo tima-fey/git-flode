@@ -1,0 +1,27 @@
+- id: example_ventilation_on
+  alias: Example ventilation on
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.example_humidity
+      above: 65
+  conditions:
+    - condition: state
+      entity_id: input_boolean.example_ventilation_enabled
+      state: 'on'
+  actions:
+    - action: fan.turn_on
+      target:
+        entity_id: fan.example_ventilation
+  mode: single
+
+- id: example_ventilation_off
+  alias: Example ventilation off
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.example_humidity
+      below: 55
+  actions:
+    - action: fan.turn_off
+      target:
+        entity_id: fan.example_ventilation
+  mode: single

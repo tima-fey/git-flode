@@ -1,5 +1,5 @@
 import { isPlainObject, toList } from '@flode/shared';
-import { mapStrings } from './jinja-rename';
+import { mapStrings } from './string-values';
 
 /**
  * Trigger IDs for the "Triggered by" condition (`condition: trigger`).

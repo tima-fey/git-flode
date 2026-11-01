@@ -1,0 +1,22 @@
+# Loaded only by the disposable Home Assistant test instance.
+- id: file_ventilation_start
+  alias: File ventilation start
+  triggers:
+    - trigger: state
+      entity_id: input_boolean.flode_test
+      to: "on"
+  conditions: []
+  actions:
+    - delay: "00:00:01"
+  mode: single
+
+- id: file_ventilation_stop
+  alias: File ventilation stop
+  triggers:
+    - trigger: state
+      entity_id: input_boolean.flode_test
+      to: "off"
+  conditions: []
+  actions:
+    - delay: "00:00:02"
+  mode: restart

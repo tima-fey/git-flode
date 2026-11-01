@@ -1,4 +1,4 @@
-import type { FlowNode } from '@flode/shared';
+import { type FlowNode, NodeSchema } from '@flode/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { HomeAssistant } from '../ha';
 import { HaDescriptions } from '../ha-describe';
@@ -72,6 +72,49 @@ describe("HA's step texts", () => {
     await settle();
     expect(ready).toBe(1);
     expect(texts.summary(node, hass, own).title).toBe('Nach Sonnenuntergang');
+  });
+
+  it.each([
+    2700,
+    [255, 0, 0],
+    { hue: 10, saturation: 20 },
+  ])('keeps its own text for attribute states HA cannot describe: %j', async (value) => {
+    const texts = new HaDescriptions(
+      () => undefined,
+      () => host
+    );
+    for (const key of ['from', 'to', 'not_from', 'not_to']) {
+      const trigger = NodeSchema.parse({
+        ...node,
+        type: 'trigger',
+        data: {
+          trigger: 'state',
+          _raw: {
+            trigger: 'state',
+            entity_id: 'light.test',
+            attribute: 'color',
+            [key]: value,
+          },
+        },
+      });
+      expect(texts.summary(trigger, hass, own)).toBe(own);
+    }
+    await settle();
+    expect(rowsMade).toBe(0);
+  });
+
+  it.each(['on', ['on', 'off'], null])('still requests HA text for state value %j', async (to) => {
+    const texts = new HaDescriptions(
+      () => undefined,
+      () => host
+    );
+    texts.summary(
+      { ...node, type: 'trigger', data: { trigger: 'state', entity_id: 'light.test', to } },
+      hass,
+      own
+    );
+    await settle();
+    expect(rowsMade).toBe(1);
   });
 
   it('asks again for a row that failed to render, without a re-render loop', async () => {

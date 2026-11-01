@@ -8,16 +8,13 @@ import {
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { defineElement } from './define-element';
 import { focusFirstField } from './focus';
-import { type AutomationListItem, errorMessage, getLatestTrace, type HomeAssistant } from './ha';
-import { copyToClipboard, notify } from './notify';
+import type { HomeAssistant } from './ha';
+import { copyToClipboard } from './notify';
 import { submitOnModEnter } from './shortcuts';
 import { t } from './strings';
-import { runVariables } from './trace';
 
 const DRAFT_KEY = 'flode3.templateWorkshop';
 const DEBOUNCE_MS = 350;
-
-type VariableSource = 'none' | 'given' | 'lastRun';
 
 function readDraft(): string {
   try {
@@ -38,42 +35,29 @@ function writeDraft(value: string): void {
 /**
  * Template workshop (⌘J): Jinja in HA's own code editor, rendered live by
  * Home Assistant (`render_template`) — with the result type, what it reacts
- * to and optionally the variables of a real run (`trigger`, `this`, …).
+ * to. Templates use Home Assistant’s live context.
  */
 export class FlodeTemplates extends LitElement {
   static properties = {
     hass: { attribute: false },
     open: { type: Boolean },
-    /** The open automation/script — enables "last run" variables. */
-    item: { attribute: false },
-    /** Variables handed over from a run step in the debug view. */
-    given: { attribute: false },
     template: { state: true },
-    source: { state: true },
-    lastRun: { state: true },
     preview: { state: true },
   };
 
   declare hass: HomeAssistant | undefined;
   declare open: boolean;
-  declare item: AutomationListItem | null;
-  declare given: Record<string, unknown> | null;
   declare template: string;
-  declare source: VariableSource;
-  declare lastRun: Record<string, unknown> | null;
   declare preview: TemplatePreview;
 
   private stop: (() => void) | undefined;
   private timer: number | undefined;
+  private cancelFocus: (() => void) | undefined;
 
   constructor() {
     super();
     this.open = false;
-    this.item = null;
-    this.given = null;
     this.template = readDraft();
-    this.source = 'none';
-    this.lastRun = null;
     this.preview = { status: 'idle' };
   }
 
@@ -81,36 +65,20 @@ export class FlodeTemplates extends LitElement {
     return this.hass?.language ?? 'en';
   }
 
-  private get variables(): Record<string, unknown> | undefined {
-    if (this.source === 'given') return this.given ?? undefined;
-    if (this.source === 'lastRun') return this.lastRun ?? undefined;
-    return undefined;
-  }
-
-  protected willUpdate(changed: PropertyValues<this>): void {
-    if (changed.has('open') && this.open) {
-      this.source = this.given ? 'given' : 'none';
-      this.lastRun = null;
-    }
-  }
-
   protected updated(changed: PropertyValues<this>): void {
     if (!this.open) {
+      this.cancelFocus?.();
       this.stopPreview();
       return;
     }
-    if (
-      changed.has('open') ||
-      changed.has('template') ||
-      changed.has('source') ||
-      changed.has('lastRun')
-    ) {
+    if (changed.has('open') || changed.has('template')) {
       this.schedulePreview();
     }
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this.cancelFocus?.();
     this.stopPreview();
   }
 
@@ -125,23 +93,10 @@ export class FlodeTemplates extends LitElement {
     const connection = this.hass?.connection;
     if (!connection) return;
     this.timer = window.setTimeout(() => {
-      this.stop = subscribeTemplatePreview(connection, this.template, this.variables, (preview) => {
+      this.stop = subscribeTemplatePreview(connection, this.template, undefined, (preview) => {
         this.preview = preview;
       });
     }, DEBOUNCE_MS);
-  }
-
-  private async useLastRun(): Promise<void> {
-    this.source = 'lastRun';
-    const { hass, item } = this;
-    if (!hass || !item || this.lastRun) return;
-    try {
-      const trace = await getLatestTrace(hass, item.kind, item.configId);
-      if (!trace) return;
-      this.lastRun = runVariables(trace);
-    } catch (error) {
-      notify(this, `${t(hass.language, 'loadFailed')}: ${errorMessage(error)}`);
-    }
   }
 
   private setTemplate(value: string): void {
@@ -189,31 +144,29 @@ export class FlodeTemplates extends LitElement {
     }
   }
 
+  private focusField(): void {
+    this.cancelFocus?.();
+    if (this.open) this.cancelFocus = focusFirstField(this.renderRoot);
+  }
+
+  private close(): void {
+    this.cancelFocus?.();
+    this.stopPreview();
+    this.dispatchEvent(new CustomEvent('closed'));
+  }
+
   /** ⌘↩ is the workshop's OK. */
-  private readonly submitKey = submitOnModEnter(() =>
-    this.dispatchEvent(new CustomEvent('closed'))
-  );
+  private readonly submitKey = submitOnModEnter(() => this.close());
 
   render() {
     const language = this.language;
-    const sources: VariableSource[] = [
-      'none',
-      ...(this.given ? (['given'] as const) : []),
-      ...(this.item ? (['lastRun'] as const) : []),
-    ];
-    const sourceLabel = {
-      none: 'tplSourceNone',
-      given: 'tplSourceGiven',
-      lastRun: 'tplSourceLastRun',
-    } as const;
-    const variables = this.variables;
     return html`<ha-dialog
       .open=${this.open}
       .headerTitle=${t(language, 'tplTitle')}
       width="large"
-      @after-show=${() => focusFirstField(this.renderRoot)}
+      @after-show=${() => this.focusField()}
       @keydown=${this.submitKey}
-      @closed=${() => this.dispatchEvent(new CustomEvent('closed'))}
+      @closed=${() => this.close()}
     >
       <p class="muted intro">${t(language, 'tplIntro')}</p>
       <div class="columns" @keydown=${(event: KeyboardEvent) => event.stopPropagation()}>
@@ -248,27 +201,6 @@ export class FlodeTemplates extends LitElement {
           </div>
         </div>
         <div class="right">
-          <h4>${t(language, 'tplVariables')}</h4>
-          <div class="sources">
-            ${sources.map(
-              (source) => html`<button
-                class="chip ${this.source === source ? 'active' : ''}"
-                @click=${() => {
-                  if (source === 'lastRun') void this.useLastRun();
-                  else this.source = source;
-                }}
-              >
-                ${t(language, sourceLabel[source])}
-              </button>`
-            )}
-          </div>
-          ${
-            variables
-              ? html`<div class="vars">
-                  ${Object.keys(variables).map((name) => html`<span class="pill mono">${name}</span>`)}
-                </div>`
-              : nothing
-          }
           <h4>${t(language, 'tplResult')}</h4>
           ${this.renderPreview()}
         </div>
@@ -321,8 +253,6 @@ export class FlodeTemplates extends LitElement {
       color: var(--secondary-text-color);
     }
     .snippets,
-    .sources,
-    .vars,
     .listeners {
       display: flex;
       flex-wrap: wrap;

@@ -1,9 +1,9 @@
 {
   "name": "@flode/frontend",
-  "version": "26.10.17",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "FLODE's Home Assistant panel — Lit + Home Assistant's own components, canvas on @xyflow/system",
+  "description": "git-flode's Home Assistant panel — Lit + Home Assistant's own components, canvas on @xyflow/system",
   "scripts": {
     "build": "tsc --noEmit && vite build",
     "dev": "vite build --watch",

@@ -1,122 +1,92 @@
-#!/bin/bash
-# FLODE release gate — run before every release, release only when it is green
-# for exactly the commit that goes out (see dev/gate/README.md).
-#
-#   dev/gate/gate.sh                full gate (about 5 minutes)
-#   dev/gate/gate.sh --only STEP    one step: static|cards|roundtrip|actions|visual (doesn't count)
-#   dev/gate/gate.sh --no-restart   don't restart the test HA (only frontend changes; doesn't count)
-#   dev/gate/gate.sh --baseline     after a release: store the visual baseline for the next one
-#
-# Test HA: HA Core from a venv (tools/ha-venv.sh, no Docker) with its config in FLODE_GATE_DIR/config
-# (default ../flode-test next to the repo), on port FLODE_GATE_PORT (default 8123) of FLODE_GATE_URL
-# (default http://localhost:8123), HA version FLODE_GATE_HA_VERSION (default: the one in ha-venv.sh);
-# access token in FLODE_GATE_DIR/.claude-token or FLODE_GATE_TOKEN.
-#
-# Writes .gate/gate-<commit>.json (commit, clean tree, result per step and per test, flaky
-# tests) and logs to .gate/logs/ (one per step, one per test that was not ok).
-set -u
+#!/usr/bin/env bash
+# Release certification against the disposable file-workflow HA container.
+# Usage: dev/gate/gate.sh [--only STEP] [--baseline]
+set -uo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO" || exit 2
-GATE="$REPO/dev/gate"
 OUT="$REPO/.gate"
-TEST_DIR="${FLODE_GATE_DIR:-$REPO/../flode-test}"
-HA_VENV="$REPO/tools/ha-venv.sh"
-PORT="${FLODE_GATE_PORT:-8123}"
-HA_VERSION_ARG="${FLODE_GATE_HA_VERSION:-}"
-
-ONLY=""; RESTART=1; BASELINE=0
-while [ $# -gt 0 ]; do
+ONLY=""
+BASELINE=0
+while [ "$#" -gt 0 ]; do
   case "$1" in
-    --only) ONLY="$2"; shift ;;
-    --only=*) ONLY="${1#--only=}" ;;
-    --no-restart) RESTART=0 ;;
+    --only) ONLY="${2:?Missing step}"; shift ;;
     --baseline) BASELINE=1 ;;
-    -h|--help) sed -n '2,16p' "$0"; exit 0 ;;
-    *) echo "unknown option: $1" >&2; exit 2 ;;
+    --help|-h) sed -n '2,3p' "$0"; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
   shift
 done
-case "$ONLY" in ""|static|cards|roundtrip|actions|visual) ;; *) echo "--only: static|cards|roundtrip|actions|visual" >&2; exit 2 ;; esac
-
-COMMIT="$(git rev-parse --short HEAD)"
+case "$ONLY" in ""|static|backend|cards|edit-files|readonly|git|publish|ha-controls|objects|visual) ;; *) echo 'Unknown step' >&2; exit 2 ;; esac
+export FLODE_GATE_URL=http://127.0.0.1:18123
+export FLODE_GATE_TOKEN_FILE="$REPO/dev/container/runtime/token"
+unset FLODE_GATE_TOKEN
+COMMIT="$(git rev-parse HEAD)"
 CLEAN=true
-# Only what ends up in the release counts (docs or notes lying around don't).
-[ -z "$(git status --porcelain -- packages custom_components dev hacs.json package.json yarn.lock)" ] || CLEAN=false
+[ -z "$(git status --porcelain)" ] || CLEAN=false
 STARTED=$(date +%s)
 mkdir -p "$OUT/logs"
+if ! mkdir "$OUT/run.lock" 2>/dev/null; then
+  echo 'Another gate is running (.gate/run.lock). Wait for it to finish.' >&2
+  exit 2
+fi
+trap 'rmdir "$OUT/run.lock"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 rm -f "$OUT"/step-*.json "$OUT/steps.txt"
-
-# run NAME COMMAND… — runs one step, logs it, records name|status|seconds|log for summary.mjs.
 run() {
   local name="$1"; shift
-  [ -n "$ONLY" ] && [ "$ONLY" != "$name" ] && return 0
-  local log="$OUT/logs/$name.log" t0=$(date +%s) status=ok
-  printf '▶ %-10s' "$name"
-  if "$@" >"$log" 2>&1; then echo " ✓ $(( $(date +%s) - t0 )) s"
-  else status=failed; echo " ✗ $(( $(date +%s) - t0 )) s — $log"; grep -E '^\s+✗' "$log" | head -15; fi
-  grep -E '^\s+(·|~)' "$log" | head -8
-  echo "$name|$status|$(( $(date +%s) - t0 ))|${log#"$REPO/"}" >>"$OUT/steps.txt"
+  local log="$OUT/logs/$name.log" status=ok started
+  started=$(date +%s)
+  if "$@" >"$log" 2>&1; then echo "✓ $name"
+  else status=failed; echo "✗ $name — $log"; tail -8 "$log"; fi
+  printf '%s|%s|%s|%s\n' "$name" "$status" "$(( $(date +%s) - started ))" "${log#"$REPO/"}" >> "$OUT/steps.txt"
+  [ "$status" = ok ]
 }
-
-# Biome, type check, unit tests, build — each one a test of the step "static".
 static_checks() {
-  local ok=true tests=""
-  for pair in "biome:yarn biome ci ." "typecheck:yarn typecheck" "unit tests:yarn test --run" "build:yarn build:ha"; do
-    local name="${pair%%:*}" cmd="${pair#*:}" status=ok
-    echo "▶ $name"
-    $cmd || { status=failed; ok=false; }
-    tests="$tests{\"name\":\"$name\",\"status\":\"$status\"},"
+  local status=0
+  node --test dev/gate/summary.test.mjs || status=1
+  yarn check:biome || status=1
+  yarn typecheck || status=1
+  yarn test --run || status=1
+  yarn build || status=1
+  return "$status"
+}
+backend_checks() {
+  docker run --rm -e PYTHONDONTWRITEBYTECODE=1 -v "$REPO:/work:ro" -w /work --entrypoint sh \
+    ghcr.io/home-assistant/home-assistant:2026.10.1 \
+    -c 'uv pip install --system --index-strategy unsafe-best-match pytest==8.4.2 ruamel.yaml==0.18.16 ruff==0.16.9 && python -m pytest -p no:cacheprovider tests -q && ruff check --no-cache custom_components tests dev/container/fixtures/tests'
+}
+prepare() {
+  test -d dev/gate/node_modules || (cd dev/gate && npm ci --no-audit --no-fund) || return 1
+  (cd dev/gate && node node_modules/playwright/cli.js install chromium webkit) || return 1
+  # Never certify a previous run's fixture tree, integration options, or tests.
+  docker compose -f dev/container/compose.yaml down || return 1
+  if [ -d dev/container/runtime ]; then
+    mkdir -p "$OUT/runtime-backups"
+    mv dev/container/runtime "$OUT/runtime-backups/$(date +%s)-$$" || return 1
+  fi
+  mkdir -p dev/container/runtime/config
+  cp dev/container/configuration.yaml dev/container/runtime/config/configuration.yaml || return 1
+  bash dev/container/start.sh || return 1
+  node dev/gate/ready.mjs 180 || return 1
+  node dev/container/prepare-files.mjs
+}
+finish() {
+  [ "$(git rev-parse HEAD)" = "$COMMIT" ] || CLEAN=false
+  [ -z "$(git status --porcelain)" ] || CLEAN=false
+  node dev/gate/summary.mjs --commit "$COMMIT" --clean "$CLEAN" --only "$ONLY" --restart 1 --seconds "$(( $(date +%s) - STARTED ))"
+}
+if [ -z "$ONLY" ] || [ "$ONLY" = static ]; then run static static_checks || true; fi
+if [ -z "$ONLY" ] || [ "$ONLY" = backend ]; then run backend backend_checks || true; fi
+if [ "$ONLY" != static ] && [ "$ONLY" != backend ]; then
+  if ! run test-ha prepare; then finish; exit 1; fi
+  for pair in cards:dev/gate/check-cards.mjs edit-files:dev/container/check-edit.mjs readonly:dev/container/check-readonly.mjs git:dev/container/check-git.mjs publish:dev/container/check-publish.mjs ha-controls:dev/container/check-ha.mjs objects:dev/container/check-objects.mjs visual:dev/gate/check-visual.mjs; do
+    name="${pair%%:*}"
+    [ -z "$ONLY" ] || [ "$ONLY" = "$name" ] || continue
+    if [ "$name" = visual ] && [ "$BASELINE" = 1 ]; then run "$name" node "${pair#*:}" --baseline || true
+    else run "$name" node "${pair#*:}" || true; fi
   done
-  printf '{"step":"static","ok":%s,"tests":[%s]}\n' "$ok" "${tests%,}" >"$OUT/step-static.json"
-  [ "$ok" = true ]
-}
-
-prepare_ha() {
-  [ -d "$GATE/node_modules" ] || (cd "$GATE" && npm ci --no-audit --no-fund) || return 1
-  rsync -a --delete custom_components/flode/ "$TEST_DIR/config/custom_components/flode/" || return 1
-  if ! "$HA_VENV" laeuft "$TEST_DIR/config"; then
-    "$HA_VENV" start "$TEST_DIR/config" "$PORT" $HA_VERSION_ARG || return 1
-  elif [ $RESTART = 1 ]; then
-    "$HA_VENV" restart "$TEST_DIR/config" "$PORT" $HA_VERSION_ARG || return 1
-  fi
-  node "$GATE/ready.mjs" 180 && node "$GATE/seed.mjs"
-}
-
-echo "FLODE gate · $COMMIT$([ $CLEAN = true ] || echo ' (uncommitted changes)')"
-run static static_checks
-if [ "$ONLY" != static ]; then
-  printf '▶ %-10s' "test HA"
-  T0=$(date +%s)
-  if prepare_ha >"$OUT/logs/prepare.log" 2>&1; then
-    echo " ✓ ($(grep -E 'ready|seeded' "$OUT/logs/prepare.log" | tr '\n' ' '))"
-    echo "test HA|ok|$(( $(date +%s) - T0 ))|.gate/logs/prepare.log" >>"$OUT/steps.txt"
-  else
-    echo " ✗ — $OUT/logs/prepare.log"; tail -5 "$OUT/logs/prepare.log"
-    echo "test HA|failed|$(( $(date +%s) - T0 ))|.gate/logs/prepare.log" >>"$OUT/steps.txt"
-    node "$GATE/summary.mjs" --commit "$COMMIT" --clean "$CLEAN" --only "$ONLY" --restart "$RESTART" --seconds $(( $(date +%s) - STARTED ))
-    exit 1
-  fi
-  run cards node "$GATE/check-cards.mjs"
-  run roundtrip node "$GATE/check-roundtrip.mjs"
-  run actions node "$GATE/check-actions.mjs"
-  if [ $BASELINE = 1 ]; then run visual node "$GATE/check-visual.mjs" --baseline
-  else run visual node "$GATE/check-visual.mjs"; fi
-  node "$GATE/cleanup.mjs" >/dev/null 2>&1
 fi
-
-# summary.mjs writes gate-<commit>.json (steps, every test, flaky ones) and returns 0 when all steps are ok.
-# A gate only counts for a release when it ran in full, on a clean tree, with the HA restarted.
-echo
-OK=true
-node "$GATE/summary.mjs" --commit "$COMMIT" --clean "$CLEAN" --only "$ONLY" --restart "$RESTART" --seconds $(( $(date +%s) - STARTED )) || OK=false
-COUNTS=false
-[ $OK = true ] && [ -z "$ONLY" ] && [ $RESTART = 1 ] && [ $CLEAN = true ] && COUNTS=true
-echo
-if [ $OK = true ]; then
-  echo "✓ gate green · $COMMIT · $(( $(date +%s) - STARTED )) s$([ $COUNTS = true ] || echo ' · does not count for a release (partial run or uncommitted changes)')"
-  node -e 'const r = require(process.argv[1]).review; process.exit(r && r.length ? 0 : 1)' "$OUT/step-visual.json" 2>/dev/null \
-    && echo "  look at the picture differences: .gate/visual/report.html"
-  exit 0
-fi
-echo "✗ gate red · $COMMIT · see .gate/logs/"
-exit 1
+# Baseline updates are useful evidence but never certify a release.
+[ "$BASELINE" = 0 ] || ONLY=baseline
+finish

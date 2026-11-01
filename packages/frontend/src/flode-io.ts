@@ -1,41 +1,10 @@
-import { type FlowGraph, FlowGraphSchema, isPlainObject } from '@flode/shared';
-import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
+import type { FlowGraph } from '@flode/shared';
+import { css, html, LitElement, type PropertyValues } from 'lit';
 import { defineElement } from './define-element';
 import { flowYaml } from './flow-yaml';
-import { focusFirstField } from './focus';
 import { errorMessage, type FlowKind, type HomeAssistant } from './ha';
 import { copyToClipboard } from './notify';
-import { submitOnModEnter } from './shortcuts';
 import { t } from './strings';
-
-/** A flow read from pasted YAML or a JSON file — opened as a new, unsaved draft. */
-export interface ImportedFlow {
-  graph: FlowGraph;
-  kind: FlowKind;
-}
-
-/** Scripts have a `sequence` and no triggers; everything else is read as an automation. */
-export function yamlKind(config: unknown): FlowKind {
-  if (!isPlainObject(config)) return 'automation';
-  const hasTriggers = 'triggers' in config || 'trigger' in config;
-  return 'sequence' in config && !hasTriggers ? 'script' : 'automation';
-}
-
-export async function flowFromYaml(yaml: string): Promise<ImportedFlow> {
-  const { transpiler, parseFlowYaml, loadHaYaml, dumpHaYaml } = await import('@flode/transpiler');
-  let config: unknown = loadHaYaml(yaml);
-  // A pasted scripts.yaml entry (`my_script: {…}`) — take the script itself.
-  if (isPlainObject(config) && Object.keys(config).length === 1) {
-    const [only] = Object.values(config);
-    if (isPlainObject(only) && 'sequence' in only) config = only;
-  }
-  // automations.yaml is a list — the first automation.
-  if (Array.isArray(config)) config = config[0];
-  const kind = yamlKind(config);
-  const result = await parseFlowYaml(transpiler, dumpHaYaml(config), kind, { keepBlocks: true });
-  if (!result.success || !result.graph) throw new Error(result.errors?.join('\n') ?? 'parse');
-  return { graph: result.graph, kind };
-}
 
 /** FLODE's own flow file (the graph as JSON). */
 export function downloadFlowJson(graph: FlowGraph): void {
@@ -46,134 +15,6 @@ export function downloadFlowJson(graph: FlowGraph): void {
   link.download = `${(graph.name || 'flow').replace(/[^\wÀ-ɏ -]+/g, '').trim() || 'flow'}.flode.json`;
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-/** A FLODE flow file's content (rejects when it can't be read or isn't a flow). */
-async function readFlowFile(file: Pick<Blob, 'text'>): Promise<ImportedFlow> {
-  const parsed = FlowGraphSchema.safeParse(JSON.parse(await file.text()));
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? 'invalid');
-  return {
-    graph: parsed.data,
-    kind: parsed.data.metadata?.kind === 'script' ? 'script' : 'automation',
-  };
-}
-
-/** `null` when the file dialog was closed without a file. */
-export function pickFlowJson(): Promise<ImportedFlow | null> {
-  return new Promise((resolve, reject) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json';
-    input.addEventListener('cancel', () => resolve(null));
-    input.addEventListener('change', () => {
-      const file = input.files?.[0];
-      if (!file) {
-        resolve(null);
-        return;
-      }
-      readFlowFile(file).then(resolve, reject);
-    });
-    input.click();
-  });
-}
-
-/** "Paste YAML": an automation or script in HA's own code editor → a new draft. */
-export class FlodeYamlImport extends LitElement {
-  static properties = {
-    hass: { attribute: false },
-    open: { type: Boolean },
-    yaml: { state: true },
-    error: { state: true },
-    busy: { state: true },
-  };
-
-  declare hass: HomeAssistant | undefined;
-  declare open: boolean;
-  declare yaml: string;
-  declare error: string | null;
-  declare busy: boolean;
-
-  constructor() {
-    super();
-    this.open = false;
-    this.yaml = '';
-    this.error = null;
-    this.busy = false;
-  }
-
-  protected willUpdate(changed: PropertyValues<this>): void {
-    if (changed.has('open') && this.open) this.error = null;
-  }
-
-  private close(): void {
-    this.dispatchEvent(new CustomEvent('closed'));
-  }
-
-  /** ⌘↩ opens it, like the dialog's button (Enter alone is a new line in the editor). */
-  private readonly submitKey = submitOnModEnter(() => void this.import());
-
-  private async import(): Promise<void> {
-    if (!this.yaml.trim() || this.busy) return;
-    this.busy = true;
-    this.error = null;
-    try {
-      const flow = await flowFromYaml(this.yaml);
-      this.yaml = '';
-      this.dispatchEvent(new CustomEvent<ImportedFlow>('imported', { detail: flow }));
-    } catch (error) {
-      this.error = errorMessage(error);
-    } finally {
-      this.busy = false;
-    }
-  }
-
-  render() {
-    const language = this.hass?.language ?? 'en';
-    return html`<ha-dialog
-      .open=${this.open}
-      .headerTitle=${t(language, 'ioYamlTitle')}
-      width="large"
-      @after-show=${() => focusFirstField(this.renderRoot)}
-      @keydown=${this.submitKey}
-      @closed=${() => this.close()}
-    >
-      <p class="muted">${t(language, 'ioYamlIntro')}</p>
-      <ha-code-editor
-        .hass=${this.hass}
-        .value=${this.yaml}
-        mode="yaml"
-        autocomplete-entities
-        @value-changed=${(event: CustomEvent<{ value: string }>) => {
-          event.stopPropagation();
-          this.yaml = event.detail.value;
-        }}
-        @keydown=${(event: KeyboardEvent) => event.stopPropagation()}
-      ></ha-code-editor>
-      ${this.error ? html`<ha-alert alert-type="error">${this.error}</ha-alert>` : nothing}
-      <ha-dialog-footer slot="footer">
-        <ha-button slot="secondaryAction" appearance="plain" @click=${() => this.close()}>
-          ${t(language, 'cancel')}
-        </ha-button>
-        <ha-button slot="primaryAction" .disabled=${this.busy || !this.yaml.trim()} @click=${() => void this.import()}>
-          ${t(language, 'ioOpenDraft')}
-        </ha-button>
-      </ha-dialog-footer>
-    </ha-dialog>`;
-  }
-
-  static styles = css`
-    .muted {
-      margin: 0 0 12px;
-      color: var(--secondary-text-color);
-    }
-    ha-code-editor {
-      min-height: 240px;
-    }
-    ha-alert {
-      display: block;
-      margin-top: 12px;
-    }
-  `;
 }
 
 /** "Show YAML": the whole flow as HA saves it, read-only in HA's code editor. */
@@ -262,12 +103,10 @@ export class FlodeYamlView extends LitElement {
   `;
 }
 
-defineElement('flode-yaml-import', FlodeYamlImport);
 defineElement('flode-yaml-view', FlodeYamlView);
 
 declare global {
   interface HTMLElementTagNameMap {
-    'flode-yaml-import': FlodeYamlImport;
     'flode-yaml-view': FlodeYamlView;
   }
 }

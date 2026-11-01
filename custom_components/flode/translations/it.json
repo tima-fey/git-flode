@@ -1,14 +1,33 @@
 {
   "config": {
-    "title": "FLODE",
     "step": {
       "user": {
-        "title": "Configura FLODE",
-        "description": "FLODE è un editor visuale di automazioni per Home Assistant. Ti permette di creare e gestire le tue automazioni con un editor di flussi visuale.\n\nClicca su Invia per aggiungere FLODE al tuo Home Assistant."
+        "title": "Configura git-flode",
+        "description": "Scegli una cartella radice assoluta esistente contenente automations/. git-flode modifica le automazioni YAML esistenti nelle sottocartelle. objects/ contiene gli oggetti HA esportati manualmente; tests/ contiene i test Python del progetto.",
+        "data": {
+          "config_directory": "Cartella radice git-flode"
+        }
       }
     },
     "abort": {
-      "already_configured": "FLODE è già configurato"
+      "already_configured": "git-flode è già configurato"
+    },
+    "error": {
+      "invalid_directory": "Scegli una radice assoluta esistente contenente automations/."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Cartella radice git-flode",
+        "description": "Scegli una cartella radice assoluta esistente contenente automations/. git-flode modifica le automazioni YAML esistenti nelle sottocartelle. objects/ contiene gli oggetti HA esportati manualmente; tests/ contiene i test Python del progetto.",
+        "data": {
+          "config_directory": "Cartella radice git-flode"
+        }
+      }
+    },
+    "error": {
+      "invalid_directory": "Scegli una radice assoluta esistente contenente automations/."
     }
   }
 }

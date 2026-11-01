@@ -1,14 +1,33 @@
 {
   "config": {
-    "title": "FLODE",
     "step": {
       "user": {
-        "title": "Set up FLODE",
-        "description": "FLODE is a visual automation editor for Home Assistant. It allows you to create and manage your automations using a visual flow editor.\n\nClick Submit to add FLODE to your Home Assistant."
+        "title": "Set up git-flode",
+        "description": "Choose an existing absolute project root containing automations/. git-flode edits existing YAML automations in its subfolders. objects/ stores manually exported HA inventory; tests/ contains project Python tests.",
+        "data": {
+          "config_directory": "git-flode configuration root"
+        }
       }
     },
     "abort": {
-      "already_configured": "FLODE is already configured"
+      "already_configured": "git-flode is already configured"
+    },
+    "error": {
+      "invalid_directory": "Choose an existing absolute root containing an automations/ directory."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "git-flode configuration root",
+        "description": "Choose an existing absolute project root containing automations/. git-flode edits existing YAML automations in its subfolders. objects/ stores manually exported HA inventory; tests/ contains project Python tests.",
+        "data": {
+          "config_directory": "git-flode configuration root"
+        }
+      }
+    },
+    "error": {
+      "invalid_directory": "Choose an existing absolute root containing an automations/ directory."
     }
   }
 }

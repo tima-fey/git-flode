@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Build a disposable configuration checkout and bare remote, never the app repo.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+root="$PWD/dev/container/runtime"
+checkout="$root/repository"
+remote="$root/remote.git"
+if [ -d "$checkout/.git" ]; then
+  exit 0
+fi
+if [ -e "$checkout" ] || [ -e "$remote" ]; then
+  echo 'Partial Git test setup exists; move runtime/repository and runtime/remote.git aside.' >&2
+  exit 1
+fi
+mkdir -p "$root"
+# Hooks and signing from the developer's Git setup must not affect test fixtures.
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+git init --template= --bare --initial-branch=main "$remote"
+git init --template= --initial-branch=main "$checkout"
+git -C "$checkout" config user.name 'FLODE Test'
+git -C "$checkout" config user.email test@example.invalid
+cp -R dev/container/fixtures/automations dev/container/fixtures/objects dev/container/fixtures/tests "$checkout/"
+git -C "$checkout" add automations objects tests
+git -C "$checkout" commit -m 'Initial test automations'
+printf 'Disposable configuration checkout for FLODE Git tests.\n' > "$checkout/README.md"
+git -C "$checkout" add README.md
+git -C "$checkout" commit -m 'Document test checkout'
+git -C "$checkout" push "$remote" main
+git -C "$checkout" switch --create prod
+git -C "$checkout" push "$remote" prod
+# This path is intentionally the path inside HA Container, not a host remote.
+git -C "$checkout" remote add origin /git-test/remote.git

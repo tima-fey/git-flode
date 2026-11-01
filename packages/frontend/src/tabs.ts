@@ -1,17 +1,15 @@
-import { type FlowGraph, FlowGraphSchema, isPlainObject } from '@flode/shared';
+import {
+  FileAutomationRefSchema,
+  type FlowGraph,
+  FlowGraphSchema,
+  isPlainObject,
+} from '@flode/shared';
 import { randomId } from '@flode/ui-core';
 import type { Viewport } from '@xyflow/system';
-import type { AutomationListItem, RegistryEntry, RegistryUpdate } from './ha';
+import type { AutomationListItem } from './ha';
 import type { SaveProblem } from './save-errors';
-import type { StringKey } from './strings';
 
 export type SaveState = 'saved' | 'unsaved' | 'saving';
-
-/** Title + intro text of the warnings banner above a flow. */
-export interface ImportWarningsHeading {
-  title: StringKey;
-  text: StringKey;
-}
 
 export interface EditorTab {
   id: string;
@@ -31,27 +29,17 @@ export interface OpenFlow {
   item: AutomationListItem;
   /** `graph.name` / `graph.description` are the alias and description (undoable like any edit). */
   graph: FlowGraph;
-  /** Not in HA yet — the first save asks for a name (like HA's own editor). */
-  isNew: boolean;
-  /**
-   * Made from this blueprint: shown read-only — the blueprint's steps with
-   * the flow's inputs filled in — and never saved.
-   */
-  blueprint?: string;
-  registryEntry: RegistryEntry | null;
-  /** Area / category / labels from HA's rename dialog, applied after saving. */
-  registryUpdate?: RegistryUpdate;
   /** What the transpiler couldn't read when the flow was opened (shown until dismissed). */
   importWarnings?: string[];
-  /** Heading + intro of that banner when it isn't about unread parts (merging). */
-  importWarningsHeading?: ImportWarningsHeading;
   /**
-   * `configFingerprint` of HA's config when the flow was opened or last saved —
-   * a different one in HA means the flow was changed there meanwhile.
+   * `configFingerprint` of the file config when the flow was opened or last saved —
+   * a different one means the file changed meanwhile.
    */
   haVersion?: string;
+  fileVersion?: string;
+  fileDirectory?: string;
   /**
-   * The graph as HA has it (opened, saved or reloaded) — undoing back to it
+   * The graph from the source file (opened, saved or reloaded) — undoing back to it
    * makes the tab saved again. Not remembered across a reload.
    */
   savedGraph?: FlowGraph;
@@ -63,9 +51,10 @@ export interface SaveResult {
   saved: {
     configId: string;
     entityId: string;
-    registryEntry: RegistryEntry | null;
     /** Fingerprint of the config HA stored (see `OpenFlow.haVersion`). */
     haVersion?: string;
+    fileVersion?: string;
+    fileDirectory?: string;
   };
 }
 
@@ -78,17 +67,16 @@ export function settleSave(
   result: SaveResult | null
 ): { flow: OpenFlow; saveState: SaveState } {
   if (!result) return { flow, saveState: 'unsaved' };
-  const { configId, entityId, registryEntry, haVersion } = result.saved;
+  const { configId, entityId, haVersion, fileVersion, fileDirectory } = result.saved;
   const settled: OpenFlow =
     flow.item.configId === configId
       ? {
           ...flow,
-          isNew: false,
           item: { ...flow.item, entityId },
-          registryEntry,
-          registryUpdate: undefined,
           // Unknown when HA's stored config couldn't be read back — no check then.
           haVersion,
+          fileVersion,
+          fileDirectory,
           savedGraph: result.graph,
         }
       : flow;
@@ -99,7 +87,7 @@ export function settleSave(
 
 /** Whether `flow` showing `graph` (after an undo/redo step) is what HA has. */
 export function historySaveState(flow: OpenFlow, graph: FlowGraph): SaveState {
-  return !flow.isNew && !flow.registryUpdate && flow.savedGraph === graph ? 'saved' : 'unsaved';
+  return flow.savedGraph === graph ? 'saved' : 'unsaved';
 }
 
 /** Edits of the same card closer together than this are one undo step (typing in HA's form). */
@@ -233,22 +221,8 @@ function isItem(value: unknown): value is AutomationListItem {
     typeof value.entityId === 'string' &&
     typeof value.configId === 'string' &&
     typeof value.name === 'string' &&
-    (value.kind === 'automation' || value.kind === 'script')
-  );
-}
-
-function isRegistryEntry(value: unknown): value is RegistryEntry {
-  return isPlainObject(value) && typeof value.entity_id === 'string';
-}
-
-function isRegistryUpdate(value: unknown): value is RegistryUpdate {
-  const optionalId = (v: unknown) => v === undefined || v === null || typeof v === 'string';
-  return (
-    isPlainObject(value) &&
-    optionalId(value.area) &&
-    optionalId(value.category) &&
-    (value.labels === undefined ||
-      (Array.isArray(value.labels) && value.labels.every((l) => typeof l === 'string')))
+    (value.kind === 'automation' || value.kind === 'script') &&
+    (value.source === undefined || FileAutomationRefSchema.safeParse(value.source).success)
   );
 }
 
@@ -268,10 +242,9 @@ function restoreTab(value: unknown): EditorTab | null {
     flow: {
       item,
       graph: restoredGraph,
-      isNew: flow.isNew === true,
-      registryEntry: isRegistryEntry(flow.registryEntry) ? flow.registryEntry : null,
-      registryUpdate: isRegistryUpdate(flow.registryUpdate) ? flow.registryUpdate : undefined,
       ...(typeof flow.haVersion === 'string' ? { haVersion: flow.haVersion } : {}),
+      ...(typeof flow.fileVersion === 'string' ? { fileVersion: flow.fileVersion } : {}),
+      ...(typeof flow.fileDirectory === 'string' ? { fileDirectory: flow.fileDirectory } : {}),
       ...(saveState === 'saved' ? { savedGraph: restoredGraph } : {}),
     },
     past: [],
@@ -282,9 +255,9 @@ function restoreTab(value: unknown): EditorTab | null {
   };
 }
 
-/** The automation/script a tab shows — two windows may have left a tab for the same one. */
+/** The automation a tab shows — two windows may have left a tab for the same one. */
 function flowKey(tab: EditorTab): string | null {
-  return tab.flow.isNew ? null : `${tab.flow.item.kind}:${tab.flow.item.configId}`;
+  return `${tab.flow.fileDirectory ?? ''}:${tab.flow.item.kind}:${tab.flow.item.configId}`;
 }
 
 /** One tab per automation/script: an unsaved draft beats a saved copy, else the first. */

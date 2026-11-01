@@ -1,197 +1,170 @@
-<div align="center">
+# git-flode
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/readme-title-dark.webp" />
-  <img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/readme-title-light.webp" alt="FLODE: See your automations. The editor inside Home Assistant with a flow of two triggers, a condition and actions." />
-</picture>
+<img src="docs/images/flode.svg" alt="git-flode logo" width="96" height="96">
 
-<p>FLODE shows Home Assistant automations and scripts as a flow you can read, test and understand.<br/>
-Edited with Home Assistant's own editors, saved as plain Home Assistant YAML. No server, no lock-in.</p>
+Edit Home Assistant automation YAML on a visual canvas, review and publish its
+Git changes, and apply updates from `main` to a dedicated `prod` checkout.
+The integration and administrator panel appear as **git-flode** in Home Assistant.
 
-[![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FSH1FT-W%2Fflode%2Fmain%2Fcustom_components%2Fflode%2Fmanifest.json&query=%24.version&label=version&style=flat-square&color=4CC9FB&labelColor=0B1220)](https://github.com/SH1FT-W/flode/releases/latest) [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.3%2B-4CC9FB?style=flat-square&labelColor=0B1220&logo=homeassistant&logoColor=white)](https://www.home-assistant.io) [![HACS](https://img.shields.io/badge/HACS-default-4CC9FB?style=flat-square&labelColor=0B1220)](https://hacs.xyz) [![License](https://img.shields.io/badge/license-Apache%202.0-4CC9FB?style=flat-square&labelColor=0B1220)](LICENSE)
+This is an independent fork of [FLODE](https://github.com/SH1FT-W/flode) by
+SH1FT-W and contributors, built on the earlier
+[C.A.F.E.](https://github.com/FezVrasta/cafe-hass) project by Federico Zivolo.
+See [credits](CREDITS.md), [history](CHANGELOG.md), and [license](LICENSE).
 
-<p><a href="https://sh1ft-w.github.io/flode"><b>Website</b></a> &nbsp;·&nbsp; <a href="#new">New</a> &nbsp;·&nbsp; <a href="#how-it-works">How it works</a> &nbsp;·&nbsp; <a href="#runs-and-relations">Runs</a> &nbsp;·&nbsp; <a href="#ai-help">AI</a> &nbsp;·&nbsp; <a href="#everything-else">Features</a> &nbsp;·&nbsp; <a href="#install">Install</a> &nbsp;·&nbsp; <a href="#thanks">Thanks</a> &nbsp;·&nbsp; <a href="docs/architecture.md">Internals</a> &nbsp;·&nbsp; <a href="CHANGELOG.md">Changelog</a></p>
+## Install the integration
 
-</div>
+Requires **Home Assistant 2026.3** or newer.
 
-<br/>
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=tima-fey&repository=git-flode&category=integration)
 
-<a id="new"></a>
-<sub><b>JUST ARRIVED</b></sub>
-## Branches on the canvas. Flows top to bottom.
+1. Open the repository in HACS using the button above. Alternatively, add
+   `https://github.com/tima-fey/git-flode` under **Custom repositories** with
+   type **Integration**. Download **git-flode**.
+2. Restart Home Assistant.
+3. After [preparing your configuration repository](#prepare-your-configuration-repository),
+   go to **Settings → Devices & services → Add integration → git-flode** and
+   select its absolute directory, for example `/config/flode-config`.
+   The panel appears in the sidebar for administrators.
 
-The last releases opened up the blocks: Choose and If-then show their branches as cards, flows can run top to bottom, and touch screens got menus of their own.
+HACS installs published releases containing `flode.zip`; merging changes into
+`main` alone does not publish an installable release.
 
-<!-- cards:new -->
-<table>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/arrow-down-dark.svg"><img src="docs/images/icons/arrow-down-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Top to bottom</b> <code>3.4.0</code><br>Every flow runs left to right or top to bottom. The direction is saved with the flow.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/source-branch-dark.svg"><img src="docs/images/icons/source-branch-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Branches as cards</b> <code>3.2.0</code><br>Choose and If-then draw each branch as cards, nested as deep as you like. In YAML it stays a plain choose or if.</td></tr>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/play-circle-outline-dark.svg"><img src="docs/images/icons/play-circle-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Run this card</b> <code>26.10.15</code><br>Runs one step for real in Home Assistant, without everything after it. Inside branches too.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/gesture-tap-dark.svg"><img src="docs/images/icons/gesture-tap-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Made for fingers</b> <code>26.10.11</code><br>Press and hold opens a card's menu on touch screens, on the iPhone too.</td></tr>
-</table>
-<!-- /cards:new -->
+For a manual installation, extract `flode.zip` from the
+[latest git-flode release](https://github.com/tima-fey/git-flode/releases/latest)
+into `/config/custom_components/flode/`, then follow steps 2 and 3 above.
+The upstream FLODE HACS entry installs upstream. Both implementations share the
+`flode` integration domain, so install only one of them.
 
-Also new: a "+" on an output that already leads on asks whether the step goes **in between or in parallel**, dragging a connection onto a free card **pulls it into the branch**, a toolbar toggle shows **card text in Home Assistant's own wording**, and when Home Assistant refuses to save, FLODE **marks the card red and takes you there**. Every change, release by release, in the [changelog](CHANGELOG.md).
+### Build from source
 
-<br/>
+The application source repository and your HA configuration repository are
+separate repositories. Build this application with Node 24 and pinned Yarn 4:
 
-<a id="how-it-works"></a>
-<sub><b>MADE OF HOME ASSISTANT</b></sub>
-## Nothing new to learn. It's the editor you already know.
-
-Every trigger, condition and action opens in Home Assistant's own editor, with the same forms, pickers and dialogs as in Settings. FLODE adds the canvas, so you see how it all connects. *Repeat* and *Parallel* stay single blocks; *Choose* and *If-then* show their branches as cards.
-
-<!-- cards:made -->
-<table>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/form-select-dark.svg"><img src="docs/images/icons/form-select-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Home Assistant's editors</b><br>Every step opens in Home Assistant's own editor, with the same forms, pickers and dialogs as in Settings.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/palette-outline-dark.svg"><img src="docs/images/icons/palette-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Your icons, language, theme</b><br>Cards show the entity's own icon with its live state. Light or dark, on desktop, tablet and phone.</td></tr>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/code-braces-dark.svg"><img src="docs/images/icons/code-braces-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Plain YAML, both ways</b><br>Open any automation, change it visually, save it back. It stays editable in Home Assistant's own editor.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/table-large-dark.svg"><img src="docs/images/icons/table-large-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Home Assistant's table</b><br>The start page is the same table as under Settings: filters, grouping, labels and bulk actions.</td></tr>
-</table>
-<!-- /cards:made -->
-
-<details>
-<summary><b>What a flow looks like in YAML</b></summary>
-<br/>
-
-FLODE saves exactly what Home Assistant's own editor would save. Uninstall FLODE and every automation keeps working. A step that calls an action or entity Home Assistant does not have turns red on the canvas.
-
-```yaml
-alias: Evening light
-triggers:
-  - trigger: sun
-    event: sunset
-    offset: "-00:15:00"
-conditions:
-  - condition: state
-    entity_id: input_boolean.evening_mode
-    state: "on"
-actions:
-  - action: light.turn_on
-    target:
-      entity_id: light.bedroom
-    data:
-      brightness_pct: 40
-  - if:
-      - condition: state
-        entity_id: switch.string_lights
-        state: "off"
-    then:
-      - action: switch.turn_on
-        target:
-          entity_id: switch.string_lights
-mode: restart
+```sh
+git clone https://github.com/tima-fey/git-flode.git
+cd git-flode
+yarn install --immutable
+yarn build
 ```
 
-</details>
+Copy `custom_components/flode/`, including its built `www/` directory, into
+HA's `custom_components/`, then follow installation steps 2 and 3 above.
 
-<br/>
+## Prepare your configuration repository
 
-<a id="runs-and-relations"></a>
-<sub><b>RUNS AND RELATIONS</b></sub>
-## Know what happened. And why.
+Use a separate Git repository containing your automation files and optional
+object catalog and project tests:
 
-**Runs.** Home Assistant's trace timeline next to the canvas, the path drawn on the cards, the branch that ran marked, and *Run from here* for any step, with the data of the last trigger. **Relations.** Conflicting automations, self-triggering ones, chains, missing entities, and *where is this used?* for any entity.
+```text
+configuration-repo/
+  automations/
+    climate/heating.yaml
+    security/alarm.yaml
+  objects/
+  tests/
+    test_object_references.py
+```
 
-<p align="center">
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-runs-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-runs-light.png" width="49%" alt="A real run: Home Assistant's trace timeline and the steps that ran highlighted on the canvas." /></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-relations-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-relations-light.png" width="49%" alt="Conflicts, self-triggering automations, chains and what controls a light." /></picture>
-</p>
+Each automation file contains a YAML list. IDs must be non-empty and unique
+across **all** automation files included by HA:
 
-<br/>
+```yaml
+- id: evening_lights
+  alias: Evening lights
+  triggers:
+    - trigger: sun
+      event: sunset
+  actions:
+    - action: light.turn_on
+      target:
+        entity_id: light.living_room
+  mode: single
+```
 
-<a id="ai-help"></a>
-<sub><b>AI HELP</b></sub>
-## Stuck? Ask.
+On your computer, commit and push this repository's `main` branch to its origin.
+In the HA runtime, clone that repository and prepare `prod` (replace the URL):
 
-If you have set up an AI in Home Assistant (Anthropic, OpenAI, Google Gemini, Ollama and others) and chosen it as the default for *AI tasks*, FLODE can use it. It uses Home Assistant's own `ai_task`, no extra key, no extra service. Without an AI task these buttons simply do not appear; everything else works the same.
+```sh
+git clone --branch main https://example.com/you/configuration.git /config/flode-config
+git -C /config/flode-config switch --no-track --create prod origin/main
+git -C /config/flode-config config user.name "Your Name"
+git -C /config/flode-config config user.email "you@example.com"
+git -C /config/flode-config push --set-upstream origin prod
+```
 
-**Explain a run.** Why an automation did or did not do its job, in plain words. **Assistant.** Ask about the open flow, find mistakes, get a better version (shown first, one step to undo). **Create with AI.** Describe what should happen, get a draft built from your real entities.
+If `origin/prod` already exists, clone with `--branch prod` instead. Git and its
+credentials must be available to the HA process; the panel uses that identity
+and authentication. Use the same destination for origin fetch and push URLs.
+HA is the only writer of `prod`; computer changes go to `main`.
 
-<p align="center">
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-ai-explain-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-ai-explain-light.png" width="49%" alt="The AI explains a failed run in plain words." /></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-ai-draft-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-ai-draft-light.png" width="49%" alt="A draft automation built by the AI, not yet saved." /></picture>
-</p>
+Restart HA, then add **git-flode** under **Settings → Devices & services** and
+set its project directory to `/config/flode-config`. It must be the checkout root, writable by HA, with `automations/`
+and active `prod`. Connect those files to HA in `/config/configuration.yaml`:
 
-<br/>
+```yaml
+automation: !include_dir_merge_list flode-config/automations
+```
 
-<a id="everything-else"></a>
-<sub><b>EVERYTHING ELSE</b></sub>
-## Small things that add up.
+Combine this with your existing automation configuration. A separate Container
+mount at `/flode-config` also works: configure FLODE with `/flode-config` and
+use `automation: !include_dir_merge_list /flode-config/automations` in HA.
+The paths must refer to the same files inside HA's runtime. Opening files in
+FLODE alone does not load them into HA.
 
-<!-- cards:else -->
-<table>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/script-text-outline-dark.svg"><img src="docs/images/icons/script-text-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Scripts, too</b><br>With fields, a run button that asks for them, and Run from here for any step.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/code-tags-dark.svg"><img src="docs/images/icons/code-tags-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Template workshop</b> <code>⌘J</code><br>Jinja rendered live by Home Assistant, with the result type and the variables of a real run.</td></tr>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/keyboard-outline-dark.svg"><img src="docs/images/icons/keyboard-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Commands and shortcuts</b> <code>⌘K</code><br>Everything in one search, right-click menus, copy, paste, duplicate, and an overview on ?.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/tab-dark.svg"><img src="docs/images/icons/tab-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Tabs and minimap</b><br>Several flows open at once, each with its own undo. A minimap for big ones, tidy up in one click.</td></tr>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/swap-horizontal-dark.svg"><img src="docs/images/icons/swap-horizontal-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Import, export, merge</b><br>Paste YAML, save as copy, FLODE files, and merge several automations into one.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/shield-check-outline-dark.svg"><img src="docs/images/icons/shield-check-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Careful with your data</b><br>Warns when it cannot read part of an automation, keeps unknown fields as written, opens blueprints read-only.</td></tr>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/magnify-minus-outline-dark.svg"><img src="docs/images/icons/magnify-minus-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Readable zoomed out</b><br>Below 60 percent the cards show icon, title and one line in large type; below 35 percent just the icon.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/cellphone-dark.svg"><img src="docs/images/icons/cellphone-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>On the go</b><br>On a phone the tools move into a swipeable strip and the editor slides up as a sheet.</td></tr>
-</table>
-<!-- /cards:else -->
+The top-level HA include is supported by HA. Inside the automation files,
+FLODE accepts ordinary YAML lists; `!include` and `!secret` tags are not resolved.
+Anchors, aliases, blueprints, symlinked paths, and values outside the editable
+schema are refused. Unknown ordinary automation fields and comments are retained;
+formatting within the saved file may be normalized.
 
-<details>
-<summary><b>More screenshots</b></summary>
-<br/>
+## Edit and publish
 
-<p align="center">
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-home-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-home-light.png" width="49%" alt="Start screen with Home Assistant's own table of automations and scripts." /></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-ai-assistant-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-ai-assistant-light.png" width="49%" alt="The AI assistant lists problems in the open flow." /></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-ai-create-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-ai-create-light.png" width="49%" alt="Describe an automation in a sentence and get a draft." /></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-templates-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-templates-light.png" width="49%" alt="The template workshop renders Jinja live." /></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-palette-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-palette-light.png" width="49%" alt="The command palette." /></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-context-menu-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-context-menu-light.png" width="49%" alt="The right-click menu on a card." /></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-phone-dark.png" /><img src="https://raw.githubusercontent.com/SH1FT-W/flode/main/docs/images/flode-phone-light.png" width="32%" alt="FLODE on a phone: the editor as a sheet." /></picture>
-</p>
+Browse by folder or search by name/path, open an automation, edit its steps using
+HA's native forms, and Save. This replaces that automation in its original file.
+Other files remain untouched. External changes invalidate a stale save; reopen
+the file before retrying. Unsaved drafts survive browser reloads.
 
-</details>
+1. **Review changes** shows local modified and untracked files. **Commit all
+   changes** requires that review and a message. Its snapshot includes
+   `objects/` and `tests/`; the diff display limit is 64 KiB.
+2. **Push prod** publishes committed prod separately.
+3. For computer changes, push `main`, then **Merge main into prod** in HA.
+   This fetches origin and creates a merge commit. Resolve conflicts on your
+   computer by merging prod into main, then push main and retry.
+4. **Check configuration**, then **Quick reload** to load HA's configured files.
+   Reload is explicit and coordinated with project operations; Git changes do
+   not reload HA automatically. It reloads supported domains without a restart.
 
-<br/>
+History opens a read-only commit diff without changing the live checkout.
+**Undo latest main merge** creates a revert commit while that merge remains
+prod's tip. Publish the revert separately. See
+[Git operations and recovery](docs/git-workflow.md) for divergence, conflicts,
+and reapplying reverted changes.
 
-<a id="install"></a>
-<sub><b>INSTALL</b></sub>
-## Three steps. Then it's in your sidebar.
+## Object catalog and project tests
 
-[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=SH1FT-W&repository=flode&category=integration)
+**Export HA objects** replaces `objects/` with devices, entities, helpers, and
+registry relationships. It omits credentials, connection settings, state values,
+and arbitrary attributes. Keep handwritten files under `tests/`, since export
+removes obsolete catalog files. Export is explicit and creates no commit.
 
-1. HACS → search for **FLODE** → Download.
-2. Restart Home Assistant.
-3. Settings → Devices & services → Add integration → **FLODE**. It appears in the sidebar (admins only).
+Copy the [portable reference test](dev/container/fixtures/tests/test_object_references.py)
+into your configuration repository's `tests/`. **Run tests** runs `test_*.py`
+using HA's Python environment. The checker validates automation IDs globally
+and static entity/device/area/label/config-entry references against the latest
+export, including supported literal Jinja lookups. Computed references report
+that static validation is unavailable. Duplicate files stay available to open
+and repair in the panel.
 
-Requires **Home Assistant 2026.3** or newer. To install by hand, unzip `flode.zip` from the [latest release](https://github.com/SH1FT-W/flode/releases/latest) into `config/custom_components/flode/`.
+Tests run trusted project Python with HA's permissions in a separate process,
+with a 60-second timeout and 64-KiB output limit. Export again when tests should
+use current metadata; tests do not refresh the catalog. A snapshot does not
+prove that an entity is available at runtime.
 
-<details>
-<summary><b>Versions and coming from 2.x</b></summary>
-<br/>
+## Development and support
 
-Since October 2026 FLODE uses calendar versions **`YY.M.N`**: year, month, and the number of the release within that month. `26.10.15` is the 15th release of October 2026. Every release, feature or fix, gets the next number. Tags, release titles and the version badge are just the number, without a leading "v". Calendar versions count as newer than every 3.x version, so updates through HACS work as before.
-
-Coming from FLODE 2.x? Your automations open and save as before. FLODE 3 replaced the old editor: the simulation gave way to real runs and *Run from here*, and FLODE follows Home Assistant's language and theme instead of its own settings. Details in the [changelog](CHANGELOG.md).
-
-</details>
-
-<br/>
-
-<a id="thanks"></a>
-<sub><b>HALL OF FAME</b></sub>
-## Made better by you.
-
-FLODE gets better with every bug report and every idea. A big thank you to everyone who tests, reports and keeps asking for more:
-
-- [**@bartbutenaers**](https://github.com/bartbutenaers): the most reports of all, from wires and branch dragging to touch and context menus, always with precise steps.
-- [**@Hedda**](https://github.com/Hedda): the push to English as the main language, the Lit rebuild and the labels like Home Assistant.
-- [**@srsly88**](https://github.com/srsly88): nested AND/OR conditions, the save dialog and the sidebar editor.
-- [**@jlpnea**](https://github.com/jlpnea): `choose` blocks that render all the way down and `script.stop`.
-- [**@NullScope**](https://github.com/NullScope), [**@pkejval**](https://github.com/pkejval): parallel steps after `scene.create` and the vertical flow.
-- [**@Home-Wizz**](https://github.com/Home-Wizz), [**@JoHeyr**](https://github.com/JoHeyr), [**@oscarallo**](https://github.com/oscarallo), [**@HL-Apprentice**](https://github.com/HL-Apprentice), [**@DeKaN**](https://github.com/DeKaN), [**@Daniel-wendan**](https://github.com/Daniel-wendan), [**@bramcardon-alt**](https://github.com/bramcardon-alt), [**@dgarrison63**](https://github.com/dgarrison63): reports and ideas that made it into FLODE.
-
-Found something or missing a feature? [Open an issue](https://github.com/SH1FT-W/flode/issues/new/choose). You might be next on this list.
-
-<br/>
-
-<sub><b>CREDITS</b></sub>
-## Built on C.A.F.E.
-
-FLODE is a fork of [C.A.F.E.](https://github.com/FezVrasta/cafe-hass) by [Federico Zivolo](https://github.com/FezVrasta). It never overwrites anything it was not asked to save. Back up your automations before big edits anyway.
-
-How FLODE reads, draws, edits, writes and runs automations is described in [docs/architecture.md](docs/architecture.md). FLODE is an independent project and is not affiliated with Home Assistant or Nabu Casa. Licensed under [Apache 2.0](LICENSE).
-
-<br/>
-
-<div align="center">
-  <sub>A <a href="https://sh1ft-w.github.io"><b>SH1FT-W</b></a> project &nbsp;·&nbsp; <a href="https://sh1ft-w.github.io/casora">Casora</a> &nbsp;·&nbsp; <a href="https://sh1ft-w.github.io/pulse">Pulse</a> &nbsp;·&nbsp; <a href="https://sh1ft-w.github.io/evenlight">Evenlight</a> &nbsp;·&nbsp; <a href="https://sh1ft-w.github.io/agentbar">AgentBar</a> &nbsp;·&nbsp; <a href="https://sh1ft-w.github.io/sharemount">ShareMount</a> &nbsp;·&nbsp; Built with <a href="https://claude.ai">Claude</a></sub>
-</div>
+Use the [disposable HA Container](dev/container/README.md) for development and
+browser checks. See [contributing](CONTRIBUTING.md),
+[architecture](docs/architecture.md), and the [release gate](dev/gate/README.md).
+Report issues in [this repository](https://github.com/tima-fey/git-flode/issues)
+with the commit, HA version, and a minimal redacted example.

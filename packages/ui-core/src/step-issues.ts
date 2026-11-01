@@ -1,5 +1,5 @@
 import { getRawStep, isPlainObject, toList } from '@flode/shared';
-import { collectReferences, collectServices } from './dependency-map';
+import { collectReferences, collectServices } from './entity-references';
 
 /**
  * What makes a step fail before it even runs: it calls a service Home

@@ -1,3 +1,6 @@
+export { type HaConfigCheck, HaConfigCheckSchema } from './ha-config';
+export { type ObjectExportResult, ObjectExportResultSchema } from './object-export';
+export { type ProjectTestResult, ProjectTestResultSchema } from './project-tests';
 // Type guards
 
 export {
@@ -30,6 +33,28 @@ export {
 } from './base';
 // Edge schemas
 export { type ConditionEdge, ConditionEdgeSchema, EdgeSchema, type FlowEdge } from './edges';
+export {
+  FileAutomationConfigSchema,
+  FileAutomationListSchema,
+  type FileAutomationRef,
+  FileAutomationRefSchema,
+  type FileAutomationSnapshot,
+  FileAutomationSnapshotSchema,
+} from './file-source';
+export {
+  type GitAction,
+  GitActionSchema,
+  type GitChanges,
+  GitChangesSchema,
+  type GitCommitDetails,
+  GitCommitDetailsSchema,
+  type GitHistory,
+  GitHistorySchema,
+  type GitRevision,
+  GitRevisionSchema,
+  type GitStatus,
+  GitStatusSchema,
+} from './git-source';
 // Graph schemas
 export {
   type FlowGraph,

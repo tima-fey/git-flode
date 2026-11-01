@@ -1,0 +1,29 @@
+- id: example_heating_on
+  alias: Example heating on
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.example_temperature
+      below: 18
+  condition:
+    - condition: state
+      entity_id: input_boolean.example_heating_enabled
+      state: 'on'
+  action:
+    - service: climate.set_hvac_mode
+      target:
+        entity_id: climate.example_heater
+      data:
+        hvac_mode: heat
+  mode: single
+
+- id: example_heating_off
+  alias: Example heating off
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.example_temperature
+      above: 21
+  action:
+    - service: climate.turn_off
+      target:
+        entity_id: climate.example_heater
+  mode: single

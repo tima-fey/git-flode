@@ -6,6 +6,7 @@ import {
   type TriggerIdFlow,
   type TriggerIdOption,
 } from '@flode/ui-core';
+import { dump as yamlDump } from 'js-yaml';
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 import { defineElement } from './define-element';
@@ -59,6 +60,7 @@ function fromNestedStep(event: Event): boolean {
 
 export class FlodeInspector extends LitElement {
   static properties = {
+    readOnly: { type: Boolean },
     hass: { attribute: false },
     node: { attribute: false },
     /** Where a step inside a choose / if sits ("Auswählen › Option 1 · Schritt 2"). */
@@ -75,6 +77,7 @@ export class FlodeInspector extends LitElement {
     narrow: { state: true },
   };
 
+  declare readOnly: boolean;
   declare hass: HomeAssistant | undefined;
   declare node: FlowNode | null;
   declare context: string | undefined;
@@ -124,6 +127,7 @@ export class FlodeInspector extends LitElement {
 
   constructor() {
     super();
+    this.readOnly = false;
     this.node = null;
     this.nodes = [];
     this.error = null;
@@ -270,9 +274,10 @@ export class FlodeInspector extends LitElement {
   }
 
   private emit(
-    name: 'data-change' | 'step-change' | 'nodes-change' | 'delete' | 'run-from',
+    name: 'data-change' | 'step-change' | 'nodes-change' | 'delete',
     detail: Record<string, unknown> = {}
   ): void {
+    if (this.readOnly) return;
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
 
@@ -389,6 +394,13 @@ export class FlodeInspector extends LitElement {
         <p>${t(language, 'inspectorEmpty')}</p>
       </div>`;
     }
+    if (this.readOnly)
+      return html`
+      <div class="head"><ha-icon icon="mdi:eye-outline"></ha-icon>
+        <div class="titles"><span class="type">${nodeTitle(node, this.hass)}</span>
+          <span class="subtitle">${t(language, 'readOnly')}</span></div>
+      </div>
+      <pre class="raw">${yamlDump(nodeToStep(node))}</pre>`;
     const summary = summarize(node, this.hass);
     return html`
       <div class="head" style="--node-color: ${nodeColor(node)}">
@@ -409,28 +421,6 @@ export class FlodeInspector extends LitElement {
                 <ha-icon icon="mdi:code-braces"></ha-icon>
               </ha-icon-button>`
             : nothing
-        }
-        ${
-          // The card alone — a trigger (a script's start too) has no step to run.
-          node.type === 'trigger'
-            ? nothing
-            : html`<ha-icon-button
-                .label=${t(language, 'runOnly')}
-                @click=${() => this.emit('run-from', { id: node.id, scope: 'only' })}
-              >
-                <ha-icon icon="mdi:play-outline"></ha-icon>
-              </ha-icon-button>`
-        }
-        ${
-          // Run from here starts at a card of the flow, not inside a block.
-          isScriptStart(node.data) || this.context
-            ? nothing
-            : html`<ha-icon-button
-                .label=${t(language, 'runFrom')}
-                @click=${() => this.emit('run-from', { id: node.id, scope: 'from' })}
-              >
-                <ha-icon icon="mdi:play-circle-outline"></ha-icon>
-              </ha-icon-button>`
         }
         ${
           // Every script needs its start card.

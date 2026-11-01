@@ -38,6 +38,7 @@ yarn-error.log*
 
 # Home Assistant
 custom_components/flode/www/
+dev/container/runtime/
 
 # Python
 __pycache__/

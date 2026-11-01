@@ -14,25 +14,16 @@ interface Feature {
 /** First visit: what FLODE is. */
 const WELCOME: Feature[] = [
   { icon: 'mdi:sitemap-outline', title: 'welcomeFlowTitle', text: 'welcomeFlowText' },
-  { icon: 'mdi:history', title: 'welcomeRunsTitle', text: 'welcomeRunsText' },
-  { icon: 'mdi:creation-outline', title: 'welcomeAiTitle', text: 'welcomeAiText' },
-  { icon: 'mdi:graph-outline', title: 'welcomeMapTitle', text: 'welcomeMapText' },
+  { icon: 'mdi:git', title: 'welcomeGitTitle', text: 'welcomeGitText' },
+  { icon: 'mdi:database-export-outline', title: 'welcomeObjectsTitle', text: 'welcomeObjectsText' },
+  { icon: 'mdi:test-tube', title: 'welcomeTestsTitle', text: 'welcomeTestsText' },
 ];
 
-/**
- * After an update: the new features of this release. Update with every
- * release — shown once per version (`package.json`) to everyone who used an older one.
- */
-const WHATS_NEW: Feature[] = [
-  { icon: 'mdi:call-split', title: 'new261017ParallelTitle', text: 'new261017ParallelText' },
-  { icon: 'mdi:palette-outline', title: 'new261017ColorTitle', text: 'new261017ColorText' },
-  { icon: 'mdi:vector-polyline', title: 'new261017LinesTitle', text: 'new261017LinesText' },
-  { icon: 'mdi:note-text-outline', title: 'new261017NotesTitle', text: 'new261017NotesText' },
-  { icon: 'mdi:translate', title: 'new261017LangTitle', text: 'new261017LangText' },
-];
+/** Current workflow highlights shown after a version update. */
+const WHATS_NEW: Feature[] = WELCOME;
 
 const SEEN_KEY = 'flode3.seenVersion';
-const CHANGELOG_URL = 'https://github.com/SH1FT-W/flode/blob/main/CHANGELOG.md';
+const CHANGELOG_URL = 'https://github.com/tima-fey/git-flode/blob/main/CHANGELOG.md';
 
 export type WelcomeMode = 'welcome' | 'whatsNew';
 
@@ -106,22 +97,23 @@ export class FlodeWelcome extends LitElement {
               <stop offset="0" stop-color="#132036" />
               <stop offset="1" stop-color="#0b1220" />
             </linearGradient>
-            <linearGradient id="flode-welcome-f" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="flode-welcome-accent" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stop-color="#4cc9fb" />
               <stop offset="1" stop-color="#0ea5e9" />
             </linearGradient>
           </defs>
           <rect width="100" height="100" rx="22" fill="url(#flode-welcome-bg)" />
           <path
-            d="M33 79 V27 H62 M33 53 H52"
+            d="M34 31 V69 M70 31 V41 C70 59 34 51 34 69"
             fill="none"
-            stroke="url(#flode-welcome-f)"
-            stroke-width="12"
+            stroke="url(#flode-welcome-accent)"
+            stroke-width="8"
             stroke-linecap="round"
             stroke-linejoin="round"
           />
-          <circle cx="70" cy="27" r="8.5" fill="#0b1220" stroke="#a78bfa" stroke-width="5" />
-          <circle cx="60" cy="53" r="8.5" fill="#0b1220" stroke="#a78bfa" stroke-width="5" />
+          <circle cx="34" cy="23" r="8" fill="#0b1220" stroke="#4cc9fb" stroke-width="5" />
+          <circle cx="70" cy="23" r="8" fill="#0b1220" stroke="#4cc9fb" stroke-width="5" />
+          <circle cx="34" cy="77" r="8" fill="#0b1220" stroke="#0ea5e9" stroke-width="5" />
         </svg>
         <h2>
           ${welcome ? t(language, 'welcomeTitle') : t(language, 'whatsNewTitle').replace('{version}', FLODE_VERSION)}

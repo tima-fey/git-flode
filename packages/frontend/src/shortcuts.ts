@@ -11,7 +11,6 @@ export type ShortcutId =
   | 'templates'
   | 'shortcuts'
   | 'save'
-  | 'saveCopy'
   | 'undo'
   | 'redo'
   | 'add'
@@ -51,7 +50,6 @@ export const SHORTCUTS: readonly Shortcut[] = [
     notInText: true,
   },
   { id: 'save', group: 'general', keys: ['mod+s'], label: 'save' },
-  { id: 'saveCopy', group: 'general', keys: ['mod+shift+s'], label: 'ioSaveCopy' },
   { id: 'undo', group: 'edit', keys: ['mod+z'], label: 'undo', notInText: true },
   { id: 'redo', group: 'edit', keys: ['mod+shift+z', 'mod+y'], label: 'redo', notInText: true },
   { id: 'add', group: 'edit', keys: ['mod+b'], label: 'add', notInText: true },
@@ -76,6 +74,25 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'fit', group: 'view', keys: ['shift+f'], label: 'fit', notInText: true },
   { id: 'minimap', group: 'view', keys: ['shift+m'], label: 'minimap', notInText: true },
 ];
+
+/** Commands that only inspect data or change the viewport. */
+const VIEWING_COMMANDS = new Set([
+  'palette',
+  'shortcuts',
+  'copy',
+  'fit',
+  'minimap',
+  'haCardText',
+  'autoSide',
+  'home',
+  'showYaml',
+  'copyYaml',
+  'exportJson',
+]);
+
+export function isViewingCommand(id: string): boolean {
+  return VIEWING_COMMANDS.has(id);
+}
 
 export function isMac(): boolean {
   return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);

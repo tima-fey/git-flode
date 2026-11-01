@@ -4,8 +4,6 @@ import {
   dropSupersededManualStart,
   type FlowEdge,
   type FlowGraph,
-  type FlowMetadata,
-  FlowMetadataSchema,
   type FlowNode,
   flowAxis,
   isFlowStart,
@@ -539,84 +537,6 @@ export function ensureScriptEntry(next: FlowGraph): FlowGraph {
     )
     .sort(byFlowOrder(flowAxis(graph)))[0];
   return first ? connect(graph, { source: startId, sourceHandle: null, target: first.id }) : graph;
-}
-
-// ---- assistant proposals -------------------------------------------------
-
-/** What the YAML parser fills in for a flow without `alias:` (not a name the reply gave). */
-const PARSER_DEFAULT_NAME = 'Imported Automation';
-
-/** Flow settings a reply's YAML can set (top-level keys = metadata keys). */
-const PROPOSAL_METADATA_KEYS = [
-  'mode',
-  'max',
-  'max_exceeded',
-  'icon',
-  'initial_state',
-  'hide_entity',
-  'trace',
-] as const satisfies readonly (keyof FlowMetadata)[];
-
-/**
- * Whether the reply set top-level key `key`. `present` = the top-level keys
- * of the reply's YAML; without it only a value other than the parser's
- * default (`fallback`) counts as set.
- */
-function proposalSets(
-  present: ReadonlySet<string> | undefined,
-  key: string,
-  fallback: boolean
-): boolean {
-  return present ? present.has(key) : fallback;
-}
-
-/**
- * The assistant's proposal applied to the open flow: its cards, plus the
- * name, description, settings and variables the reply actually wrote — a
- * reply without `alias:` keeps the flow's name instead of the parser's
- * "Imported Automation". The flow's kind never changes.
- */
-export function applyProposal(
-  current: FlowGraph,
-  proposal: FlowGraph,
-  present?: ReadonlySet<string>
-): FlowGraph {
-  const proposed = proposal.metadata;
-  const metadata: Record<string, unknown> = { ...current.metadata };
-  for (const key of PROPOSAL_METADATA_KEYS) {
-    const value = proposed?.[key];
-    const set = proposalSets(
-      present,
-      key,
-      value !== undefined && !(key === 'mode' && value === 'single')
-    );
-    if (set) metadata[key] = value;
-  }
-  metadata.kind = current.metadata?.kind;
-  const parsed = FlowMetadataSchema.safeParse(metadata);
-  const name = proposalSets(present, 'alias', proposal.name !== PARSER_DEFAULT_NAME)
-    ? proposal.name
-    : '';
-  return {
-    ...current,
-    nodes: proposal.nodes,
-    edges: proposal.edges,
-    name: name || current.name,
-    description: proposalSets(present, 'description', Boolean(proposal.description))
-      ? (proposal.description ?? '')
-      : current.description,
-    userVariables: proposalSets(present, 'variables', proposal.userVariables !== undefined)
-      ? proposal.userVariables
-      : current.userVariables,
-    userTriggerVariables: proposalSets(
-      present,
-      'trigger_variables',
-      proposal.userTriggerVariables !== undefined
-    )
-      ? proposal.userTriggerVariables
-      : current.userTriggerVariables,
-    ...(parsed.success ? { metadata: parsed.data } : {}),
-  };
 }
 
 /** A card's "+" (its size), and top to bottom how far below the card it ends. */

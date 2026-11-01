@@ -4,19 +4,15 @@
       <stop offset="0" stop-color="#132036"/>
       <stop offset="1" stop-color="#0b1220"/>
     </linearGradient>
-    <linearGradient id="f" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#4cc9fb"/>
       <stop offset="1" stop-color="#0ea5e9"/>
     </linearGradient>
   </defs>
-
-  <!-- Background rounded square -->
   <rect width="100" height="100" rx="22" fill="url(#bg)"/>
-
-  <!-- The F: stem + two arms -->
-  <path d="M33 79 V27 H62 M33 53 H52" fill="none" stroke="url(#f)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-
-  <!-- Arm ends: connector rings, like the handles on FLODE's cards -->
-  <circle cx="70" cy="27" r="8.5" fill="#0b1220" stroke="#a78bfa" stroke-width="5"/>
-  <circle cx="60" cy="53" r="8.5" fill="#0b1220" stroke="#a78bfa" stroke-width="5"/>
+  <path d="M34 31 V69 M70 31 V41 C70 59 34 51 34 69" fill="none"
+        stroke="url(#accent)" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="34" cy="23" r="8" fill="#0b1220" stroke="#4cc9fb" stroke-width="5"/>
+  <circle cx="70" cy="23" r="8" fill="#0b1220" stroke="#4cc9fb" stroke-width="5"/>
+  <circle cx="34" cy="77" r="8" fill="#0b1220" stroke="#0ea5e9" stroke-width="5"/>
 </svg>

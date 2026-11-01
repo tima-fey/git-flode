@@ -215,3 +215,38 @@ describe('palette in the DOM', () => {
     expect(closed).toBe(1);
   });
 });
+
+describe('viewing canvas', () => {
+  it('allows selecting a card but prevents dragging and deleting it', async () => {
+    const canvas = await mountCanvas(withBlock);
+    canvas.readOnly = true;
+    canvas.selectedId = 'trigger_1';
+    await canvas.updateComplete;
+    const graph = canvas.graph;
+    let selected: string | null = null;
+    canvas.addEventListener('select', (event) => {
+      if (event instanceof CustomEvent) selected = event.detail.id;
+    });
+    const card = canvas.shadowRoot?.querySelector('.node[data-node-id="trigger_1"]');
+    card?.dispatchEvent(
+      new PointerEvent('pointerdown', { button: 0, pointerId: 1, bubbles: true })
+    );
+    card?.dispatchEvent(
+      new PointerEvent('pointermove', { pointerId: 1, clientX: 200, clientY: 200 })
+    );
+    card?.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1 }));
+    expect(selected).toBe('trigger_1');
+    expect(canvas.drag).toBeNull();
+    for (const key of ['Backspace', 'Delete']) {
+      const event = new KeyboardEvent('keydown', { key, cancelable: true });
+      pane(canvas).dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    }
+    expect(
+      nextGraph(canvas, () =>
+        pane(canvas).dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete' }))
+      )
+    ).toBeNull();
+    expect(canvas.graph).toBe(graph);
+  });
+});
