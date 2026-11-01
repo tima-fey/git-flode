@@ -10,7 +10,7 @@ come only from its `automations/` subtree; `objects/` holds explicit HA metadata
 scanned or read as automation data. A disposable Git checkout initialized from
 `dev/container/fixtures/` lives in `runtime/repository/` and is mounted at
 `/flode-config`. HA includes its automation subtree through an absolute `!include_dir_merge_list /flode-config/automations` directive. The original fixture files are never
-modified by Git tests. The two synthetic smoke entries and twelve real climate examples remain
+modified by Git tests. The synthetic smoke entries and abstract climate examples remain
 independent automations and do not need HA entities. The original HA demo automation is deliberately
 absent from FLODE's file list.
 
@@ -29,7 +29,6 @@ flode-config/
       vacation_alarm.yaml
   objects/
   tests/
-    test_automations.py
 ```
 
 Each YAML file holds a list of independent automations. The file references
@@ -117,9 +116,10 @@ Neither operation runs automatically after a Git action or while browsing.
 ## Project tests
 
 Run tests executes Python `unittest` discovery in the configured root's `tests/`
-folder (`test_*.py`; use `__init__.py` for nested test packages). The example
-`tests/test_automations.py` reads the synthetic automation YAML without running
-HA actions. Tests use the HA Python environment; no dependencies are installed
+folder (`test_*.py`; use `__init__.py` for nested test packages). The bundled
+`tests/test_object_references.py` recursively checks automation files against
+the exported catalog without executing HA actions. Tests use the HA Python
+environment; no dependencies are installed
 at runtime. The process uses the project root as its working directory and can
 import project helpers. Empty suites and import errors count as failures.
 
@@ -233,7 +233,8 @@ Screenshots and machine-readable results are written to ignored runtime folders.
 No automation configuration API writes are used by this runner. It then runs
 the explicit Git synchronization tests against only the disposable checkout.
 
-See [baseline-results.md](baseline-results.md) for the first completed run.
+The [initial HA-API baseline](baseline-results.md) is historical evidence only;
+it does not certify the current file workflow. Use [the current gate](../gate/README.md).
 
 Stop the test instance without deleting its configuration:
 
@@ -349,6 +350,6 @@ modify the catalog. **Export HA objects** first when you need current inventory;
 **Run tests** intentionally does not refresh it automatically. Existence in a
 snapshot does not prove live availability or that an entity is enabled.
 
-The disposable container's climate excerpts reference production IDs absent
+The disposable container's climate fixtures reference fictional entities absent
 from test HA. Their missing-reference failures are expected and are asserted by
 `check-ha.mjs`, including rendering those failures in the browser.

@@ -55,7 +55,12 @@ async function mountPanel(flow: OpenFlow, readOnly = false): Promise<FlodePanel>
   await panel.updateComplete;
   // The welcome sheet of a first visit is a dialog: while it shows, shortcuts stay off.
   panel.welcome = null;
-  panel['openTab'](flow);
+  panel.tabs = [
+    { id: 'existing-tab', flow, past: [], future: [], saveState: 'saved', selectedId: null },
+  ];
+  panel.activeTabId = 'existing-tab';
+  panel.flow = flow;
+  panel.showHome = false;
   await panel.updateComplete;
   return panel;
 }
@@ -64,6 +69,13 @@ function cardIds(panel: FlodePanel): string[] {
   return [...(canvas?.shadowRoot?.querySelectorAll('.node[data-node-id]') ?? [])].flatMap((el) =>
     el instanceof HTMLElement && el.dataset.nodeId ? [el.dataset.nodeId] : []
   );
+}
+async function paletteIds(panel: FlodePanel): Promise<string[]> {
+  pressOnWindow('k', true);
+  await panel.updateComplete;
+  const palette = panel.shadowRoot?.querySelector('flode-palette');
+  if (!palette?.open) throw new Error('Missing open command palette');
+  return palette.entries.map((entry) => entry.id);
 }
 /** A key as the user presses it, on the window (where HA and the panel listen). */
 function pressOnWindow(key: string, mod = false): void {
@@ -82,7 +94,7 @@ afterEach(() => {
   window.localStorage.clear();
 });
 describe('panel in the DOM', () => {
-  it('opens an existing automation and renders its cards on the canvas', async () => {
+  it('renders an existing automation tab and its cards on the canvas', async () => {
     const panel = await mountPanel(
       draft(
         'automation',
@@ -101,9 +113,12 @@ describe('panel in the DOM', () => {
         [{ id: 'e1', source: 'trigger_1', target: 'action_1' }]
       )
     );
-    panel['duplicateCard'](action);
-    panel['duplicateCard'](action);
-    panel['duplicateCard'](action);
+    panel.selectedId = action.id;
+    pressOnWindow('d', true);
+    panel.selectedId = action.id;
+    pressOnWindow('d', true);
+    panel.selectedId = action.id;
+    pressOnWindow('d', true);
     await panel.updateComplete;
     const ids = panel.flow?.graph.nodes.map((node) => node.id) ?? [];
     expect(ids).toHaveLength(5);
@@ -118,7 +133,9 @@ describe('panel in the DOM', () => {
         [{ id: 'e1', source: 'trigger_1', target: 'action_1' }]
       )
     );
-    panel['pasteCard'](action);
+    panel.selectedId = action.id;
+    pressOnWindow('c', true);
+    pressOnWindow('v', true);
     await panel.updateComplete;
     const ids = panel.flow?.graph.nodes.map((node) => node.id) ?? [];
     expect(ids).toHaveLength(3);
@@ -159,7 +176,8 @@ describe('panel in the DOM', () => {
         [{ id: 'e1', source: 'trigger_1', target: 'action_1' }]
       )
     );
-    panel['duplicateCard'](action);
+    panel.selectedId = action.id;
+    pressOnWindow('d', true);
     await panel.updateComplete;
     expect(cardIds(panel)).toHaveLength(3);
     pressOnWindow('z', true);
@@ -175,16 +193,19 @@ describe('viewing mode', () => {
     const panel = await mountPanel(viewingFlow(), true);
     const graph = panel.flow?.graph;
     const tabs = panel.tabs.length;
-    panel['duplicateCard'](action);
-    panel['removeCard'](action.id);
-    panel['toggleCard'](action);
+    panel.selectedId = action.id;
+    pressOnWindow('d', true);
+    panel.shadowRoot
+      ?.querySelector('flode-inspector')
+      ?.dispatchEvent(new CustomEvent('delete', { detail: { id: action.id } }));
+    pressOnWindow('e', true);
     const canvas = panel.shadowRoot?.querySelector('flode-canvas');
     canvas?.dispatchEvent(
       new CustomEvent('graph-change', {
         detail: { graph: { ...graph, nodes: [] } },
       })
     );
-    await panel['save']();
+    pressOnWindow('s', true);
     await panel.updateComplete;
     expect(panel.flow?.graph).toBe(graph);
     expect(panel.tabs).toHaveLength(tabs);
@@ -198,7 +219,7 @@ describe('viewing mode', () => {
     await panel.updateComplete;
     expect(panel.flow?.graph).toBe(graph);
     expect(panel.addOpen).toBe(false);
-    const ids = panel['paletteEntries']().map((entry) => entry.id);
+    const ids = await paletteIds(panel);
     expect(ids).toContain('fit');
     expect(ids).toContain('showYaml');
     for (const id of [
@@ -239,10 +260,11 @@ describe('existing-file editing', () => {
     const panel = await mountPanel(flow);
     const tabs = panel.tabs.length;
     expect(panel.tabs.length).toBe(tabs);
-    panel['duplicateCard'](action);
+    panel.selectedId = action.id;
+    pressOnWindow('d', true);
     await panel.updateComplete;
     expect(panel.flow?.graph.nodes.length).toBe(3);
-    const commands = panel['paletteEntries']().map((entry) => entry.id);
+    const commands = await paletteIds(panel);
     for (const id of [
       'new',
       'newScript',

@@ -11,7 +11,7 @@ CONF_DIRECTORY = "config_directory"
 
 
 class FileSource:
-    """Read-only storage; paths supplied by clients are relative to the root."""
+    """Read automation YAML and validate paths relative to the project root."""
 
     def __init__(self, directory: str) -> None:
         root = Path(directory)

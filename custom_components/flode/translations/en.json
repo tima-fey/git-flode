@@ -1,17 +1,16 @@
 {
   "config": {
-    "title": "FLODE",
     "step": {
       "user": {
-        "title": "Set up FLODE",
-        "description": "Choose an existing absolute FLODE root directory. Automations are read only from automations/climate/heating.yaml. The objects/ directory is reserved for future use.",
+        "title": "Set up git-flode",
+        "description": "Choose an existing absolute project root containing automations/. git-flode edits existing YAML automations in its subfolders. objects/ stores manually exported HA inventory; tests/ contains project Python tests.",
         "data": {
-          "config_directory": "FLODE configuration root"
+          "config_directory": "git-flode configuration root"
         }
       }
     },
     "abort": {
-      "already_configured": "FLODE is already configured"
+      "already_configured": "git-flode is already configured"
     },
     "error": {
       "invalid_directory": "Choose an existing absolute root containing an automations/ directory."
@@ -20,10 +19,10 @@
   "options": {
     "step": {
       "init": {
-        "title": "FLODE configuration root",
-        "description": "Choose an existing absolute FLODE root directory. Automations are read only from automations/climate/heating.yaml. The objects/ directory is reserved for future use.",
+        "title": "git-flode configuration root",
+        "description": "Choose an existing absolute project root containing automations/. git-flode edits existing YAML automations in its subfolders. objects/ stores manually exported HA inventory; tests/ contains project Python tests.",
         "data": {
-          "config_directory": "FLODE configuration root"
+          "config_directory": "git-flode configuration root"
         }
       }
     },

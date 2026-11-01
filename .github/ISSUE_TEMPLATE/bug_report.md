@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with the git-flode fork
+about: Report a problem with git-flode
 title: "[BUG] "
 labels: ''
 assignees: ''
@@ -8,8 +8,7 @@ assignees: ''
 
 ## Bug description
 
-<!-- This repository is an independent fork of SH1FT-W/FLODE. Describe the
-behavior in git-flode, the expected result, and the actual result. -->
+<!-- Describe the behavior in git-flode, the expected result, and the actual result. -->
 
 ## Steps to reproduce
 

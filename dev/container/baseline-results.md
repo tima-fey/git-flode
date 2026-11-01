@@ -1,5 +1,10 @@
 # Development baseline: October 30, 2026
 
+This is a historical report from the initial upstream HA-API evaluation,
+before the file workflow replaced it. It does not certify the current implementation.
+Use [the file-workflow gate](../gate/README.md) for current validation.
+
+
 Stages 0 and 0a were exercised on an ARM Mac using Node 24.22.1, Yarn 4.17.0,
 Docker Desktop, and Home Assistant Container 2026.10.1. The HA version follows
 the repository's existing test helper default; compatibility with the user's

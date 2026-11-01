@@ -58,19 +58,15 @@ for (const engine of ENGINES) {
           .getByRole('button', { name: await label(page, 'testsRun'), exact: true })
           .click();
         await control.getByText(await label(page, 'testsFailed'), { exact: false }).waitFor();
-        assert.match(await control.locator('.test-output').innerText(), /Ran 2 tests/);
-        assert.match(
-          await control.locator('.test-output').innerText(),
-          /test_example_automations_can_be_read/
-        );
+        assert.match(await control.locator('.test-output').innerText(), /Ran 1 test/);
         assert.match(
           await control.locator('.test-output').innerText(),
           /test_all_automation_object_references_exist/
         );
         const output = await control.locator('.test-output').innerText();
-        assert.match(output, /unknown entities reference 'input_boolean.summer'/);
+        assert.match(output, /unknown entities reference 'input_boolean.example_heating_enabled'/);
         assert.match(output, /automations\/climate\/heating.yaml/);
-        assert.match(output, /Checked 14 automations against \d+ entities and \d+ devices/);
+        assert.match(output, /Checked 6 automations against \d+ entities and \d+ devices/);
         assert.doesNotMatch(output, /Export HA objects first/);
         assert.equal(services.length, 0);
         assert.equal(reloads.length, 1);

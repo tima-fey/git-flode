@@ -1,17 +1,16 @@
 {
   "config": {
-    "title": "FLODE",
     "step": {
       "user": {
-        "title": "Configurar o FLODE",
-        "description": "Escolha uma pasta raiz absoluta existente. As automações são lidas apenas de automations/climate/heating.yaml. objects/ fica reservada para o futuro.",
+        "title": "Configurar o git-flode",
+        "description": "Escolha uma pasta raiz absoluta existente que contenha automations/. O git-flode edita automações YAML existentes nas subpastas. objects/ contém os objetos HA exportados manualmente; tests/ contém os testes Python do projeto.",
         "data": {
-          "config_directory": "Pasta raiz do FLODE"
+          "config_directory": "Pasta raiz do git-flode"
         }
       }
     },
     "abort": {
-      "already_configured": "O FLODE já está configurado"
+      "already_configured": "O git-flode já está configurado"
     },
     "error": {
       "invalid_directory": "Escolha uma raiz absoluta existente com automations/."
@@ -20,10 +19,10 @@
   "options": {
     "step": {
       "init": {
-        "title": "Pasta raiz do FLODE",
-        "description": "Escolha uma pasta raiz absoluta existente. As automações são lidas apenas de automations/climate/heating.yaml. objects/ fica reservada para o futuro.",
+        "title": "Pasta raiz do git-flode",
+        "description": "Escolha uma pasta raiz absoluta existente que contenha automations/. O git-flode edita automações YAML existentes nas subpastas. objects/ contém os objetos HA exportados manualmente; tests/ contém os testes Python do projeto.",
         "data": {
-          "config_directory": "Pasta raiz do FLODE"
+          "config_directory": "Pasta raiz do git-flode"
         }
       }
     },

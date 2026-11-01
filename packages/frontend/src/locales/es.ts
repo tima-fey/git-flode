@@ -45,10 +45,11 @@ export const es: Strings = {
   gitDetached: 'Versión histórica',
   gitAheadBehind: 'prod: {ahead} commits por enviar · {behind} commits solo en origin/prod',
   gitSynced: 'prod está sincronizado con origin/prod.',
-  gitDirty: 'Hay cambios locales. El cambio de versión está bloqueado.',
+  gitDirty:
+    'Archivos sin confirmar. Confírmalos o descártalos antes de fusionar o deshacer una fusión.',
   gitFilesNotice:
     'Git modifica archivos de esta carpeta. Las automatizaciones de Home Assistant no se recargan.',
-  title: 'FLODE',
+  title: 'git-flode',
   readOnly: 'Solo lectura',
   open: 'Abrir',
   back: 'Volver',
@@ -58,11 +59,9 @@ export const es: Strings = {
   unsaved: 'Sin guardar',
   loading: 'Cargando …',
   progressOpenAutomation: 'Abriendo la automatización',
-  progressOpenScript: 'Abriendo el script',
-  progressMerge: 'Combinando automatizaciones',
   progressConfig: 'Leyendo el archivo de automatización …',
   progressParse: 'Construyendo el flujo …',
-  progressRegistry: 'Cargando área, categoría y etiquetas …',
+  progressLayout: 'Preparando la disposición …',
   progressOpen: 'Abriendo el editor …',
   delete: 'Eliminar',
   fit: 'Ajustar vista',
@@ -71,9 +70,7 @@ export const es: Strings = {
   undo: 'Deshacer',
   redo: 'Rehacer',
   add: 'Añadir bloque',
-  on: 'Encendido',
   off: 'Apagado',
-  never: 'Nunca disparada',
   empty: 'No se encontró ninguna automatización.',
   nodeConfig: 'Configuración',
   inspectorEmpty: 'Selecciona un bloque en el lienzo.',
@@ -87,7 +84,8 @@ export const es: Strings = {
   importWarnTitle: 'FLODE no reconoció todo',
   importWarnText:
     'Algunas partes de este flujo no se reconocieron al abrirlo. Revísalo antes de guardar (⋮ → Mostrar YAML) para que no se pierda nada:',
-  yamlViewIntro: 'Esto es lo que FLODE escribe en Home Assistant cuando guardas este flujo.',
+  yamlViewIntro:
+    'Vista previa del YAML. Guardar actualiza esta automatización en su archivo original.',
   enableCard: 'Habilitar tarjeta',
   disableCard: 'Deshabilitar tarjeta',
   disconnectCard: 'Desconectar',
@@ -128,12 +126,6 @@ export const es: Strings = {
   toggleEnabledCard: 'Habilitar/deshabilitar tarjeta',
   deleteCard: 'Eliminar tarjeta o conexión',
   cardCopied: 'Tarjeta copiada: {keys} la pega',
-  manualRunning: 'Ejecutando …',
-  manualDone: 'Finalizado',
-  manualNoChanges:
-    'Sin cambios en la actividad: probablemente los dispositivos ya estaban en ese estado.',
-  manualLogbookEmpty:
-    'Todavía no hay nada en la actividad: Home Assistant lo escribe con unos segundos de retraso.',
   tplTitle: 'Taller de plantillas',
   tplIntro:
     'Home Assistant renderiza la plantilla en directo, con el tipo de resultado y todo aquello a lo que reacciona.',
@@ -173,8 +165,6 @@ export const es: Strings = {
   disabledGroup: 'Deshabilitadas',
   issueService: '⚠ Este servicio no existe',
   issueEntity: '⚠ Esta entidad no existe',
-  runs: 'Ejecuciones',
-  showRuns: 'Mostrar ejecuciones',
   addNext: 'Añadir acción (después de esta)',
   addAfterTrigger: 'Añadir condición o acción (después de esta)',
   outputYes: 'Sí',
@@ -198,8 +188,6 @@ export const es: Strings = {
   branchContext: '{block} › {branch} · paso {n}',
   fields: 'Campos',
   emptyHint: '¿Qué debe iniciar la automatización?',
-  automations: 'Automatizaciones',
-  scripts: 'Scripts',
   rename: 'Renombrar',
   tabsLabel: 'Automatizaciones abiertas',
   closeTab: 'Cerrar pestaña',
@@ -218,8 +206,6 @@ export const es: Strings = {
   mode_queued: 'En cola',
   mode_parallel: 'Paralelo',
   resize: 'Arrastra para cambiar el tamaño · doble clic = predeterminado',
-  homeHint:
-    'Crea, prueba y entiende automatizaciones y scripts como flujos, guardados como YAML normal de Home Assistant.',
   loadFailed: 'No se pudo cargar',
   saveFailed: 'Error al guardar',
   saveErrAtCard: '"{card}": {reason}',
@@ -233,14 +219,8 @@ export const es: Strings = {
   saveErrService: 'La acción no es un servicio válido (formato: dominio.servicio).',
   saveErrDetail: 'Mensaje de Home Assistant',
   saveErrShow: 'Ir a la tarjeta',
-  conflictTitle: 'Modificada en Home Assistant',
-  conflictText:
-    '“{name}” se modificó en Home Assistant desde que la abriste aquí. ¿Sobrescribirla con tu versión o cargar la versión de Home Assistant? (Tus cambios siguen disponibles con Deshacer.)',
-  conflictOverwrite: 'Sobrescribir',
-  conflictReload: 'Cargar desde Home Assistant',
   tabsStorageFull:
     'El almacenamiento del navegador está lleno: las pestañas abiertas y los borradores sin guardar ya no se recuerdan.',
-  openInHa: 'Abrir en HA',
   invalid: 'No válido',
   type_trigger: 'Disparador',
   type_automation: 'Automatización',
@@ -261,7 +241,7 @@ export const es: Strings = {
   welcomeTestsTitle: 'Pruebas del proyecto',
   welcomeTestsText:
     'Ejecuta pruebas Python, comprueba la configuración y recarga Home Assistant explícitamente.',
-  whatsNewTitle: 'Novedades en FLODE {version}',
+  whatsNewTitle: 'Novedades en git-flode {version}',
   whatsNewAll: 'Todos los cambios',
   continue: 'Continuar',
 };

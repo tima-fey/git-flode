@@ -1,9 +1,8 @@
 # git-flode development guide
 
 Read `AGENTS.md`, `CONTRIBUTING.md`, and `docs/architecture.md` before changing
-storage, graph conversion, or execution behavior. git-flode is an independent
-fork of FLODE by SH1FT-W and contributors, with earlier C.A.F.E. foundations;
-retain attribution in `CREDITS.md` and source headers.
+storage, graph conversion, or execution behavior. Retain project attribution in
+`CREDITS.md` and source headers.
 
 ## Product and structure
 
@@ -79,8 +78,8 @@ Documentation and code edits do not authorize a release.
    month without leading zero, release number starting at 1). Keep
    `custom_components/flode/manifest.json` and `packages/frontend/package.json`
    synchronized. Update the welcome sheet and all associated translations.
-   Preserve `CHANGELOG.md` as the fork's change history and upstream archive;
-   update fork entries when relevant.
+   Preserve `CHANGELOG.md` as git-flode's change history and upstream archive;
+   update git-flode entries when relevant.
 2. Commit the release changes with an English message. Inspect all static,
    backend, and browser checks required by the gate.
 3. Run the **full** `dev/gate/gate.sh` after that commit, before tagging or

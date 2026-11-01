@@ -1,17 +1,16 @@
 {
   "config": {
-    "title": "FLODE",
     "step": {
       "user": {
-        "title": "Configurer FLODE",
-        "description": "Choisissez un dossier racine FLODE absolu existant. Les automatisations sont lues uniquement dans automations/climate/heating.yaml. objects/ est réservé pour plus tard.",
+        "title": "Configurer git-flode",
+        "description": "Choisissez un dossier racine de projet absolu existant contenant automations/. git-flode modifie les automatisations YAML existantes dans ses sous-dossiers. objects/ contient les objets HA exportés manuellement ; tests/ contient les tests Python du projet.",
         "data": {
-          "config_directory": "Dossier racine FLODE"
+          "config_directory": "Dossier racine git-flode"
         }
       }
     },
     "abort": {
-      "already_configured": "FLODE est déjà configuré"
+      "already_configured": "git-flode est déjà configuré"
     },
     "error": {
       "invalid_directory": "Choisissez un dossier racine absolu existant contenant automations/."
@@ -20,10 +19,10 @@
   "options": {
     "step": {
       "init": {
-        "title": "Dossier racine FLODE",
-        "description": "Choisissez un dossier racine FLODE absolu existant. Les automatisations sont lues uniquement dans automations/climate/heating.yaml. objects/ est réservé pour plus tard.",
+        "title": "Dossier racine git-flode",
+        "description": "Choisissez un dossier racine de projet absolu existant contenant automations/. git-flode modifie les automatisations YAML existantes dans ses sous-dossiers. objects/ contient les objets HA exportés manuellement ; tests/ contient les tests Python du projet.",
         "data": {
-          "config_directory": "Dossier racine FLODE"
+          "config_directory": "Dossier racine git-flode"
         }
       }
     },

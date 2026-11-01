@@ -1,6 +1,6 @@
 # Git operations and recovery
 
-Operational notes for the git-flode fork. These rules concern the **automation
+Operational notes for git-flode. These rules concern the **automation
 configuration repository**, not the git-flode application source repository.
 Commands below run in the configuration checkout; computer and HA operations
 are identified explicitly.

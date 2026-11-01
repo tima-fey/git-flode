@@ -159,10 +159,10 @@ def test_file_api_surfaces_source_errors_without_a_fallback():
     assert errors == [(4, "file_source_error", "FLODE is not loaded")]
 
 
-def test_real_climate_groups_remain_independent_read_only_files():
+def test_climate_groups_are_read_without_modifying_files():
     root = Path(__file__).resolve().parents[1] / "dev" / "container" / "fixtures"
     source = FileSource(str(root))
-    files = {"heating.yaml": 5, "ventilation.yaml": 7}
+    files = {"heating.yaml": 2, "ventilation.yaml": 2}
     before = {name: (source.automations / "climate" / name).read_bytes() for name in files}
     listed = source.list()
     assert listed["errors"] == []

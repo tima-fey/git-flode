@@ -1,14 +1,13 @@
 # Contributing to git-flode
 
-This repository is an independent fork of [FLODE](https://github.com/SH1FT-W/flode)
-by SH1FT-W and contributors, with earlier C.A.F.E. foundations. See
-[CREDITS.md](CREDITS.md). Contributions and fork-specific reports belong in
-[tima-fey/git-flode](https://github.com/tima-fey/git-flode).
+Contributions and issue reports belong in
+[tima-fey/git-flode](https://github.com/tima-fey/git-flode). See
+[CREDITS.md](CREDITS.md) for project lineage and acknowledgements.
 
 ## Development setup
 
 Use Node 24 and Yarn 4; `.yarnrc.yml` selects the pinned executable. Clone this
-fork, install dependencies, and build upstream workspace outputs before tests:
+repository, install dependencies, and build upstream workspace outputs before tests:
 
 ```sh
 git clone https://github.com/tima-fey/git-flode.git
@@ -84,7 +83,10 @@ skip checks or manufacture catalog records.
 - Reuse `@flode/*` packages, shared Zod contracts, and existing helpers. Keep
   framework-free shared logic in ui-core.
 - Reuse native HA elements and the existing Lit patterns. Add new translation
-  keys in every supported language.
+  keys in every supported language. When a workflow changes, review both HA
+  setup/options descriptions, panel strings, the documentation landing page,
+  and their linked assets. Remove text for deleted screens; retain explicitly
+  historical release notes as history.
 - Preserve native YAML, unknown fields, and neighboring automations. Verify
   semantic round trips separately from source-text preservation. Saving one
   file must leave every other file's content, permissions, and mtime unchanged.
@@ -97,7 +99,7 @@ skip checks or manufacture catalog records.
 
 ## Pull requests and releases
 
-Use focused branches and open PRs against this fork's `main`. Describe the final
+Use focused branches and open PRs against this repository's `main`. Describe the final
 behavior, relevant validation, and limitations in English. Preserve attribution
 when adapting upstream code or documentation; keep historical upstream issue
 links attached to their original changes.
@@ -115,8 +117,8 @@ verifies file saves, Git, metadata, tests, reload, and visual changes.
 
 ## Reporting issues
 
-Use [the fork issue tracker](https://github.com/tima-fey/git-flode/issues).
-Include the fork commit, HA version, installation method, reproducible steps,
+Use [the issue tracker](https://github.com/tima-fey/git-flode/issues).
+Include the git-flode commit, HA version, installation method, reproducible steps,
 and a minimal redacted YAML example when relevant. For storage or Git failures,
 include the operation and displayed error. For reference-test failures, state
 whether objects were exported before the test run.

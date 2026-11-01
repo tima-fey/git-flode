@@ -159,7 +159,7 @@ def test_deleted_source_is_never_recreated(source):
 
 
 @pytest.mark.parametrize('name', ['heating.yaml', 'ventilation.yaml'])
-def test_real_climate_files_keep_all_other_automations(tmp_path, name):
+def test_climate_fixtures_keep_all_other_automations(tmp_path, name):
     fixtures = Path(__file__).resolve().parents[1] / 'dev/container/fixtures/automations/climate'
     directory = tmp_path / 'automations/climate'
     directory.mkdir(parents=True)

@@ -1,238 +1,27 @@
-- id: '1747085585472'
-  alias: Ventilation_mode
+- id: example_ventilation_on
+  alias: Example ventilation on
   triggers:
-  - domain: mqtt
-    device_id: 4899d5bd56c589c56d72c65edfc2ed65
-    type: action
-    subtype: single
-    trigger: device
-  conditions: []
-  actions:
-  - action: input_boolean.turn_on
-    target:
-      entity_id: input_boolean.ventilation
-  - delay:
-      hours: 1
-      minutes: 0
-      seconds: 0
-      milliseconds: 0
-  - action: input_boolean.turn_off
-    target:
-      entity_id: input_boolean.ventilation
-  mode: restart
-- id: bathroom_humidity_start_ventilation_20261026
-  alias: 'Bathroom humidity: start ventilation'
-  triggers:
-  - trigger: homeassistant
-    event: start
-  - trigger: event
-    event_type: automation_reloaded
-  - trigger: state
-    entity_id:
-    - sensor.bathroom_bathroom_climate_humidity
-    - sensor.bathroom_bathroom_heating_humidity
-    - input_number.ventilation_humidity_enable
-    to: null
+    - trigger: numeric_state
+      entity_id: sensor.example_humidity
+      above: 65
   conditions:
-  - condition: template
-    value_template: >-
-      {% set bathroom = states('sensor.bathroom_bathroom_climate_humidity') %}
-      {% set hall = states('sensor.bathroom_bathroom_heating_humidity') %}
-      {% set enable = states('input_number.ventilation_humidity_enable') %}
-      {{ is_number(bathroom) and is_number(hall) and is_number(enable)
-         and bathroom | float(0) > (hall | float(0) + enable | float(0)) }}
+    - condition: state
+      entity_id: input_boolean.example_ventilation_enabled
+      state: 'on'
   actions:
-  - action: input_boolean.turn_on
-    target:
-      entity_id: input_boolean.bathroom_humidity_ventilation
+    - action: fan.turn_on
+      target:
+        entity_id: fan.example_ventilation
   mode: single
-- id: '1747087413081'
-  alias: Bathroom humidity ventilation off
+
+- id: example_ventilation_off
+  alias: Example ventilation off
   triggers:
-  - trigger: homeassistant
-    event: start
-  - trigger: event
-    event_type: automation_reloaded
-  - trigger: state
-    entity_id:
-    - sensor.bathroom_bathroom_climate_humidity
-    - sensor.bathroom_bathroom_heating_humidity
-    - input_number.ventilation_humidity_enable
-    to: null
-  conditions:
-  - condition: template
-    value_template: >-
-      {% set bathroom = states('sensor.bathroom_bathroom_climate_humidity') %}
-      {% set hall = states('sensor.bathroom_bathroom_heating_humidity') %}
-      {% set enable = states('input_number.ventilation_humidity_enable') %}
-      {{ is_number(bathroom) and is_number(hall) and is_number(enable)
-         and bathroom | float(0) < (hall | float(0) + enable | float(0) - 2) }}
+    - trigger: numeric_state
+      entity_id: sensor.example_humidity
+      below: 55
   actions:
-  - action: input_boolean.turn_off
-    target:
-      entity_id: input_boolean.bathroom_humidity_ventilation
+    - action: fan.turn_off
+      target:
+        entity_id: fan.example_ventilation
   mode: single
-- id: ventilation_central_on
-  alias: Central ventilation on
-  triggers:
-  - trigger: homeassistant
-    event: start
-  - trigger: event
-    event_type: automation_reloaded
-  - trigger: state
-    entity_id:
-    - input_boolean.ventilation
-    to: 'on'
-  - trigger: state
-    entity_id:
-    - input_boolean.bathroom_humidity_ventilation
-    to: 'on'
-  conditions:
-  - condition: or
-    conditions:
-    - condition: state
-      entity_id: input_boolean.ventilation
-      state: 'on'
-    - condition: state
-      entity_id: input_boolean.bathroom_humidity_ventilation
-      state: 'on'
-  actions:
-  - action: switch.turn_on
-    target:
-      entity_id: switch.home_ventilation_base_central_ventilation_0
-  - action: switch.turn_on
-    target:
-      entity_id: switch.home_ventilation_strong_central_ventilation_1
-  mode: single
-- id: ventilation_central_off
-  alias: Central ventilation off
-  triggers:
-  - trigger: homeassistant
-    event: start
-  - trigger: event
-    event_type: automation_reloaded
-  - trigger: state
-    entity_id:
-    - input_boolean.ventilation
-    to: 'off'
-  - trigger: state
-    entity_id:
-    - input_boolean.bathroom_humidity_ventilation
-    to: 'off'
-  conditions:
-  - condition: and
-    conditions:
-    - condition: state
-      entity_id: input_boolean.ventilation
-      state: 'off'
-    - condition: state
-      entity_id: input_boolean.bathroom_humidity_ventilation
-      state: 'off'
-  actions:
-  - action: switch.turn_off
-    target:
-      entity_id: switch.home_ventilation_strong_central_ventilation_1
-  mode: single
-- id: ventilation_base_on
-  alias: Base ventilation on
-  description: Keep base on for CO2 above 800 ppm when CO2 automation is enabled, or for strong ventilation and its requests.
-  triggers:
-  - trigger: homeassistant
-    event: start
-  - trigger: event
-    event_type: automation_reloaded
-  - trigger: state
-    entity_id:
-    - input_boolean.co2_ventilation
-    - sensor.bedroom_bedroom_climate_carbon_dioxide
-    to: null
-  - trigger: state
-    entity_id:
-    - input_boolean.ventilation
-    - input_boolean.bathroom_humidity_ventilation
-    - switch.home_ventilation_strong_central_ventilation_1
-    to: 'on'
-  - trigger: state
-    entity_id: switch.home_ventilation_base_central_ventilation_0
-    to: 'off'
-  conditions:
-  - condition: or
-    conditions:
-    - condition: and
-      conditions:
-      - condition: state
-        entity_id: input_boolean.co2_ventilation
-        state: 'on'
-      - condition: numeric_state
-        entity_id: sensor.bedroom_bedroom_climate_carbon_dioxide
-        above: 800
-    - condition: state
-      entity_id: switch.home_ventilation_strong_central_ventilation_1
-      state: 'on'
-    - condition: state
-      entity_id: input_boolean.ventilation
-      state: 'on'
-    - condition: state
-      entity_id: input_boolean.bathroom_humidity_ventilation
-      state: 'on'
-  - condition: state
-    entity_id: switch.home_ventilation_base_central_ventilation_0
-    state: 'off'
-  actions:
-  - action: switch.turn_on
-    target:
-      entity_id: switch.home_ventilation_base_central_ventilation_0
-  mode: restart
-- id: ventilation_base_off
-  alias: Base ventilation off
-  description: With no strong ventilation or its requests, turn base off when CO2 automation is disabled or CO2 is below 600 ppm. Otherwise retain its state.
-  triggers:
-  - trigger: homeassistant
-    event: start
-  - trigger: event
-    event_type: automation_reloaded
-  - trigger: state
-    entity_id:
-    - input_boolean.co2_ventilation
-    - sensor.bedroom_bedroom_climate_carbon_dioxide
-    to: null
-  - trigger: state
-    entity_id:
-    - input_boolean.ventilation
-    - input_boolean.bathroom_humidity_ventilation
-    - switch.home_ventilation_strong_central_ventilation_1
-    to: 'off'
-  - trigger: state
-    entity_id: switch.home_ventilation_base_central_ventilation_0
-    to: 'on'
-  conditions:
-  - condition: or
-    conditions:
-    - condition: state
-      entity_id: input_boolean.co2_ventilation
-      state: 'off'
-    - condition: and
-      conditions:
-      - condition: state
-        entity_id: input_boolean.co2_ventilation
-        state: 'on'
-      - condition: numeric_state
-        entity_id: sensor.bedroom_bedroom_climate_carbon_dioxide
-        below: 600
-  - condition: state
-    entity_id: switch.home_ventilation_strong_central_ventilation_1
-    state: 'off'
-  - condition: state
-    entity_id: input_boolean.ventilation
-    state: 'off'
-  - condition: state
-    entity_id: input_boolean.bathroom_humidity_ventilation
-    state: 'off'
-  - condition: state
-    entity_id: switch.home_ventilation_base_central_ventilation_0
-    state: 'on'
-  actions:
-  - action: switch.turn_off
-    target:
-      entity_id: switch.home_ventilation_base_central_ventilation_0
-  mode: restart

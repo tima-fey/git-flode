@@ -2,7 +2,7 @@
 
 Edit Home Assistant automation YAML on a visual canvas, review and publish its
 Git changes, and apply updates from `main` to a dedicated `prod` checkout.
-The administrator panel appears as **FLODE** in Home Assistant.
+The integration and administrator panel appear as **git-flode** in Home Assistant.
 
 This is an independent fork of [FLODE](https://github.com/SH1FT-W/flode) by
 SH1FT-W and contributors, built on the earlier
@@ -23,7 +23,7 @@ yarn build
 
 Copy `custom_components/flode/`, including its built `www/` directory, into
 HA's `custom_components/`. HA 2026.3 or later is required.
-The upstream FLODE HACS entry installs upstream; install this fork's build for
+The upstream FLODE HACS entry installs upstream; install the git-flode build for
 this workflow. They share an integration domain, so install one implementation.
 
 ## Prepare your configuration repository
@@ -73,7 +73,7 @@ credentials must be available to the HA process; the panel uses that identity
 and authentication. Use the same destination for origin fetch and push URLs.
 HA is the only writer of `prod`; computer changes go to `main`.
 
-Restart HA, then add **FLODE** under **Settings → Devices & services** and
+Restart HA, then add **git-flode** under **Settings → Devices & services** and
 set its project directory to `/config/flode-config`. It must be the checkout root, writable by HA, with `automations/`
 and active `prod`. Connect those files to HA in `/config/configuration.yaml`:
 
@@ -142,5 +142,5 @@ prove that an entity is available at runtime.
 Use the [disposable HA Container](dev/container/README.md) for development and
 browser checks. See [contributing](CONTRIBUTING.md),
 [architecture](docs/architecture.md), and the [release gate](dev/gate/README.md).
-Report fork issues in [this repository](https://github.com/tima-fey/git-flode/issues)
+Report issues in [this repository](https://github.com/tima-fey/git-flode/issues)
 with the commit, HA version, and a minimal redacted example.

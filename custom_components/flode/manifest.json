@@ -1,6 +1,9 @@
 {
   "domain": "flode",
-  "name": "FLODE",
+  "name": "git-flode",
+  "categories": [
+    "computers_network.cloud_developer_tools"
+  ],
   "codeowners": [
     "@tima-fey"
   ],

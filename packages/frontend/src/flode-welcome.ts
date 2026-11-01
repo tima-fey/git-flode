@@ -19,7 +19,7 @@ const WELCOME: Feature[] = [
   { icon: 'mdi:test-tube', title: 'welcomeTestsTitle', text: 'welcomeTestsText' },
 ];
 
-/** Fork workflow highlights, also shown to users upgrading from FLODE. */
+/** Current workflow highlights shown after a version update. */
 const WHATS_NEW: Feature[] = WELCOME;
 
 const SEEN_KEY = 'flode3.seenVersion';

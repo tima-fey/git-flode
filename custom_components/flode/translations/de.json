@@ -1,17 +1,16 @@
 {
   "config": {
-    "title": "FLODE",
     "step": {
       "user": {
-        "title": "FLODE einrichten",
-        "description": "Wähle einen vorhandenen absoluten FLODE-Stammordner. Automatisierungen werden nur aus automations/climate/heating.yaml gelesen. objects/ ist für später reserviert.",
+        "title": "git-flode einrichten",
+        "description": "Wähle einen vorhandenen absoluten Projektordner mit automations/. git-flode bearbeitet vorhandene YAML-Automationen in dessen Unterordnern. objects/ enthält manuell exportierte HA-Objekte; tests/ enthält Python-Projekttests.",
         "data": {
-          "config_directory": "FLODE-Konfigurationswurzel"
+          "config_directory": "git-flode-Konfigurationswurzel"
         }
       }
     },
     "abort": {
-      "already_configured": "FLODE ist bereits eingerichtet"
+      "already_configured": "git-flode ist bereits eingerichtet"
     },
     "error": {
       "invalid_directory": "Wähle einen vorhandenen absoluten Stammordner mit automations/."
@@ -20,10 +19,10 @@
   "options": {
     "step": {
       "init": {
-        "title": "FLODE-Konfigurationswurzel",
-        "description": "Wähle einen vorhandenen absoluten FLODE-Stammordner. Automatisierungen werden nur aus automations/climate/heating.yaml gelesen. objects/ ist für später reserviert.",
+        "title": "git-flode-Konfigurationswurzel",
+        "description": "Wähle einen vorhandenen absoluten Projektordner mit automations/. git-flode bearbeitet vorhandene YAML-Automationen in dessen Unterordnern. objects/ enthält manuell exportierte HA-Objekte; tests/ enthält Python-Projekttests.",
         "data": {
-          "config_directory": "FLODE-Konfigurationswurzel"
+          "config_directory": "git-flode-Konfigurationswurzel"
         }
       }
     },

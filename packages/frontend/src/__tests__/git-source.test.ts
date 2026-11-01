@@ -21,7 +21,12 @@ const initial = {
   ahead: 0,
   behind: 1,
 };
-const history = { commits: [], has_more: false };
+const history = {
+  commits: [
+    { commit: 'c'.repeat(40), short: 'ccccccc', date: '2026-11-01', subject: 'Earlier edit' },
+  ],
+  has_more: false,
+};
 
 async function mount(branch: string | null = 'prod') {
   const requests: Record<string, unknown>[] = [];
@@ -226,7 +231,8 @@ it('reads historical changes without mutating Git or refreshing live files', asy
   let changes = 0;
   control.addEventListener('files-changed', () => changes++);
   const revision = 'c'.repeat(40);
-  const original = control['status'];
+  const original = control.shadowRoot?.querySelector('header')?.textContent;
+  expect(original).toContain(initial.short);
   const hass = control.hass;
   if (!hass) throw new Error('Missing Home Assistant');
   const callWS = hass.callWS;
@@ -238,11 +244,13 @@ it('reads historical changes without mutating Git or refreshing live files', asy
     );
   };
   control.hasUnsavedChanges = true;
-  await control['showRevision'](revision);
+  const button = control.shadowRoot?.querySelector(`[data-revision="${revision}"]`);
+  if (!button) throw new Error('Missing history button');
+  button.dispatchEvent(new Event('click'));
   await settle(control);
   expect(requests).toContainEqual({ type: 'flode/git/show', revision });
   expect(requests.some((request) => request.type === 'flode/git/action')).toBe(false);
-  expect(control['status']).toBe(original);
+  expect(control.shadowRoot?.querySelector('header')?.textContent).toBe(original);
   expect(control.shadowRoot?.querySelector('.review pre')?.textContent).toContain('+new');
   expect(changes).toBe(0);
 });

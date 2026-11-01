@@ -1,17 +1,16 @@
 {
   "config": {
-    "title": "FLODE",
     "step": {
       "user": {
-        "title": "Configurar FLODE",
-        "description": "Elige un directorio raíz absoluto existente. Las automatizaciones se leen solo de automations/climate/heating.yaml. objects/ se reserva para uso futuro.",
+        "title": "Configurar git-flode",
+        "description": "Elige una carpeta raíz absoluta existente que contenga automations/. git-flode edita automatizaciones YAML existentes en sus subcarpetas. objects/ guarda el inventario de HA exportado manualmente; tests/ contiene las pruebas Python del proyecto.",
         "data": {
-          "config_directory": "Directorio raíz de FLODE"
+          "config_directory": "Directorio raíz de git-flode"
         }
       }
     },
     "abort": {
-      "already_configured": "FLODE ya está configurado"
+      "already_configured": "git-flode ya está configurado"
     },
     "error": {
       "invalid_directory": "Elige una raíz absoluta existente que contenga automations/."
@@ -20,10 +19,10 @@
   "options": {
     "step": {
       "init": {
-        "title": "Directorio raíz de FLODE",
-        "description": "Elige un directorio raíz absoluto existente. Las automatizaciones se leen solo de automations/climate/heating.yaml. objects/ se reserva para uso futuro.",
+        "title": "Directorio raíz de git-flode",
+        "description": "Elige una carpeta raíz absoluta existente que contenga automations/. git-flode edita automatizaciones YAML existentes en sus subcarpetas. objects/ guarda el inventario de HA exportado manualmente; tests/ contiene las pruebas Python del proyecto.",
         "data": {
-          "config_directory": "Directorio raíz de FLODE"
+          "config_directory": "Directorio raíz de git-flode"
         }
       }
     },

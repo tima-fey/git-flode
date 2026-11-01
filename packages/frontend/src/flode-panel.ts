@@ -1003,8 +1003,8 @@ export class FlodePanel extends LitElement {
           id: `open-${item.kind}-${item.configId}`,
           group: 'open',
           label: item.name,
-          icon: item.kind === 'script' ? 'mdi:script-text-outline' : 'mdi:robot-outline',
-          hint: t(language, item.kind === 'script' ? 'type_script' : 'type_automation'),
+          icon: 'mdi:robot-outline',
+          hint: t(language, 'type_automation'),
           keywords: `${item.entityId} ${item.kind}`,
           run: () => void this.open(item),
         });
@@ -1213,7 +1213,7 @@ export class FlodePanel extends LitElement {
       { keepBlocks: true }
     );
     if (!result.success || !result.graph) throw new Error(result.errors?.join('\n') ?? 'parse');
-    report(t(language, 'progressRegistry'), 0.8);
+    report(t(language, 'progressLayout'), 0.8);
     const graph = await this.inDefaultDirection(result.graph);
     report(t(language, 'progressOpen'), 1);
     return {
@@ -1246,10 +1246,7 @@ export class FlodePanel extends LitElement {
     // A double click / second ⌘K while it loads: the first one opens it.
     const key = `${item.kind}:${item.configId}`;
     if (!this.opening.start(key)) return;
-    const heading = t(
-      this.language,
-      item.kind === 'script' ? 'progressOpenScript' : 'progressOpenAutomation'
-    );
+    const heading = t(this.language, 'progressOpenAutomation');
     this.message = null;
     try {
       const flow = await this.loadFlow(hass, item, (step, value) => {
@@ -2206,44 +2203,14 @@ export class FlodePanel extends LitElement {
   private renderItemGroup(items: AutomationListItem[]) {
     return html`<div class="grid">
       ${items.map(
-        (item) => html`
-          <ha-card
-            class="item ${item.enabled ? '' : 'off'} ${''}"
-            @click=${() => {
-              void this.open(item);
-              return;
-            }}
-          >
-            <div class="item-name">
-              ${item.name}
-            </div>
-            <div class="item-meta">
-              ${item.source ? html`<code>${item.source.file} · ${item.source.id}</code>` : nothing}
-              ${
-                item.source
-                  ? nothing
-                  : item.kind === 'script'
-                    ? html`<ha-icon icon="mdi:script-text-outline"></ha-icon>`
-                    : html`<span class="dot ${item.enabled ? 'on' : ''}"></span>
-                      ${item.enabled ? t(this.language, 'on') : t(this.language, 'off')}`
-              }
-              <span class="spacer"></span>
-              ${
-                item.source
-                  ? nothing
-                  : item.lastTriggered
-                    ? new Date(item.lastTriggered).toLocaleString(this.language, {
-                        dateStyle: 'short',
-                        timeStyle: 'short',
-                      })
-                    : t(this.language, 'never')
-              }
-            </div>
-          </ha-card>
-`
+        (item) => html`<ha-card class="item" @click=${() => void this.open(item)}>
+        <div class="item-name">${item.name}</div>
+        <div class="item-meta"><code>${item.source?.file} · ${item.source?.id}</code></div>
+      </ha-card>`
       )}
     </div>`;
   }
+
   private showMenuButton(): boolean {
     const hass = this.hass;
     return hass?.kioskMode !== true && (this.narrow || hass?.dockedSidebar === 'always_hidden');
@@ -2881,9 +2848,6 @@ export class FlodePanel extends LitElement {
       gap: 6px;
       font-size: 12px;
       color: var(--secondary-text-color);
-    }
-    .spacer {
-      flex: 1;
     }
     .dot {
       width: 8px;

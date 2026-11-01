@@ -1,12 +1,8 @@
 # git-flode internals
 
-How this fork reads, edits, and stores Home Assistant automation YAML.
-
-git-flode is an independent fork of [FLODE](https://github.com/SH1FT-W/flode)
-by SH1FT-W and contributors. FLODE originated from C.A.F.E. by Federico Zivolo;
-see [credits](../CREDITS.md). This document adapts the inherited FLODE internals
-to the fork's file workflow. Graph/parser/transpiler explanations and examples
-retain their upstream lineage.
+How git-flode reads, edits, and stores Home Assistant automation YAML.
+Graph/parser/transpiler explanations retain their upstream lineage; see
+[credits](../CREDITS.md) for authorship and project history.
 
 Read [README.md](../README.md) for first use and
 [the container guide](../dev/container/README.md) for disposable checks. Graph
@@ -35,7 +31,7 @@ automations loaded from a configurable project directory.
 
 One asymmetry follows from the third point and is worth stating once. FLODE never takes an existing block apart: whatever Home Assistant stored as an `if`, a `choose` or a `repeat` stays that block. But FLODE does translate in the other direction: when the user draws a condition card with a Yes and a No path, or several lines out of one card, or a line back to an earlier card, saving turns those shapes into an `if`, a `parallel` or a `repeat` (section 6.3). On the next open they come back as blocks with branch cards (section 4.6). The user draws with FLODE's cards; Home Assistant stores HA's blocks; FLODE shows HA's blocks.
 
-FLODE started as a fork of C.A.F.E. (Complex Automation Flow Editor) by Federico Zivolo. The transpiler, the state machine strategy and the YAML parser come from that lineage and were reworked over several releases; the editor was rebuilt on Lit and Home Assistant's own elements in FLODE 3. Some identifiers in the code (`CafeMetadata`, the fixture names `*-cafe.yaml`, the legacy `_cafe_metadata` key) still show that origin.
+FLODE originated from C.A.F.E. (Complex Automation Flow Editor) by Federico Zivolo. The transpiler, the state machine strategy and the YAML parser come from that lineage and were reworked over several releases; the editor was rebuilt on Lit and Home Assistant's own elements in FLODE 3. Some identifiers in the code (`CafeMetadata`, the fixture names `*-cafe.yaml`, the legacy `_cafe_metadata` key) still show that origin.
 
 ## 2. Architecture
 
@@ -679,7 +675,7 @@ visual review, partial runs, and baseline handling.
 
 ### 10.4 Releases and versions
 
-Upstream FLODE uses calendar versions `YY.M.N` (year, month, number of the release in that month), for example `26.10.14`; `dev/next-version` prints the next one. The fork retains that numbering in existing metadata; it does not imply that a corresponding fork release has been published. A release means: update the "What's new" sheet (`flode-welcome.ts` and its strings), bump the version in `custom_components/flode/manifest.json` and `packages/frontend/package.json`, commit, run the gate, tag with the bare version number, push, and create the GitHub release with notes compiled from the commits. The full checklist is in `CLAUDE.md`.
+Upstream FLODE uses calendar versions `YY.M.N` (year, month, number of the release in that month), for example `26.10.14`; `dev/next-version` prints the next one. Existing metadata retains that numbering; it does not imply that a corresponding git-flode release has been published. A release means: update the "What's new" sheet (`flode-welcome.ts` and its strings), bump the version in `custom_components/flode/manifest.json` and `packages/frontend/package.json`, commit, run the gate, tag with the bare version number, push, and create the GitHub release with notes compiled from the commits. The full checklist is in `CLAUDE.md`.
 
 ## 11. Glossary
 

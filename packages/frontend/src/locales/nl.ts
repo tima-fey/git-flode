@@ -45,10 +45,11 @@ export const nl: Strings = {
   gitDetached: 'Historische versie',
   gitAheadBehind: 'prod: {ahead} commits om te pushen · {behind} commits alleen op origin/prod',
   gitSynced: 'prod is gesynchroniseerd met origin/prod.',
-  gitDirty: 'Lokale wijzigingen gevonden. Versies wisselen is geblokkeerd.',
+  gitDirty:
+    'Bestanden zonder commit. Commit of verwerp ze vóór samenvoegen of een merge terugdraaien.',
   gitFilesNotice:
     'Git wijzigt bestanden in deze map. Home Assistant-automatiseringen worden niet herladen.',
-  title: 'FLODE',
+  title: 'git-flode',
   readOnly: 'Alleen lezen',
   open: 'Openen',
   back: 'Terug',
@@ -58,11 +59,9 @@ export const nl: Strings = {
   unsaved: 'Niet opgeslagen',
   loading: 'Laden …',
   progressOpenAutomation: 'Automatisering openen',
-  progressOpenScript: 'Script openen',
-  progressMerge: 'Automatiseringen samenvoegen',
   progressConfig: 'Automatiseringsbestand lezen …',
   progressParse: 'Flow opbouwen …',
-  progressRegistry: 'Ruimte, categorie en labels laden …',
+  progressLayout: 'Indeling voorbereiden …',
   progressOpen: 'Editor openen …',
   delete: 'Verwijderen',
   fit: 'Passend weergeven',
@@ -71,9 +70,7 @@ export const nl: Strings = {
   undo: 'Ongedaan maken',
   redo: 'Opnieuw uitvoeren',
   add: 'Blok toevoegen',
-  on: 'Aan',
   off: 'Uit',
-  never: 'Nooit getriggerd',
   empty: 'Geen automatisering gevonden.',
   nodeConfig: 'Configuratie',
   inspectorEmpty: 'Selecteer een blok op het canvas.',
@@ -87,7 +84,8 @@ export const nl: Strings = {
   importWarnTitle: 'FLODE heeft niet alles herkend',
   importWarnText:
     'Delen van deze flow werden bij het openen niet herkend. Controleer ze voor het opslaan (⋮ → YAML weergeven), zodat er niets verloren gaat:',
-  yamlViewIntro: 'Dit schrijft FLODE naar Home Assistant wanneer je deze flow opslaat.',
+  yamlViewIntro:
+    'YAML-voorbeeld. Opslaan werkt deze automatisering bij in het oorspronkelijke bestand.',
   enableCard: 'Kaart inschakelen',
   disableCard: 'Kaart uitschakelen',
   disconnectCard: 'Loskoppelen',
@@ -128,12 +126,6 @@ export const nl: Strings = {
   toggleEnabledCard: 'Kaart in-/uitschakelen',
   deleteCard: 'Kaart of verbinding verwijderen',
   cardCopied: 'Kaart gekopieerd – {keys} plakt hem',
-  manualRunning: 'Bezig met uitvoeren …',
-  manualDone: 'Voltooid',
-  manualNoChanges:
-    'Geen wijzigingen in het logboek – de apparaten stonden waarschijnlijk al in die toestand.',
-  manualLogbookEmpty:
-    'Nog niets in het logboek – Home Assistant schrijft het met een paar seconden vertraging.',
   tplTitle: 'Sjabloonwerkplaats',
   tplIntro:
     'Home Assistant rendert het sjabloon live – met het type van het resultaat en alles waarop het reageert.',
@@ -173,8 +165,6 @@ export const nl: Strings = {
   disabledGroup: 'Uitgeschakeld',
   issueService: '⚠ Deze actie bestaat niet',
   issueEntity: '⚠ Deze entiteit bestaat niet',
-  runs: 'Uitvoeringen',
-  showRuns: 'Uitvoeringen weergeven',
   addNext: 'Actie toevoegen (hierna)',
   addAfterTrigger: 'Voorwaarde of actie toevoegen (hierna)',
   outputYes: 'Ja',
@@ -198,8 +188,6 @@ export const nl: Strings = {
   branchContext: '{block} › {branch} · stap {n}',
   fields: 'Velden',
   emptyHint: 'Wat moet de automatisering starten?',
-  automations: 'Automatiseringen',
-  scripts: 'Scripts',
   rename: 'Hernoemen',
   tabsLabel: 'Geopende automatiseringen',
   closeTab: 'Tabblad sluiten',
@@ -218,8 +206,6 @@ export const nl: Strings = {
   mode_queued: 'In de wachtrij',
   mode_parallel: 'Parallel',
   resize: 'Sleep om het formaat te wijzigen · dubbelklik = standaard',
-  homeHint:
-    'Bouw, test en begrijp automatiseringen en scripts als flows – opgeslagen als gewone Home Assistant-YAML.',
   loadFailed: 'Kon niet worden geladen',
   saveFailed: 'Opslaan mislukt',
   saveErrAtCard: '"{card}": {reason}',
@@ -233,14 +219,8 @@ export const nl: Strings = {
   saveErrService: 'Dit is geen geldige actie (vorm: domein.actie).',
   saveErrDetail: 'Melding van Home Assistant',
   saveErrShow: 'Naar kaart',
-  conflictTitle: 'Gewijzigd in Home Assistant',
-  conflictText:
-    '“{name}” is in Home Assistant gewijzigd sinds je het hier hebt geopend. Overschrijven met jouw versie of de versie uit Home Assistant laden? (Je wijzigingen blijven bereikbaar via Ongedaan maken.)',
-  conflictOverwrite: 'Overschrijven',
-  conflictReload: 'Laden uit Home Assistant',
   tabsStorageFull:
     'De browseropslag is vol – geopende tabbladen en niet-opgeslagen concepten worden niet meer onthouden.',
-  openInHa: 'Openen in HA',
   invalid: 'Ongeldig',
   type_trigger: 'Trigger',
   type_automation: 'Automatisering',
@@ -261,7 +241,7 @@ export const nl: Strings = {
   welcomeTestsTitle: 'Projecttests',
   welcomeTestsText:
     'Voer Python-projecttests uit, controleer de configuratie en herlaad Home Assistant expliciet.',
-  whatsNewTitle: 'Nieuw in FLODE {version}',
+  whatsNewTitle: 'Nieuw in git-flode {version}',
   whatsNewAll: 'Alle wijzigingen',
   continue: 'Doorgaan',
 };

@@ -1,17 +1,16 @@
 {
   "config": {
-    "title": "FLODE",
     "step": {
       "user": {
-        "title": "FLODE instellen",
-        "description": "Kies een bestaande absolute FLODE-hoofdmap. Automatiseringen worden alleen gelezen uit automations/climate/heating.yaml. objects/ is gereserveerd voor later.",
+        "title": "git-flode instellen",
+        "description": "Kies een bestaande absolute projectmap met automations/. git-flode bewerkt bestaande YAML-automatiseringen in de submappen. objects/ bevat handmatig geëxporteerde HA-objecten; tests/ bevat Python-projecttests.",
         "data": {
-          "config_directory": "FLODE-configuratiehoofdmap"
+          "config_directory": "git-flode-configuratiehoofdmap"
         }
       }
     },
     "abort": {
-      "already_configured": "FLODE is al geconfigureerd"
+      "already_configured": "git-flode is al geconfigureerd"
     },
     "error": {
       "invalid_directory": "Kies een bestaande absolute hoofdmap met automations/."
@@ -20,10 +19,10 @@
   "options": {
     "step": {
       "init": {
-        "title": "FLODE-configuratiehoofdmap",
-        "description": "Kies een bestaande absolute FLODE-hoofdmap. Automatiseringen worden alleen gelezen uit automations/climate/heating.yaml. objects/ is gereserveerd voor later.",
+        "title": "git-flode-configuratiehoofdmap",
+        "description": "Kies een bestaande absolute projectmap met automations/. git-flode bewerkt bestaande YAML-automatiseringen in de submappen. objects/ bevat handmatig geëxporteerde HA-objecten; tests/ bevat Python-projecttests.",
         "data": {
-          "config_directory": "FLODE-configuratiehoofdmap"
+          "config_directory": "git-flode-configuratiehoofdmap"
         }
       }
     },

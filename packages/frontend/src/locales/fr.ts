@@ -45,10 +45,11 @@ export const fr: Strings = {
   gitDetached: 'Version historique',
   gitAheadBehind: 'prod : {ahead} commits à pousser · {behind} commits uniquement sur origin/prod',
   gitSynced: 'prod est synchronisé avec origin/prod.',
-  gitDirty: 'Modifications locales détectées. Le changement de version est bloqué.',
+  gitDirty:
+    'Fichiers non commités. Commitez ou abandonnez les modifications avant une fusion ou son annulation.',
   gitFilesNotice:
     'Git modifie les fichiers de ce dossier. Les automatisations Home Assistant ne sont pas rechargées.',
-  title: 'FLODE',
+  title: 'git-flode',
   readOnly: 'Lecture seule',
   open: 'Ouvrir',
   back: 'Retour',
@@ -58,11 +59,9 @@ export const fr: Strings = {
   unsaved: 'Non enregistré',
   loading: 'Chargement …',
   progressOpenAutomation: "Ouverture de l'automatisation",
-  progressOpenScript: 'Ouverture du script',
-  progressMerge: 'Fusion des automatisations',
   progressConfig: 'Lecture du fichier d’automatisation …',
   progressParse: 'Construction du flux …',
-  progressRegistry: 'Chargement de la pièce, de la catégorie et des étiquettes …',
+  progressLayout: 'Préparation de la disposition …',
   progressOpen: "Ouverture de l'éditeur …",
   delete: 'Supprimer',
   fit: 'Ajuster la vue',
@@ -71,9 +70,7 @@ export const fr: Strings = {
   undo: 'Annuler',
   redo: 'Rétablir',
   add: 'Ajouter un bloc',
-  on: 'Activée',
   off: 'Désactivée',
-  never: 'Jamais déclenchée',
   empty: 'Aucune automatisation trouvée.',
   nodeConfig: 'Paramètres',
   inspectorEmpty: 'Sélectionnez un bloc sur le canevas.',
@@ -87,7 +84,8 @@ export const fr: Strings = {
   importWarnTitle: "FLODE n'a pas tout reconnu",
   importWarnText:
     "Certaines parties de ce flux n'ont pas été reconnues à l'ouverture. Vérifiez-les avant d'enregistrer (⋮ → Afficher le YAML) pour ne rien perdre :",
-  yamlViewIntro: 'Voici ce que FLODE écrit dans Home Assistant quand vous enregistrez ce flux.',
+  yamlViewIntro:
+    'Aperçu YAML. Enregistrer met à jour cette automatisation dans son fichier original.',
   enableCard: 'Activer la carte',
   disableCard: 'Désactiver la carte',
   disconnectCard: 'Déconnecter',
@@ -128,12 +126,6 @@ export const fr: Strings = {
   toggleEnabledCard: 'Activer/désactiver la carte',
   deleteCard: 'Supprimer la carte ou la connexion',
   cardCopied: 'Carte copiée – {keys} la colle',
-  manualRunning: 'Exécution …',
-  manualDone: 'Terminé',
-  manualNoChanges:
-    "Aucun changement dans l'activité – les appareils étaient probablement déjà dans cet état.",
-  manualLogbookEmpty:
-    "Rien dans l'activité pour l'instant – Home Assistant l'écrit avec quelques secondes de retard.",
   tplTitle: 'Atelier de modèles',
   tplIntro:
     'Home Assistant affiche le rendu du modèle en direct – avec le type du résultat et tout ce à quoi il réagit.',
@@ -173,8 +165,6 @@ export const fr: Strings = {
   disabledGroup: 'Désactivées',
   issueService: "⚠ Ce service n'existe pas",
   issueEntity: "⚠ Cette entité n'existe pas",
-  runs: 'Exécutions',
-  showRuns: 'Afficher les exécutions',
   addNext: 'Ajouter une action (après celle-ci)',
   addAfterTrigger: 'Ajouter une condition ou une action (après celle-ci)',
   outputYes: 'Oui',
@@ -198,8 +188,6 @@ export const fr: Strings = {
   branchContext: '{block} › {branch} · étape {n}',
   fields: 'Champs',
   emptyHint: "Qu'est-ce qui doit lancer l'automatisation ?",
-  automations: 'Automatisations',
-  scripts: 'Scripts',
   rename: 'Renommer',
   tabsLabel: 'Automatisations ouvertes',
   closeTab: "Fermer l'onglet",
@@ -218,8 +206,6 @@ export const fr: Strings = {
   mode_queued: "File d'attente",
   mode_parallel: 'Parallèle',
   resize: 'Glisser pour redimensionner · double-clic = par défaut',
-  homeHint:
-    'Créez, testez et comprenez vos automatisations et scripts sous forme de flux – enregistrés en YAML Home Assistant standard.',
   loadFailed: 'Impossible de charger',
   saveFailed: "Échec de l'enregistrement",
   saveErrAtCard: '« {card} » : {reason}',
@@ -233,14 +219,8 @@ export const fr: Strings = {
   saveErrService: "L'action n'est pas un service valide (forme : domaine.service).",
   saveErrDetail: 'Message de Home Assistant',
   saveErrShow: 'Aller à la carte',
-  conflictTitle: 'Modifié dans Home Assistant',
-  conflictText:
-    "« {name} » a été modifié dans Home Assistant depuis que vous l'avez ouvert ici. L'écraser avec votre version ou charger la version de Home Assistant ? (Vos changements restent accessibles via Annuler.)",
-  conflictOverwrite: 'Écraser',
-  conflictReload: 'Charger depuis Home Assistant',
   tabsStorageFull:
     'Le stockage du navigateur est plein – les onglets ouverts et les brouillons non enregistrés ne sont plus mémorisés.',
-  openInHa: 'Ouvrir dans HA',
   invalid: 'Invalide',
   type_trigger: 'Déclencheur',
   type_automation: 'Automatisation',
@@ -262,7 +242,7 @@ export const fr: Strings = {
   welcomeTestsTitle: 'Tests du projet',
   welcomeTestsText:
     'Exécutez les tests Python, vérifiez la configuration et rechargez Home Assistant explicitement.',
-  whatsNewTitle: 'Nouveau dans FLODE {version}',
+  whatsNewTitle: 'Nouveau dans git-flode {version}',
   whatsNewAll: 'Tous les changements',
   continue: 'Continuer',
 };

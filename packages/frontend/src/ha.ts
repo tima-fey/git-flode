@@ -72,10 +72,10 @@ export type FlowKind = 'automation' | 'script';
 export interface AutomationListItem {
   /** File provenance; independent of HA entity/config identifiers. */
   source?: import('@flode/shared').FileAutomationRef;
-  /** Automation or script — they have separate config APIs and ids. */
+  /** Flow kind used by native HA forms and shared graph helpers. */
   kind: FlowKind;
   entityId: string;
-  /** Config id (`id:` in automations.yaml) — what the config API takes. */
+  /** Stable editor identity; file sources use the relative path and YAML ID. */
   configId: string;
   name: string;
   enabled: boolean;
@@ -111,9 +111,8 @@ function stableJson(value: unknown): string {
 }
 
 /**
- * A short fingerprint of a config as HA has it stored. FLODE remembers it
- * when opening or saving a flow; a different one later means the flow was
- * changed in HA meanwhile (HA's editor, YAML, another window).
+ * A semantic fingerprint of an automation config, independent of YAML formatting.
+ * Whole-file revisions separately guard saves against external disk changes.
  */
 export function configFingerprint(config: Record<string, unknown>): string {
   const text = stableJson(config);

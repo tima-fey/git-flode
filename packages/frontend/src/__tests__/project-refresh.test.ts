@@ -5,7 +5,7 @@ import { FlodeGit } from '../flode-git';
 import { FlodePanel } from '../flode-panel';
 import { readGitStatus } from '../git-source';
 import { configFingerprint, type HomeAssistant } from '../ha';
-import { type EditorTab, type OpenFlow, readTabs } from '../tabs';
+import { type EditorTab, type OpenFlow, readTabs, writeTabs } from '../tabs';
 
 const status: GitStatus = {
   directory: '/a',
@@ -72,13 +72,31 @@ function tab(): EditorTab {
   };
   return { id: 'tab-a', flow, past: [], future: [], saveState: 'saved', selectedId: null };
 }
-function install(panel: FlodePanel, entry: EditorTab) {
-  panel['fileDirectory'] = '/a';
-  panel.tabs = [entry];
-  panel.flow = entry.flow;
-  panel.activeTabId = entry.id;
-  panel.saveState = entry.saveState;
-  panel['knownTabIds'].add(entry.id);
+async function mountPanel(
+  reply: (message: Record<string, unknown>) => Promise<unknown>,
+  entry?: EditorTab,
+  showHome = true
+): Promise<FlodePanel> {
+  if (entry) writeTabs({ tabs: [entry], activeTabId: entry.id, showHome }, new Set([entry.id]));
+  const panel = new FlodePanel();
+  panel.hass = connection(reply);
+  panel.welcome = null;
+  document.body.append(panel);
+  await vi.waitFor(() => expect(panel.filesLoaded).toBe(true));
+  await panel.updateComplete;
+  return panel;
+}
+function projectReply(directory: string, message: Record<string, unknown>): unknown {
+  if (message.type === 'flode/files/list') return { directory, items: [], errors: [] };
+  if (message.type === 'flode/files/open') return { config, version: 'original', directory };
+  if (message.type === 'flode/git/status') return { ...status, directory };
+  if (message.type === 'flode/git/history') return history;
+  return {};
+}
+function gitControl(panel: FlodePanel): FlodeGit {
+  const control = panel.shadowRoot?.querySelector('flode-git');
+  if (!(control instanceof FlodeGit)) throw new Error('Missing Git control');
+  return control;
 }
 afterEach(() => {
   document.body.innerHTML = '';
@@ -93,24 +111,26 @@ it('accepts an unpublished prod branch and a repository without origin', async (
 });
 
 it('preserves drafts from the previous project and restores them when returning', async () => {
-  const panel = new FlodePanel();
-  document.body.append(panel);
-  await panel.updateComplete;
   const entry: EditorTab = { ...tab(), saveState: 'unsaved' };
   entry.flow.graph.name = 'My unsaved edit';
-  install(panel, entry);
-  panel['gitReadOnly'] = true;
-  let directory = '/b';
-  panel.hass = connection(async () => ({ directory, items: [], errors: [] }));
-  await panel['loadFileList']();
-  await vi.waitFor(() => expect(panel['fileDirectory']).toBe('/b'));
-  panel['persistTabs']();
-  expect(panel.tabs).toHaveLength(0);
+  let directory = '/a';
+  const panel = await mountPanel(async (message) => projectReply(directory, message), entry);
+  await vi.waitFor(() => expect(panel.flow?.graph.name).toBe('My unsaved edit'));
+  gitControl(panel).dispatchEvent(
+    new CustomEvent('git-state-changed', {
+      detail: { ...status, branch: null },
+    })
+  );
+  expect(panel.readOnly).toBe(true);
+  directory = '/b';
+  window.dispatchEvent(new Event('focus'));
+  await vi.waitFor(() => expect(panel.tabs).toHaveLength(0));
+  window.dispatchEvent(new Event('pagehide'));
   expect(panel.readOnly).toBe(false);
   expect(readTabs()?.tabs[0]?.flow.graph.name).toBe('My unsaved edit');
   directory = '/a';
-  await panel['loadFileList']();
-  expect(panel.flow?.graph.name).toBe('My unsaved edit');
+  window.dispatchEvent(new Event('focus'));
+  await vi.waitFor(() => expect(panel.flow?.graph.name).toBe('My unsaved edit'));
   expect(panel.saveState).toBe('unsaved');
 });
 
@@ -121,7 +141,7 @@ it('refreshes the latest Git directory after an older request completes', async 
   control.directory = '/a';
   control.hass = connection(async (message) => {
     if (message.type === 'flode/git/status')
-      return ++reads === 1 ? pending.promise : { ...status, directory: '/b' };
+      return ++reads === 1 ? pending.promise : { ...status, directory: '/b', short: 'bbbbbbb' };
     return history;
   });
   document.body.append(control);
@@ -129,41 +149,39 @@ it('refreshes the latest Git directory after an older request completes', async 
   control.directory = '/b';
   await control.updateComplete;
   pending.resolve(status);
-  await vi.waitFor(() => expect(control['status']?.directory).toBe('/b'));
+  await vi.waitFor(() =>
+    expect(control.shadowRoot?.querySelector('header code')?.textContent).toBe('bbbbbbb')
+  );
   expect(reads).toBe(2);
 });
 
 it('retains and persists edits made while a Git merge is pending', async () => {
   const pending = deferred<GitStatus>();
-  const panel = new FlodePanel();
   const entry = tab();
-  install(panel, entry);
-  panel.showHome = true;
-  panel.welcome = null;
-  panel.filesLoaded = true;
-  panel.hass = connection(async (message) => {
-    if (message.type === 'flode/git/status') return status;
-    if (message.type === 'flode/git/history') return history;
-    if (message.type === 'flode/git/action') return pending.promise;
-    if (message.type === 'flode/files/list') return { directory: '/a', items: [], errors: [] };
-    if (message.type === 'flode/files/open')
-      return { config, version: 'original', directory: '/a' };
-    return [];
-  });
-  document.body.append(panel);
-  await panel.updateComplete;
-  const control = panel.shadowRoot?.querySelector('flode-git');
-  if (!(control instanceof FlodeGit)) throw new Error('Missing Git control');
-  await vi.waitFor(() => expect(control['status']).not.toBeNull());
-  const operation = control['act']('merge');
+  let merging = false;
+  const panel = await mountPanel(async (message) => {
+    if (message.type === 'flode/git/action') {
+      merging = true;
+      return pending.promise;
+    }
+    return projectReply('/a', message);
+  }, entry);
+  const control = gitControl(panel);
+  await vi.waitFor(() =>
+    expect(control.shadowRoot?.querySelector('[data-action="merge"]')).not.toBeNull()
+  );
+  control.shadowRoot?.querySelector('[data-action="merge"]')?.dispatchEvent(new Event('click'));
+  await vi.waitFor(() => expect(merging).toBe(true));
   panel.flow = { ...entry.flow, graph: { ...entry.flow.graph, name: 'Edited during merge' } };
   panel.saveState = 'unsaved';
   panel.showHome = false;
   await panel.updateComplete;
-  pending.resolve({ ...status, commit: 'b'.repeat(40), branch: 'prod' });
-  await operation;
+  pending.resolve({ ...status, commit: 'b'.repeat(40), short: 'bbbbbbb', branch: 'prod' });
+  await vi.waitFor(() =>
+    expect(control.shadowRoot?.querySelector('header code')?.textContent).toBe('bbbbbbb')
+  );
   await vi.waitFor(() => expect(panel.readOnly).toBe(false));
-  panel['persistTabs']();
+  window.dispatchEvent(new Event('pagehide'));
   expect(panel.tabs).toHaveLength(1);
   expect(panel.flow?.graph.name).toBe('Edited during merge');
   expect(panel.flow?.fileVersion).toBe('original');
@@ -172,15 +190,25 @@ it('retains and persists edits made while a Git merge is pending', async () => {
 
 it('does not advance a dirty tab revision when an unchanged config arrives late', async () => {
   const pending = deferred<unknown>();
-  const panel = new FlodePanel();
+  let opened = false;
   const entry = tab();
-  install(panel, entry);
-  panel.hass = connection(async () => pending.promise);
-  const refresh = panel['refreshFileTab'](entry.id);
+  const panel = await mountPanel(
+    async (message) => {
+      if (message.type === 'flode/files/open') {
+        opened = true;
+        return pending.promise;
+      }
+      return projectReply('/a', message);
+    },
+    entry,
+    false
+  );
+  await vi.waitFor(() => expect(opened).toBe(true));
   panel.flow = { ...entry.flow, graph: { ...entry.flow.graph, name: 'New local edit' } };
   panel.saveState = 'unsaved';
   pending.resolve({ config, version: 'new-file-revision', directory: '/a' });
-  await refresh;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await panel.updateComplete;
   expect(panel.flow.fileVersion).toBe('original');
   expect(panel.flow.graph.name).toBe('New local edit');
   expect(panel.saveState).toBe('unsaved');
@@ -190,12 +218,20 @@ it('ignores a file listing that arrives after a newer project response', async (
   const pending = deferred<unknown>();
   let reads = 0;
   const panel = new FlodePanel();
-  panel.hass = connection(async () =>
-    ++reads === 1 ? pending.promise : { directory: '/b', items: [], errors: [] }
+  panel.hass = connection(async (message) => {
+    if (message.type === 'flode/files/list')
+      return ++reads === 1 ? pending.promise : { directory: '/b', items: [], errors: [] };
+    return projectReply('/b', message);
+  });
+  document.body.append(panel);
+  await vi.waitFor(() => expect(reads).toBe(1));
+  window.dispatchEvent(new Event('focus'));
+  await vi.waitFor(() =>
+    expect(panel.shadowRoot?.querySelector('.home-head code')?.textContent).toBe('/b')
   );
-  const first = panel['loadFileList']();
-  await panel['loadFileList']();
   pending.resolve({ directory: '/a', items: [], errors: [] });
-  await first;
-  expect(panel['fileDirectory']).toBe('/b');
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await panel.updateComplete;
+  expect(panel.shadowRoot?.querySelector('.home-head code')?.textContent).toBe('/b');
+  expect(reads).toBe(2);
 });

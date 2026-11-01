@@ -12,8 +12,8 @@ const directory = join(__dirname, '../../../../dev/container/fixtures/automation
 const parser = new YamlParser({ keepBlocks: true });
 
 for (const { file, count, style } of [
-  { file: 'heating.yaml', count: 5, style: 'trigger' },
-  { file: 'ventilation.yaml', count: 7, style: 'triggers' },
+  { file: 'heating.yaml', count: 2, style: 'trigger' },
+  { file: 'ventilation.yaml', count: 2, style: 'triggers' },
 ]) {
   const path = join(directory, file);
   const original = readFileSync(path, 'utf8');
@@ -21,7 +21,7 @@ for (const { file, count, style } of [
   if (!Array.isArray(entries)) throw new Error(`${file} must contain an automation list`);
   const configs = entries.map((entry: unknown) => FileAutomationConfigSchema.parse(entry));
 
-  describe(`real ${file}`, () => {
+  describe(`climate fixture ${file}`, () => {
     it('retains independent entries and the original HA syntax', () => {
       expect(configs).toHaveLength(count);
       expect(new Set(configs.map((config) => config.id)).size).toBe(count);

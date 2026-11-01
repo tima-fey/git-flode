@@ -1,7 +1,6 @@
-"""Config flow for FLODE integration."""
+"""Config flow for git-flode."""
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 import voluptuous as vol
@@ -12,7 +11,6 @@ from homeassistant.core import callback
 from .const import DOMAIN
 from .file_source import CONF_DIRECTORY, FileSource
 
-_LOGGER = logging.getLogger(__name__)
 
 def directory_schema(default: str) -> vol.Schema:
     """Share the directory setting between initial setup and options."""
@@ -20,7 +18,7 @@ def directory_schema(default: str) -> vol.Schema:
 
 
 class FlodeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for FLODE."""
+    """Handle a config flow for git-flode."""
 
     VERSION = 1
 
@@ -45,7 +43,7 @@ class FlodeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
             return self.async_create_entry(
-                title="FLODE",
+                title="git-flode",
                 data=user_input
             )
 
@@ -59,7 +57,7 @@ class FlodeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class FlodeOptionsFlow(config_entries.OptionsFlow):
-    """Configure the allowed root for file reads."""
+    """Configure the shared project root for automations, objects, tests, and Git."""
 
     async def async_step_init(self, user_input=None) -> ConfigFlowResult:
         """Validate and save an absolute directory path."""

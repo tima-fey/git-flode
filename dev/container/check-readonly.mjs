@@ -60,10 +60,10 @@ for (const engine of ENGINES) {
         await groups.evaluateAll((elements) => elements.map((element) => element.dataset.folder)),
         ['climate', 'examples']
       );
-      assert.equal(await groups.locator('ha-card.item').count(), 14);
+      assert.equal(await groups.locator('ha-card.item').count(), 6);
       assert.equal(
         await page.locator('flode-panel .folder-group[data-folder="climate"] ha-card.item').count(),
-        12
+        4
       );
       const climate = page.locator('flode-panel .folder-group[data-folder="climate"]');
       await climate.locator('summary').click();
@@ -72,13 +72,13 @@ for (const engine of ENGINES) {
       const search = page.locator('flode-panel .home-bar > label.search > input');
       await search.fill('climate/heating.yaml');
       await page.waitForFunction(
-        () => window.flodeGate.panel()?.shadowRoot.querySelectorAll('.item').length === 5
+        () => window.flodeGate.panel()?.shadowRoot.querySelectorAll('.item').length === 2
       );
       assert.equal(await groups.count(), 1);
       await climate.locator('.grid').waitFor({ state: 'visible' });
       await search.fill('');
       await page.waitForFunction(
-        () => window.flodeGate.panel()?.shadowRoot.querySelectorAll('.item').length === 14
+        () => window.flodeGate.panel()?.shadowRoot.querySelectorAll('.item').length === 6
       );
       await climate.locator('.grid').waitFor({ state: 'hidden' });
       await climate.locator('summary').focus();
