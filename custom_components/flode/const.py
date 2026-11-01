@@ -2,4 +2,4 @@
 
 DOMAIN = "flode"
 PANEL_TITLE = "git-flode"
-PANEL_ICON = "mdi:transit-connection-variant"
+PANEL_ICON = "mdi:source-merge"

@@ -1,5 +1,7 @@
 # git-flode
 
+<img src="docs/images/flode.svg" alt="git-flode logo" width="96" height="96">
+
 Edit Home Assistant automation YAML on a visual canvas, review and publish its
 Git changes, and apply updates from `main` to a dedicated `prod` checkout.
 The integration and administrator panel appear as **git-flode** in Home Assistant.
