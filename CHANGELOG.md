@@ -1,6 +1,35 @@
 # Changelog
 
-All notable changes to FLODE are documented here. Every release since 3.0.0 builds on the one before, so each entry only lists what changed in it.
+This repository is [git-flode](https://github.com/tima-fey/git-flode), an independent
+fork of [FLODE](https://github.com/SH1FT-W/flode) by SH1FT-W and contributors.
+See [CREDITS.md](CREDITS.md) for project lineage.
+
+## git-flode — unreleased
+
+- Load automation definitions exclusively from a configurable project's
+  `automations/` directory, with collapsible folder groups and source paths.
+- Edit an existing automation in its original YAML file with comment-preserving
+  serialization, file-revision checks, and regression coverage for other files.
+- Add main-only Git status, fetch, fast-forward pull, historical checkout,
+  reviewed commits, and explicit push. Read author identity from Git config;
+  keep commit contents complete when the diff preview is truncated.
+- Add explicit native HA configuration check, Quick reload, and project Python
+  unittest execution inside HA.
+- Export current device/entity/helper metadata to a fully replaced `objects/`
+  tree, with canonical records and indexes for offline lookup.
+- Supply a portable project test for automation object references, including
+  supported static Jinja lookups, registry IDs, and device associations.
+- Add isolated Docker/browser validation and fork-specific documentation;
+  remove the obsolete project roadmap.
+
+## Upstream FLODE history
+
+The entries below are retained from upstream FLODE. Their versions, features,
+credits, and issue links describe upstream releases, not releases or enabled
+features of this fork. Inherited version metadata does not identify a separate
+published git-flode release.
+
+Upstream's original versioning notes follow:
 
 After 3.4.1, releases use calendar versions `YY.M.N` (year, month, number of the release in that month), e.g. `26.10.11`. They count as newer than every 3.x version, so updates through HACS work as before.
 

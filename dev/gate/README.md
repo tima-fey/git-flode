@@ -1,5 +1,17 @@
 # Release gate
 
+## Scope in git-flode
+
+This gate is inherited from upstream FLODE and assumes automation/script
+configuration is stored through HA's config API. The fork's configured file
+source has separate browser checks in [dev/container](../container/README.md),
+covering file isolation, Git, object export, and project tests. Upstream gate
+results do not establish that the fork file workflow works, and a successful
+container run does not replace the exact-commit release policy in
+[CLAUDE.md](../../CLAUDE.md).
+
+The rest of this guide documents the retained upstream gate machinery.
+
 No release without a green gate for exactly the commit that goes out.
 
 ```sh

@@ -1,85 +1,122 @@
-# Contributing
+# Contributing to git-flode
 
-Thank you for considering contributing to FLODE This document explains how to set up the repository locally, run the project, run tests, and the preferred workflow for making changes, opening pull requests and preparing releases.
+This repository is an independent fork of [FLODE](https://github.com/SH1FT-W/flode)
+by SH1FT-W and contributors, with earlier C.A.F.E. foundations. See
+[CREDITS.md](CREDITS.md). Contributions and fork-specific reports belong in
+[tima-fey/git-flode](https://github.com/tima-fey/git-flode).
 
-**Please read these guidelines before opening a PR.**
+## Development setup
 
-## Quick Start
+Use Node 24 and Yarn 4; `.yarnrc.yml` selects the pinned executable. Clone this
+fork, install dependencies, and build upstream workspace outputs before tests:
 
-- **Clone the repo**:
-  - `git clone <repo-url>`
-  - `cd flode`
-- **Install**: The repository uses Yarn 4 workspaces. From the repository root run:
-  - `yarn install`
-- **Start development**: `yarn dev` (from the repo root) rebuilds the panel into `custom_components/flode/www` on every change. Mount or copy `custom_components/flode` into a test Home Assistant (a Docker instance works well) and reload the browser — FLODE runs inside Home Assistant, there is no standalone dev server.
+```sh
+git clone https://github.com/tima-fey/git-flode.git
+cd git-flode
+yarn install --immutable
+yarn build
+```
 
-## Project Structure (short)
+`yarn dev` watches and rebuilds `custom_components/flode/www/`. Load the panel
+inside a separate test Home Assistant; there is no standalone development
+server. Use [the isolated Docker setup](dev/container/README.md) for startup,
+restarts, fixture provisioning, and browser checks. The test configuration
+checkout and its local remote are separate from the application repository.
 
-- `packages/frontend` — the Home Assistant panel (Lit + Home Assistant's own components)
-- `packages/ui-core` — framework-free UI logic (card texts, AI, traces, dependency map)
-- `packages/shared` — shared types & Zod schemas
-- `packages/transpiler` — YAML parsing & transpilation
-- `custom_components/flode` — Home Assistant integration (Python)
+The configured project has `automations/`, `objects/`, and `tests/`. Native HA
+editor elements still need a live HA frontend, while automation definitions
+come from the file backend. Read [the architecture](docs/architecture.md)
+before changing graph, parser, transpiler, storage, or execution behavior.
 
-See the repository root and the `packages` folder for the full layout. [`docs/architecture.md`](docs/architecture.md) explains how the pieces work together: the flow graph, flow cards versus branch cards, the parser, the transpiler and its two strategies, runs and "run from here", the editor, and how to run and release FLODE.
+## Repository structure
 
-## Common Commands
+| Location | Purpose |
+| --- | --- |
+| `packages/frontend` | Lit panel, native HA editors, file provenance, Git and HA controls |
+| `packages/ui-core` | Framework-free card summaries, relations, AI, traces, and locales |
+| `packages/shared` | Shared types and Zod schemas, including backend contracts |
+| `packages/transpiler` | YAML/graph conversion and structural regression fixtures |
+| `custom_components/flode` | HA integration, file storage, Git, object export, and test runner |
+| `tests` | Python backend and portable project-test regressions |
+| `dev/container` | Disposable HA Container and file-workflow browser checks |
+| `dev/gate` | Inherited upstream release checks and shared browser utilities |
 
-- Install dependencies: `yarn install`
-- Rebuild the panel on every change: `yarn dev`
-- Build all packages: `yarn build`
-- Build and copy to Home Assistant component: `yarn build:ha`
-- Run tests: `yarn test` (use `--run` to avoid Vitest watch mode when necessary)
-- Typecheck: `yarn typecheck`
-- Lint/format: `yarn check` and `yarn format`
+## Checks
 
-If you need to run a command inside a package, change into that package directory and run the command there (for example `cd packages/frontend && yarn dev`).
+Run each check and inspect its result. The aggregate `yarn check` uses
+semicolons and can hide an earlier failure behind a later successful command.
 
-## Development Guidelines
+```sh
+yarn build
+yarn test --run
+yarn typecheck
+yarn lint:biome
+yarn format:check
+```
 
-- Keep TypeScript strict — the codebase is compiled with `--strict` and must remain type-safe.
-- Avoid `any`, `as` assertions, and `@ts-ignore` except when interacting with unavoidable external APIs; prefer `unknown` + type guards instead.
-- Use `@flode/shared` types and Zod schemas for shared shapes — do not re-declare common types.
-- Extract reusable logic to helpers (or `@flode/ui-core`) rather than duplicating code.
-- Use Home Assistant's own elements and dialogs wherever one exists.
-- Do not use IIFEs; prefer named helper functions or separate elements.
+Run backend tests in the same pinned HA environment as CI:
 
-## Tests
+```sh
+docker run --rm -e PYTHONDONTWRITEBYTECODE=1 \
+  -v "$PWD:/work:ro" -w /work --entrypoint sh \
+  ghcr.io/home-assistant/home-assistant:2026.10.1 \
+  -c 'uv pip install --system --index-strategy unsafe-best-match pytest==8.4.2 ruamel.yaml==0.18.16 && python -m pytest -p no:cacheprovider tests -q'
+```
 
-- Unit tests use Vitest. Run all tests with `yarn test` from the repository root or run the package-local tests inside `packages/*`.
-- When adding tests, aim for deterministic, fast tests. Use fixtures in `packages/transpiler/fixtures` or `__tests__/yaml-automation-fixtures` where appropriate.
+Python lint uses Ruff 0.16.9. For changes to portable project tests, include
+`dev/container/fixtures/tests/` in linting as well as `custom_components/` and
+`tests/`. Run relevant container/browser checks for UI, source loading, saving,
+Git, object export, and the Run tests button. See the container guide for commands.
+These checks use disposable fixtures and a local Git remote.
 
-## Branching, Commits & Pull Requests
+The configuration repository's `tests/` is distinct from this repository's
+backend suite. HA runs its `test_*.py` files through Python unittest. The
+portable ID checker uses the last explicit object export; missing production
+IDs in the isolated climate examples are expected failures, not grounds to
+skip checks or manufacture catalog records.
 
-- Create a short-lived feature branch from `main`: `git checkout -b feat/short-description`.
-- Make small, focused commits with clear messages. Use present-tense, imperative form (e.g., "Add X feature").
-- Run `yarn typecheck`, `yarn test`, `yarn check`, and `yarn format` before opening a PR.
-- Open a pull request against `main`. In the PR description, include:
-  - What the change does and why
-  - Any breaking changes
-  - Manual steps to test (if applicable)
+## Implementation conventions
 
-## Code Review
+- Use English for repository prose, comments, commits, and PR descriptions.
+  Keep intentional UI translations in their locale files.
+- Keep TypeScript strict: prefer `unknown` and type guards. Avoid `any`,
+  assertions, and suppression comments; do not use IIFEs.
+- Reuse `@flode/*` packages, shared Zod contracts, and existing helpers. Keep
+  framework-free shared logic in ui-core.
+- Reuse native HA elements and the existing Lit patterns. Add new translation
+  keys in every supported language.
+- Preserve native YAML, unknown fields, and neighboring automations. Verify
+  semantic round trips separately from source-text preservation. Saving one
+  file must leave every other file's content, permissions, and mtime unchanged.
+- Keep save, Git operations, exports, tests, validation, and reload explicit.
+  Filesystem and subprocess work belongs outside the HA event loop. Enforce
+  administrator access, root/path validation, stale-request checks, and the
+  shared project lock where applicable.
+- Test files in temporary projects and Git in temporary repositories. Keep
+  credentials, tokens, HA storage, and runtime artifacts out of commits.
 
-- Be responsive to review comments. The reviewer may ask for additional tests or stricter types.
-- Keep changes focused; if a review requests a larger refactor, consider creating follow-up PRs.
+## Pull requests and releases
 
-## Home Assistant Build / Deploy
+Use focused branches and open PRs against this fork's `main`. Describe the final
+behavior, relevant validation, and limitations in English. Preserve attribution
+when adapting upstream code or documentation; keep historical upstream issue
+links attached to their original changes.
 
-- The repository includes scripts to copy builds into the Home Assistant custom component directory. Use `yarn build:ha` from the repo root to build and copy files.
-- The manifest at [custom_components/flode/manifest.json](custom_components/flode/manifest.json) must be kept in sync with release versions.
+Follow the authorization and release policy in [CLAUDE.md](CLAUDE.md): commits,
+pushes, tags, version changes, and releases require user authorization. An
+explicit request supplies that authorization. Documentation edits do not
+implicitly authorize a release.
 
-## Adding Packages or Tests
+The current manifest/frontend versions retain upstream numbering. Keep them
+synchronized for an authorized release and follow the exact-commit release
+procedure in CLAUDE.md and [the release gate guide](dev/gate/README.md). The
+inherited HA-API gate and fork file-workflow browser tests cover different
+paths; neither should be presented as validating the other.
 
-- When adding new packages under `packages/`, add workspace entries and update root `package.json` if required.
-- Keep package `tsconfig.json` and `vitest.config.ts` consistent with existing packages.
+## Reporting issues
 
-## Security & Sensitive Data
-
-- Do not commit secrets, credentials, or Home Assistant tokens into the repository. Use environment variables or secure secret stores.
-
-## Getting Help
-
-- If you are unsure about something, open an issue or ask maintainers on the project's communication channel.
-
-Thank you for helping improve FLODE! We appreciate careful, well-tested contributions.
+Use [the fork issue tracker](https://github.com/tima-fey/git-flode/issues).
+Include the fork commit, HA version, installation method, reproducible steps,
+and a minimal redacted YAML example when relevant. For storage or Git failures,
+include the operation and displayed error. For reference-test failures, state
+whether objects were exported before the test run.

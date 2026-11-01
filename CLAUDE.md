@@ -7,12 +7,25 @@
 
 # Project Overview
 
-**FLODE** (Flow + Node Editor) is a visual flow editor for Home Assistant automations, inspired by Node-RED. It allows users to design automations as diagrams and transpiles them to 100% native Home Assistant YAML—no vendor lock-in. Automations remain editable in HA's built-in editor.
+**git-flode** is an independent fork of [FLODE](https://github.com/SH1FT-W/flode)
+by SH1FT-W and contributors, with earlier C.A.F.E. foundations (see
+[CREDITS.md](CREDITS.md)). The inherited Lit canvas and native HA forms edit
+existing automation YAML under a configured `automations/` directory. The fork
+adds main-only Git operations, explicit HA maintenance controls, manual object
+exports to `objects/`, and project Python tests from `tests/` inside HA.
+
+Automation definitions come only from the configured file source. Save, Git,
+object export, tests, and HA reload are separate explicit actions. Creation,
+script-file editing, and action execution are outside the current file workflow.
+See [README.md](README.md) for current behavior and
+[dev/container/README.md](dev/container/README.md) for the isolated development
+setup. Historical upstream features below describe retained code; they do not
+imply every upstream feature is enabled in file mode.
 
 # Repository Structure
 
 ```
-flode/
+git-flode/
 ├── packages/
 │   ├── shared/          # @flode/shared - Types and Zod schemas
 │   ├── transpiler/      # @flode/transpiler - YAML parser/generator

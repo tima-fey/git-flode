@@ -1,6 +1,9 @@
 # Repository guide
 
-FLODE is a visual editor for Home Assistant automations and scripts. It must
+git-flode is an independent fork of FLODE by SH1FT-W and contributors; see
+`CREDITS.md` for its FLODE and C.A.F.E. lineage. It edits existing automation
+YAML from `automations/`, exports HA metadata to `objects/`, and runs project
+tests from `tests/`. See `README.md` for the current fork workflow. It must
 round-trip native Home Assistant YAML without losing users' data or unknown
 fields. Read `docs/architecture.md` before changing graph, parser, transpiler,
 or execution behavior. See `CONTRIBUTING.md` and `CLAUDE.md` for existing project
