@@ -38,13 +38,11 @@ const STRINGS = {
     haInvalid: 'Die Konfiguration ist ungültig.',
     haReloaded: 'Schnelles Neuladen abgeschlossen.',
     haScope: 'Prüft und lädt die mit Home Assistant verbundene YAML-Konfiguration neu.',
-    gitIncoming: 'Noch nicht in prod gemergte Commits von origin/main: {count}',
+    gitIncoming: 'Neue Commits aus main: {count}',
     gitProdUnpublished: 'prod wurde noch nicht veröffentlicht. prod pushen erstellt origin/prod.',
     gitRevert: 'Letzten main-Merge rückgängig machen',
     gitUndoNotice:
       'Stellt mit einem neuen Commit die Dateien vor dem Merge wieder her. Um dieselben Änderungen erneut anzuwenden, zuerst prod in main mergen und dort diesen Revert rückgängig machen.',
-    gitWorkflow:
-      'HA arbeitet in prod. Updates werden aus main gemergt; lokale Commits und Pushes bleiben in prod.',
 
     gitRefresh: 'Git aktualisieren',
     gitFetch: 'Fetch (nur herunterladen)',
@@ -54,7 +52,8 @@ const STRINGS = {
     gitShow: 'Commit ansehen',
     gitMore: 'Mehr laden',
     gitDetached: 'Historische Version',
-    gitAheadBehind: 'prod zu origin/prod: {ahead} voraus, {behind} zurück',
+    gitAheadBehind: 'prod: {ahead} Commits zum Pushen · {behind} Commits nur auf origin/prod',
+    gitSynced: 'prod ist mit origin/prod synchronisiert.',
     gitDirty: 'Lokale Änderungen erkannt. Versionswechsel sind gesperrt.',
     gitFilesNotice:
       'Git ändert Dateien in diesem Ordner. Home-Assistant-Automatisierungen werden nicht neu geladen.',
@@ -304,13 +303,11 @@ const STRINGS = {
     haInvalid: 'Configuration is invalid.',
     haReloaded: 'Quick reload completed.',
     haScope: 'Checks and reloads the YAML configuration connected to Home Assistant.',
-    gitIncoming: 'origin/main commits not merged into prod: {count}',
+    gitIncoming: 'New commits from main: {count}',
     gitProdUnpublished: 'prod has not been published. Push prod to create origin/prod.',
     gitRevert: 'Undo latest main merge',
     gitUndoNotice:
       'Restores files from before this merge using a new commit. To reapply the same changes later, merge prod into main and revert this undo there first.',
-    gitWorkflow:
-      'HA works in prod. Updates arrive by merging main; local commits and pushes stay in prod.',
 
     gitRefresh: 'Refresh Git',
     gitFetch: 'Fetch (download only)',
@@ -320,7 +317,8 @@ const STRINGS = {
     gitShow: 'View commit',
     gitMore: 'Load more',
     gitDetached: 'Historical version',
-    gitAheadBehind: 'prod vs origin/prod: {ahead} ahead, {behind} behind',
+    gitAheadBehind: 'prod: {ahead} commits to push · {behind} commits only on origin/prod',
+    gitSynced: 'prod is in sync with origin/prod.',
     gitDirty: 'Local changes detected. Switching versions is blocked.',
     gitFilesNotice:
       'Git changes files in this folder. Home Assistant automations are not reloaded.',

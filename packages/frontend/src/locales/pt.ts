@@ -30,13 +30,11 @@ export const pt: Strings = {
   haInvalid: 'A configuração é inválida.',
   haReloaded: 'Recarga rápida concluída.',
   haScope: 'Verifica e recarrega a configuração YAML ligada ao Home Assistant.',
-  gitIncoming: 'Commits de origin/main ainda não mesclados em prod: {count}',
+  gitIncoming: 'Novos commits de main: {count}',
   gitProdUnpublished: 'prod ainda não foi publicado. O push de prod cria origin/prod.',
   gitRevert: 'Desfazer a última mesclagem de main',
   gitUndoNotice:
     'Restaura os arquivos anteriores à mesclagem com um novo commit. Para reaplicar as mesmas alterações, mescle prod em main e reverta esta anulação em main primeiro.',
-  gitWorkflow:
-    'O HA trabalha em prod. Atualizações chegam pela mesclagem de main; commits e pushes locais ficam em prod.',
 
   gitRefresh: 'Atualizar Git',
   gitFetch: 'Fetch (só transferir)',
@@ -46,7 +44,8 @@ export const pt: Strings = {
   gitShow: 'Ver commit',
   gitMore: 'Carregar mais',
   gitDetached: 'Versão histórica',
-  gitAheadBehind: 'prod face a origin/prod: {ahead} à frente, {behind} atrás',
+  gitAheadBehind: 'prod: {ahead} commits por enviar · {behind} commits apenas em origin/prod',
+  gitSynced: 'prod está sincronizado com origin/prod.',
   gitDirty: 'Há alterações locais. A mudança de versão está bloqueada.',
   gitFilesNotice:
     'O Git altera ficheiros nesta pasta. As automações do Home Assistant não são recarregadas.',

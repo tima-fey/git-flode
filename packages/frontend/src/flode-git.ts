@@ -214,8 +214,7 @@ export class FlodeGit extends LitElement {
       ${
         status
           ? html`
-        <p>${t(language, 'gitWorkflow')}</p>
-        <p>${status.remote_prod ? t(language, 'gitAheadBehind').replace('{ahead}', String(status.ahead)).replace('{behind}', String(status.behind)) : t(language, 'gitProdUnpublished')}</p>
+        <p>${status.remote_prod ? (status.ahead === 0 && status.behind === 0 ? t(language, 'gitSynced') : t(language, 'gitAheadBehind').replace('{ahead}', String(status.ahead)).replace('{behind}', String(status.behind))) : t(language, 'gitProdUnpublished')}</p>
         <p>${status.remote_main ? t(language, 'gitIncoming').replace('{count}', String(status.incoming)) : 'origin/main: —'}</p>
         ${this.hasUnsavedChanges ? html`<ha-alert alert-type="warning">${t(language, 'gitUnsavedEditors')}</ha-alert>` : nothing}
         ${status.dirty ? html`<ha-alert alert-type="warning">${t(language, 'gitDirty')}</ha-alert>` : nothing}

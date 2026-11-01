@@ -29,13 +29,11 @@ export const fr: Strings = {
   haInvalid: 'La configuration est invalide.',
   haReloaded: 'Rechargement rapide terminé.',
   haScope: 'Vérifie et recharge la configuration YAML connectée à Home Assistant.',
-  gitIncoming: 'Commits de origin/main non fusionnés dans prod : {count}',
+  gitIncoming: 'Nouveaux commits de main : {count}',
   gitProdUnpublished: 'prod n’est pas encore publié. Pousser prod crée origin/prod.',
   gitRevert: 'Annuler la dernière fusion de main',
   gitUndoNotice:
     'Restaure les fichiers précédant la fusion avec un nouveau commit. Pour réappliquer les mêmes changements, fusionnez prod dans main et annulez ce revert dans main.',
-  gitWorkflow:
-    'HA travaille dans prod. Les mises à jour arrivent par fusion de main ; les commits et pushes locaux restent dans prod.',
 
   gitRefresh: 'Actualiser Git',
   gitFetch: 'Fetch (télécharger seulement)',
@@ -45,7 +43,8 @@ export const fr: Strings = {
   gitShow: 'Voir le commit',
   gitMore: 'Charger plus',
   gitDetached: 'Version historique',
-  gitAheadBehind: 'prod face à origin/prod : {ahead} en avance, {behind} en retard',
+  gitAheadBehind: 'prod : {ahead} commits à pousser · {behind} commits uniquement sur origin/prod',
+  gitSynced: 'prod est synchronisé avec origin/prod.',
   gitDirty: 'Modifications locales détectées. Le changement de version est bloqué.',
   gitFilesNotice:
     'Git modifie les fichiers de ce dossier. Les automatisations Home Assistant ne sont pas rechargées.',
