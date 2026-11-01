@@ -241,7 +241,7 @@ export async function gotoPanel(page, { reload = false } = {}) {
     await page.goto(`${HA_URL}/flode`);
     page.gateNavigating = false;
   }
-  await waitForPanel(page, (panel) => panel.hass && panel.haList !== null, undefined, 30000);
+  await waitForPanel(page, (panel) => panel.hass && panel.filesLoaded, undefined, 30000);
 }
 
 /** Opens a flow by its name through FLODE's command palette (⌘K), like a user would. */

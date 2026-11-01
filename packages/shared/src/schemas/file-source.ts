@@ -16,3 +16,5 @@ export const FileAutomationSnapshotSchema = z.object({
   version: z.string(),
   directory: z.string(),
 });
+
+export type FileAutomationSnapshot = z.infer<typeof FileAutomationSnapshotSchema>;

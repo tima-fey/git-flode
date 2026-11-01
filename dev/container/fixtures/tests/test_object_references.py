@@ -121,9 +121,13 @@ def check_template(text, catalog, where, errors, scope=None, device_step=False):
                 raise ValueError(f'Dynamic {call.node.name}() reference cannot be validated')
             for argument in arguments:
                 catalog.check(FUNCTIONS[call.node.name], literal(argument), where, errors, names=True)
-        for filtered in tree.find_all(nodes.Filter):
+        for filtered in tree.find_all((nodes.Filter, nodes.Test)):
             if filtered.name in FUNCTIONS:
                 catalog.check(FUNCTIONS[filtered.name], literal(filtered.node), where, errors, names=True)
+            elif filtered.name in ('map', 'select', 'reject') and filtered.args:
+                function = filtered.args[0]
+                if isinstance(function, nodes.Const) and function.value in FUNCTIONS:
+                    catalog.check(FUNCTIONS[function.value], literal(filtered.node), where, errors, names=True)
         for access in tree.find_all((nodes.Getattr, nodes.Getitem)):
             parts = state_path(access)
             if parts and '<dynamic>' in parts[:2]:

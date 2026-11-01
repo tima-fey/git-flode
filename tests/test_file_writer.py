@@ -253,3 +253,34 @@ def test_failed_save_leaves_every_file_unchanged(
         save_automation(str(root), selected, 'first', snapshot['version'], str(root),
                         {**snapshot['config'], 'alias': 'Not written'})
     assert snapshot_project_files(root) == before
+
+
+@pytest.mark.parametrize(('before', 'after'), [(1, True), (True, 1), (0, False), (False, 0)])
+def test_nested_boolean_and_numeric_values_remain_distinct(source, before, after):
+    _, path = source
+    entries = yaml.safe_load(path.read_text())
+    entries[0]['variables'] = {'nested': [{'flag': before}]}
+    path.write_text(yaml.safe_dump(entries, sort_keys=False))
+    neighbor = deepcopy(entries[1])
+    snapshot = opened(source)
+    config = deepcopy(snapshot['config'])
+    config['variables']['nested'][0]['flag'] = after
+    result = save(source, snapshot, config)
+    stored = yaml.safe_load(path.read_text())
+    actual = stored[0]['variables']['nested'][0]['flag']
+    assert type(actual) is type(after)
+    assert actual == after
+    assert stored[1] == neighbor
+    assert result['version'] != snapshot['version']
+
+
+def test_noop_save_preserves_bytes_revision_and_file_identity(source):
+    _, path = source
+    original = path.read_bytes()
+    before = path.stat()
+    snapshot = opened(source)
+    result = save(source, snapshot, deepcopy(snapshot['config']))
+    assert result == snapshot
+    assert path.read_bytes() == original
+    assert path.stat().st_ino == before.st_ino
+    assert path.stat().st_mtime_ns == before.st_mtime_ns

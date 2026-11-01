@@ -28,98 +28,143 @@ export class FlodeGit extends LitElement {
   private busy = false;
   private error: string | null = null;
 
+  private context = 0;
+  private refreshPending = false;
+
   protected willUpdate(changed: PropertyValues<this>): void {
+    if (changed.has('directory')) {
+      this.context++;
+      this.status = null;
+      this.changes = null;
+      this.history = { commits: [], has_more: false };
+      this.message = '';
+    }
     if ((changed.has('hass') && !changed.get('hass')) || changed.has('directory'))
       void this.refresh();
   }
 
-  private async refresh(): Promise<void> {
-    if (!this.hass || this.busy) return;
-    this.busy = true;
-    this.error = null;
-    try {
-      this.status = await readGitStatus(this.hass);
-      this.changes = null;
-      this.history = await readGitHistory(this.hass);
-    } catch (error) {
-      this.error = errorMessage(error);
-      this.status = null;
-    } finally {
-      this.busy = false;
+  private acceptStatus(status: GitStatus): void {
+    if (this.directory && status.directory !== this.directory)
+      throw new Error('The configured project changed; refresh the file list');
+    this.status = status;
+  }
+
+  private finish(context: number): void {
+    this.busy = false;
+    if (context === this.context)
       this.dispatchEvent(
         new CustomEvent<GitStatus | null>('git-state-changed', { detail: this.status })
       );
+    if (this.refreshPending) {
+      this.refreshPending = false;
+      void this.refresh();
+    }
+  }
+
+  private async refresh(): Promise<void> {
+    if (!this.hass) return;
+    if (this.busy) {
+      this.refreshPending = true;
+      return;
+    }
+    const context = this.context;
+    this.busy = true;
+    this.error = null;
+    try {
+      const status = await readGitStatus(this.hass);
+      const history = await readGitHistory(this.hass);
+      if (context !== this.context) return;
+      this.acceptStatus(status);
+      this.changes = null;
+      this.history = history;
+    } catch (error) {
+      if (context !== this.context) return;
+      this.error = errorMessage(error);
+      this.status = null;
+    } finally {
+      this.finish(context);
     }
   }
 
   private async act(action: GitAction, revision = ''): Promise<void> {
     if (!this.hass || !this.status || this.busy) return;
-    if (this.hasUnsavedChanges && ['merge', 'prod', 'checkout', 'revert'].includes(action)) return;
+    if (this.hasUnsavedChanges && ['merge', 'checkout', 'revert'].includes(action)) return;
+    const context = this.context;
+    const directory = this.status.directory;
     this.busy = true;
     this.error = null;
     try {
       if (action === 'commit' && !this.changes) return;
-      this.status = await runGitAction(
+      const status = await runGitAction(
         this.hass,
         action,
         this.status.commit,
         revision,
         action === 'commit' && this.changes
-          ? {
-              expected_changes: this.changes.version,
-              message: this.message,
-            }
+          ? { expected_changes: this.changes.version, message: this.message }
           : undefined,
-        this.status.directory
+        directory
       );
+      if (context !== this.context) return;
+      this.acceptStatus(status);
       this.changes = null;
       if (action === 'commit') this.message = '';
       if (['merge', 'prod', 'checkout', 'revert'].includes(action))
-        this.dispatchEvent(new CustomEvent('files-changed'));
-      this.history = await readGitHistory(this.hass);
+        this.dispatchEvent(new CustomEvent('files-changed', { detail: { directory } }));
+      const history = await readGitHistory(this.hass);
+      if (context === this.context) this.history = history;
     } catch (error) {
+      if (context !== this.context) return;
       this.error = errorMessage(error);
       this.changes = null;
       // A failed merge may still have fetched new remote history.
-      this.status = await readGitStatus(this.hass).catch(() => null);
-      this.history = await readGitHistory(this.hass).catch(() => this.history);
+      const status = await readGitStatus(this.hass).catch(() => null);
+      const history = await readGitHistory(this.hass).catch(() => ({
+        commits: [],
+        has_more: false,
+      }));
+      if (context !== this.context) return;
+      this.status =
+        status && (!this.directory || status.directory === this.directory) ? status : null;
+      this.history = history;
     } finally {
-      this.busy = false;
-      this.dispatchEvent(
-        new CustomEvent<GitStatus | null>('git-state-changed', { detail: this.status })
-      );
+      this.finish(context);
     }
   }
 
   private async review(): Promise<void> {
     if (!this.hass || this.busy) return;
+    const context = this.context;
     this.busy = true;
     this.error = null;
     this.changes = null;
     try {
       if (!(await ensureHaSelector()))
         throw new Error('Home Assistant text selectors are unavailable');
-      this.changes = await readGitChanges(this.hass);
+      const changes = await readGitChanges(this.hass);
+      if (context === this.context) this.changes = changes;
     } catch (error) {
-      this.error = errorMessage(error);
+      if (context === this.context) this.error = errorMessage(error);
     } finally {
-      this.busy = false;
+      this.finish(context);
     }
   }
 
   private async more(): Promise<void> {
     if (!this.hass || this.busy) return;
+    const context = this.context;
     this.busy = true;
     try {
       const next = await readGitHistory(this.hass, this.history.commits.length);
-      this.history = {
-        commits: [...this.history.commits, ...next.commits],
-        has_more: next.has_more,
-      };
+      if (context === this.context)
+        this.history = {
+          commits: [...this.history.commits, ...next.commits],
+          has_more: next.has_more,
+        };
     } catch (error) {
-      this.error = errorMessage(error);
+      if (context === this.context) this.error = errorMessage(error);
     } finally {
-      this.busy = false;
+      this.finish(context);
     }
   }
 
@@ -152,7 +197,7 @@ export class FlodeGit extends LitElement {
         <div class="controls">
           <ha-button data-action="fetch" .disabled=${this.busy || !status.has_origin} @click=${() => this.act('fetch')}>${t(language, 'gitFetch')}</ha-button>
           <ha-button data-action="merge" .disabled=${blocked || !status.has_origin || status.branch !== 'prod'} @click=${() => this.act('merge')}>${t(language, 'gitMerge')}</ha-button>
-          <ha-button data-action="prod" .disabled=${blocked || status.branch === 'prod'} @click=${() => this.act('prod')}>${t(language, 'gitProd')}</ha-button>
+          <ha-button data-action="prod" .disabled=${this.busy || status.dirty || status.branch === 'prod'} @click=${() => this.act('prod')}>${t(language, 'gitProd')}</ha-button>
         </div>
         ${
           status.merge_to_revert

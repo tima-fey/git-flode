@@ -88,7 +88,11 @@ External changes, Git switches, or edits in another tab cause stale saves to
 fail without writing. Close and reopen the automation to load the current file
 before retrying. Unsaved file drafts survive browser reloads and retain the
 original revision, so restoring a draft cannot bypass conflict detection. Only
-drafts for the configured root are restored. File operations, Git, and project tests share a checkout lock.
+drafts for the configured root are restored; switching roots preserves the
+previous project's drafts in browser storage. Git completion refreshes saved
+tabs and retains any edits made while the operation was pending, including
+their original file revisions. Saving an unchanged config preserves file bytes
+and its revision. File operations, Git, and project tests share a checkout lock.
 
 `check-edit.mjs` changes only the disposable synthetic file, verifies save and
 reopen, neighboring entries, unknown fields, stale-file rejection, and absence
@@ -161,7 +165,7 @@ prod and fetched main/prod refs. A local main branch is not required.
   even with uncommitted files. It never publishes into main or force-pushes.
 - Historical checkout is detached and read-only for file saves and object
   export. **Return to prod** restores the working branch. Unsaved editor drafts
-  block merge, undo, and version switches.
+  block merge, undo, and historical checkout. Returning to prod preserves drafts.
 
 Merge and revert use identity from Git configuration in the HA runtime. Set
 `user.name` and `user.email` once; no author fields are requested by the UI:
@@ -332,7 +336,9 @@ entity triggers, and numeric entity thresholds are included.
 Jinja is parsed without rendering or executing it. Literal references in native
 lookups such as `states(...)`, `is_state(...)`, `state_attr(...)`, `expand(...)`,
 `device_attr(...)`, area/label lookups, and `states.sensor.example` or
-`states['sensor.example']` are checked. Constant template targets are supported.
+`states['sensor.example']` are checked. Literal lists passed to `map('states')`,
+`select('is_state', ...)`, and `reject('is_state', ...)`, plus native Jinja tests,
+are checked too. Constant template targets are supported.
 Computed targets and lookup arguments fail explicitly when they cannot be
 resolved statically. Custom template functions, service availability, runtime
 values, and general HA configuration validity are outside this static ID check.

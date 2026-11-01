@@ -16,7 +16,7 @@ const STRINGS = {
       'Ersetzt objects/ durch einen aktuellen Geräte-, Entitäten- und Helfer-Snapshot. Nur auf Knopfdruck.',
     objectsExported: 'Exportiert: {devices} Geräte, {entities} Entitäten, {helpers} Helfer.',
     gitUnsavedEditors:
-      'Ungespeicherte Editoränderungen vor Dateiaktualisierungen speichern oder verwerfen.',
+      'Entwürfe vor Merge, Rücknahme oder Wechsel zu einem historischen Stand speichern oder verwerfen. Zurück zu prod behält Entwürfe.',
     gitReview: 'Änderungen prüfen',
     gitPush: 'prod pushen',
     gitCommit: 'Alle Änderungen committen',
@@ -448,7 +448,8 @@ const STRINGS = {
     objectsScope:
       'Replaces objects/ with a current device, entity, and helper snapshot. Runs only when clicked.',
     objectsExported: 'Exported: {devices} devices, {entities} entities, {helpers} helpers.',
-    gitUnsavedEditors: 'Save or discard unsaved editor changes before updating files.',
+    gitUnsavedEditors:
+      'Save or discard drafts before merging, undoing a merge, or checking out history. Returning to prod keeps drafts.',
     gitReview: 'Review changes',
     gitPush: 'Push prod',
     gitCommit: 'Commit all changes',

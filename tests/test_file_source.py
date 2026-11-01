@@ -9,7 +9,6 @@ from custom_components.flode.file_api import (
     _directory,
     _respond,
     list_files,
-    read_automation,
 )
 from custom_components.flode.file_source import FileSource
 from homeassistant.exceptions import Unauthorized
@@ -140,7 +139,7 @@ def test_requires_an_existing_absolute_root(root):
         FileSource(root)
 
 
-@pytest.mark.parametrize("handler", [list_files, read_automation])
+@pytest.mark.parametrize("handler", [list_files])
 def test_file_commands_require_an_administrator(handler):
     connection = SimpleNamespace(user=SimpleNamespace(is_admin=False))
     with pytest.raises(Unauthorized):

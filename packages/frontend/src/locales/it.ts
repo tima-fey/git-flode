@@ -6,7 +6,8 @@ export const it: Strings = {
   objectsScope:
     'Sostituisce objects/ con dispositivi, entità e helper attuali. Solo premendo il pulsante.',
   objectsExported: 'Esportati: {devices} dispositivi, {entities} entità, {helpers} helper.',
-  gitUnsavedEditors: 'Salva o scarta le modifiche dell’editor prima di aggiornare i file.',
+  gitUnsavedEditors:
+    'Salva o scarta le bozze prima di unire, annullare un merge o passare a un commit storico. Il ritorno a prod conserva le bozze.',
   gitReview: 'Esamina modifiche',
   gitPush: 'Push di prod',
   gitCommit: 'Commit di tutte le modifiche',

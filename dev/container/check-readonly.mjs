@@ -69,7 +69,7 @@ for (const engine of ENGINES) {
       await climate.locator('summary').click();
       await climate.locator('.grid').waitFor({ state: 'hidden' });
       assert.equal(await climate.locator('ha-card.item').first().isVisible(), false);
-      const search = page.locator('flode-panel .home > label.search > input');
+      const search = page.locator('flode-panel .home-bar > label.search > input');
       await search.fill('climate/heating.yaml');
       await page.waitForFunction(
         () => window.flodeGate.panel()?.shadowRoot.querySelectorAll('.item').length === 5

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  listFileAutomations,
-  loadFileAutomation,
-  openFileAutomation,
-  saveFileAutomation,
-} from '../file-source';
+import { listFileAutomations, openFileAutomation, saveFileAutomation } from '../file-source';
 import type { HomeAssistant } from '../ha';
 
 function connection(reply: unknown) {
@@ -45,8 +40,9 @@ describe('file-only automation source', () => {
 
   it('loads the selected file entry without consulting the HA config API', async () => {
     const config = { id: 'one', actions: [{ delay: '00:00:01' }] };
-    const { hass, requests } = connection(config);
-    const result = await loadFileAutomation(hass, {
+    const snapshot = { config, version: 'revision', directory: '/files' };
+    const { hass, requests } = connection(snapshot);
+    const result = await openFileAutomation(hass, {
       source: { file: 'automations/climate/group.yaml', id: 'one' },
       kind: 'automation',
       configId: 'file',
@@ -55,9 +51,9 @@ describe('file-only automation source', () => {
       enabled: true,
       lastTriggered: null,
     });
-    expect(result).toEqual(config);
+    expect(result).toEqual(snapshot);
     expect(requests).toEqual([
-      { type: 'flode/files/read', file: 'automations/climate/group.yaml', automation_id: 'one' },
+      { type: 'flode/files/open', file: 'automations/climate/group.yaml', automation_id: 'one' },
     ]);
   });
 
@@ -65,7 +61,7 @@ describe('file-only automation source', () => {
     const { hass } = connection({ items: 'invalid' });
     await expect(listFileAutomations(hass)).rejects.toThrow();
     await expect(
-      loadFileAutomation(hass, {
+      openFileAutomation(hass, {
         kind: 'automation',
         configId: 'ha',
         entityId: 'automation.ha',

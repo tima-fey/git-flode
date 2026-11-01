@@ -1,16 +1,13 @@
 // @vitest-environment happy-dom
 /**
  * The panel as a real element in a DOM (happy-dom), without Home Assistant: a flow
- * opened as a draft, edits through the panel's own commands, the canvas it renders.
+ * opened from an existing file, edits through the panel's own commands, the canvas it renders.
  */
 import type { FlowGraph, FlowNode } from '@flode/shared';
-import { SCRIPT_START_TRIGGER } from '@flode/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { FlodePanel } from '../flode-panel';
 import { isMac, shortcutKeys } from '../shortcuts';
-import { t } from '../strings';
 import type { OpenFlow } from '../tabs';
-
 const trigger: FlowNode = {
   id: 'trigger_1',
   type: 'trigger',
@@ -23,7 +20,6 @@ const action: FlowNode = {
   position: { x: 360, y: 0 },
   data: { service: 'light.turn_on', target: { entity_id: 'light.kitchen' } },
 };
-
 function draft(
   kind: 'automation' | 'script',
   nodes: FlowNode[],
@@ -31,6 +27,7 @@ function draft(
 ): OpenFlow {
   return {
     item: {
+      source: { file: 'automations/example.yaml', id: 'existing' },
       kind,
       entityId: '',
       configId: 'draft',
@@ -46,14 +43,14 @@ function draft(
       edges,
       metadata: { mode: 'single', ...(kind === 'script' ? { kind } : {}) },
     },
-    isNew: true,
+    isNew: false,
+    fileDirectory: '/project',
+    fileVersion: 'version',
     registryEntry: null,
   };
 }
-
-async function mountPanel(flow: OpenFlow, readOnly = false, fileMode = false): Promise<FlodePanel> {
+async function mountPanel(flow: OpenFlow, readOnly = false): Promise<FlodePanel> {
   const panel = new FlodePanel();
-  panel.fileMode = fileMode;
   panel.readOnly = readOnly;
   document.body.appendChild(panel);
   await panel.updateComplete;
@@ -63,23 +60,12 @@ async function mountPanel(flow: OpenFlow, readOnly = false, fileMode = false): P
   await panel.updateComplete;
   return panel;
 }
-
-function toasts(panel: FlodePanel): string[] {
-  const messages: string[] = [];
-  panel.addEventListener('hass-notification', (event) => {
-    if (event instanceof CustomEvent && typeof event.detail?.message === 'string')
-      messages.push(event.detail.message);
-  });
-  return messages;
-}
-
 function cardIds(panel: FlodePanel): string[] {
   const canvas = panel.shadowRoot?.querySelector('flode-canvas');
   return [...(canvas?.shadowRoot?.querySelectorAll('.node[data-node-id]') ?? [])].flatMap((el) =>
     el instanceof HTMLElement && el.dataset.nodeId ? [el.dataset.nodeId] : []
   );
 }
-
 /** A key as the user presses it, on the window (where HA and the panel listen). */
 function pressOnWindow(key: string, mod = false): void {
   window.dispatchEvent(
@@ -92,14 +78,12 @@ function pressOnWindow(key: string, mod = false): void {
     })
   );
 }
-
 afterEach(() => {
   document.body.innerHTML = '';
   window.localStorage.clear();
 });
-
 describe('panel in the DOM', () => {
-  it('opens a draft and renders its cards on the canvas', async () => {
+  it('opens an existing automation and renders its cards on the canvas', async () => {
     const panel = await mountPanel(
       draft(
         'automation',
@@ -110,7 +94,6 @@ describe('panel in the DOM', () => {
     expect(panel.flow?.graph.nodes).toHaveLength(2);
     expect(cardIds(panel).sort()).toEqual(['action_1', 'trigger_1']);
   });
-
   it('gives every duplicate its own id, also two in the same millisecond, and draws them', async () => {
     const panel = await mountPanel(
       draft(
@@ -128,20 +111,6 @@ describe('panel in the DOM', () => {
     expect(new Set(ids).size).toBe(5);
     expect(cardIds(panel).sort()).toEqual([...ids].sort());
   });
-
-  it('refuses a trigger pasted into a script and says why', async () => {
-    const start: FlowNode = { ...trigger, id: 'start', data: { trigger: SCRIPT_START_TRIGGER } };
-    const panel = await mountPanel(
-      draft('script', [start, action], [{ id: 'e1', source: 'start', target: 'action_1' }])
-    );
-    const messages = toasts(panel);
-    panel['pasteCard'](trigger);
-    await panel.updateComplete;
-    expect(messages).toEqual([t('en', 'pasteNoTriggerInScript')]);
-    expect(panel.flow?.graph.nodes.map((node) => node.id)).toEqual(['start', 'action_1']);
-    expect(cardIds(panel)).toEqual(['action_1']);
-  });
-
   it('pastes a copied card into an automation under a new id', async () => {
     const panel = await mountPanel(
       draft(
@@ -156,7 +125,6 @@ describe('panel in the DOM', () => {
     expect(ids).toHaveLength(3);
     expect(new Set(ids).size).toBe(3);
   });
-
   it('closes the card menu on Escape', async () => {
     const panel = await mountPanel(
       draft(
@@ -184,7 +152,6 @@ describe('panel in the DOM', () => {
     expect(panel.canvasMenu).toBeNull();
     expect(menu()).toBeNull();
   });
-
   it('undoes a duplicate with the undo shortcut and redraws the canvas', async () => {
     const panel = await mountPanel(
       draft(
@@ -202,22 +169,16 @@ describe('panel in the DOM', () => {
     expect(cardIds(panel).sort()).toEqual(['action_1', 'trigger_1']);
   });
 });
-
 describe('viewing mode', () => {
   const viewingFlow = () =>
     draft('automation', [trigger, action], [{ id: 'e1', source: trigger.id, target: action.id }]);
-
   it('supports viewing mode and blocks document edits through commands and events', async () => {
-    expect(new FlodePanel().fileMode).toBe(true);
     const panel = await mountPanel(viewingFlow(), true);
     const graph = panel.flow?.graph;
     const tabs = panel.tabs.length;
     panel['duplicateCard'](action);
     panel['removeCard'](action.id);
     panel['toggleCard'](action);
-    panel['startNew']();
-    panel['saveCopy']();
-    panel['startRun'](action.id, 'only');
     const canvas = panel.shadowRoot?.querySelector('flode-canvas');
     canvas?.dispatchEvent(
       new CustomEvent('graph-change', {
@@ -228,10 +189,8 @@ describe('viewing mode', () => {
     await panel.updateComplete;
     expect(panel.flow?.graph).toBe(graph);
     expect(panel.tabs).toHaveLength(tabs);
-    expect(panel.runFromId).toBeNull();
     expect(cardIds(panel).sort()).toEqual([action.id, trigger.id]);
   });
-
   it('blocks mutation shortcuts and omits editing palette commands', async () => {
     const panel = await mountPanel(viewingFlow(), true);
     panel.selectedId = action.id;
@@ -255,7 +214,6 @@ describe('viewing mode', () => {
     ])
       expect(ids).not.toContain(id);
   });
-
   it('keeps card inspection without editable forms, run buttons, or layout handles', async () => {
     const panel = await mountPanel(viewingFlow(), true);
     panel.selectedId = action.id;
@@ -271,7 +229,6 @@ describe('viewing mode', () => {
     expect(panel.shadowRoot?.querySelector('.toolbar .save')).toBeNull();
   });
 });
-
 describe('existing-file editing', () => {
   it('allows graph edits but blocks new automations, copies, and execution', async () => {
     const flow = draft(
@@ -281,13 +238,9 @@ describe('existing-file editing', () => {
     );
     flow.isNew = false;
     flow.item.source = { file: 'automations/climate/heating.yaml', id: 'existing' };
-    const panel = await mountPanel(flow, false, true);
+    const panel = await mountPanel(flow);
     const tabs = panel.tabs.length;
-    panel['startNew']('automation');
-    panel['saveCopy']();
-    panel['startRun'](action.id, 'only');
     expect(panel.tabs.length).toBe(tabs);
-    expect(panel.runFromId).toBeNull();
     panel['duplicateCard'](action);
     await panel.updateComplete;
     expect(panel.flow?.graph.nodes.length).toBe(3);

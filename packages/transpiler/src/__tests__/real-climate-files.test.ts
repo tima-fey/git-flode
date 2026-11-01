@@ -3,6 +3,9 @@ import { join } from 'node:path';
 import { FileAutomationConfigSchema } from '@flode/shared';
 import { describe, expect, it } from 'vitest';
 import { YamlParser } from '../parser/YamlParser';
+import { FlowTranspiler } from '../FlowTranspiler';
+import { normalizeHaConfig, internalKeysIn } from '../ha-equal';
+import { buildAutomationSaveConfig } from '../save-config';
 import { loadHaYaml } from '../yaml';
 
 const directory = join(__dirname, '../../../../dev/container/fixtures/automations/climate');
@@ -27,14 +30,22 @@ for (const { file, count, style } of [
     });
 
     for (const config of configs) {
-      it(`opens ${config.id} without rewriting the source`, async () => {
+      it(`round-trips ${config.id} without losing automation semantics`, async () => {
         const result = await parser.parse(JSON.stringify(config));
         expect(result.success).toBe(true);
         expect(result.errors ?? []).toEqual([]);
         expect(result.warnings ?? []).toEqual([]);
         expect(result.graph?.name).toBe(config.alias);
         expect(result.graph?.nodes.length).toBeGreaterThan(0);
-        expect(readFileSync(path, 'utf8')).toBe(original);
+        if (!result.graph) throw new Error('No parsed graph');
+        const saved = buildAutomationSaveConfig(new FlowTranspiler(), result.graph, {
+          alias: result.graph.name,
+          description: result.graph.description ?? '',
+        });
+        expect(saved.success).toBe(true);
+        expect(saved.errors ?? []).toEqual([]);
+        expect(internalKeysIn(saved.config)).toEqual([]);
+        expect(normalizeHaConfig(saved.config)).toEqual(normalizeHaConfig(config));
       });
     }
   });

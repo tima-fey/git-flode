@@ -1,6 +1,8 @@
 // Exercise explicit native HA maintenance controls only in the disposable instance.
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 process.env.FLODE_GATE_URL = 'http://127.0.0.1:18123';
 process.env.FLODE_GATE_TOKEN_FILE = new URL('./runtime/token', import.meta.url).pathname;
@@ -9,6 +11,9 @@ const result = report('ha-controls');
 const source = new URL('./runtime/repository/automations/examples/simple.yaml', import.meta.url);
 const original = await fs.readFile(source, 'utf8');
 for (const engine of ENGINES) {
+  const objects = new URL('./runtime/repository/objects/', import.meta.url).pathname;
+  const backup = await fs.mkdtemp(path.join(os.tmpdir(), 'flode-controls-'));
+  await fs.cp(objects, path.join(backup, 'objects'), { recursive: true, preserveTimestamps: true });
   const { browser, page, errors } = await openBrowser(engine);
   const services = [];
   const checks = [];
@@ -44,6 +49,10 @@ for (const engine of ENGINES) {
         assert.equal(services[0].domain, 'homeassistant');
         assert.equal(services[0].service, 'reload_all');
         await control
+          .getByRole('button', { name: await label(page, 'objectsExport'), exact: true })
+          .click();
+        await control.locator('ha-alert[alert-type="success"]').waitFor();
+        await control
           .getByRole('button', { name: await label(page, 'testsRun'), exact: true })
           .click();
         await control.getByText(await label(page, 'testsFailed'), { exact: false }).waitFor();
@@ -57,12 +66,10 @@ for (const engine of ENGINES) {
           /test_all_automation_object_references_exist/
         );
         const output = await control.locator('.test-output').innerText();
-        assert.match(
-          output,
-          /unknown entities reference 'input_boolean.summer'|Export HA objects first/
-        );
-        if (output.includes("unknown entities reference 'input_boolean.summer'"))
-          assert.match(output, /automations\/climate\/heating.yaml/);
+        assert.match(output, /unknown entities reference 'input_boolean.summer'/);
+        assert.match(output, /automations\/climate\/heating.yaml/);
+        assert.match(output, /Checked 14 automations against \d+ entities and \d+ devices/);
+        assert.doesNotMatch(output, /Export HA objects first/);
         assert.equal(services.length, 1);
         assert.deepEqual(checks, ['POST']);
         assert.equal(await fs.readFile(source, 'utf8'), original);
@@ -74,6 +81,12 @@ for (const engine of ENGINES) {
     );
   } finally {
     await browser.close();
+    await fs.rm(objects, { recursive: true, force: true });
+    await fs.cp(path.join(backup, 'objects'), objects, {
+      recursive: true,
+      preserveTimestamps: true,
+    });
+    await fs.rm(backup, { recursive: true, force: true });
   }
 }
 result.finish();

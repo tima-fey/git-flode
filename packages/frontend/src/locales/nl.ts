@@ -6,7 +6,8 @@ export const nl: Strings = {
   objectsScope:
     'Vervangt objects/ door de huidige apparaten, entiteiten en helpers. Alleen na een klik.',
   objectsExported: 'Geëxporteerd: {devices} apparaten, {entities} entiteiten, {helpers} helpers.',
-  gitUnsavedEditors: 'Sla editorwijzigingen op of verwerp ze voordat je bestanden bijwerkt.',
+  gitUnsavedEditors:
+    'Sla concepten op of verwerp ze vóór samenvoegen, een merge terugdraaien of geschiedenis uitchecken. Terugkeren naar prod behoudt concepten.',
   gitReview: 'Wijzigingen bekijken',
   gitPush: 'prod pushen',
   gitCommit: 'Alle wijzigingen committen',

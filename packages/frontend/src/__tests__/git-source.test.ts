@@ -188,8 +188,14 @@ describe('Git controls', () => {
     expect(control.shadowRoot?.querySelector('[data-action="revert"]')).toBeNull();
     expect(requests.some((request) => request.action === 'push')).toBe(false);
   });
-  it('returns a historical checkout to prod without switching to main', async () => {
+  it('returns a historical checkout to prod while preserving editor drafts', async () => {
     const { control, requests } = await mount(null);
+    control.hasUnsavedChanges = true;
+    await settle(control);
+    expect(control.shadowRoot?.querySelector('[data-action="prod"]')).toHaveProperty(
+      'disabled',
+      false
+    );
     control.shadowRoot?.querySelector('[data-action="prod"]')?.dispatchEvent(new Event('click'));
     await settle(control);
     expect(requests).toContainEqual({

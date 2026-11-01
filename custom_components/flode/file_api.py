@@ -20,18 +20,14 @@ def _directory(hass: HomeAssistant) -> str:
     return entry.options.get(CONF_DIRECTORY, entry.data.get(CONF_DIRECTORY, ""))
 
 
-def _read(directory: str, message: dict[str, Any]) -> dict[str, Any]:
-    source = FileSource(directory)
-    if message["type"] == "flode/files/list":
-        return source.list()
-    return source.read(message["file"], message["automation_id"])
+def _list_files(directory: str) -> dict[str, Any]:
+    return FileSource(directory).list()
 
 
 @callback
 def async_register_file_commands(hass: HomeAssistant) -> None:
     """Register handlers once; they resolve current integration settings per read."""
     websocket_api.async_register_command(hass, list_files)
-    websocket_api.async_register_command(hass, read_automation)
     websocket_api.async_register_command(hass, open_file)
     websocket_api.async_register_command(hass, save_file)
 
@@ -41,7 +37,7 @@ async def _respond(
 ) -> None:
     try:
         directory = _directory(hass)
-        result = await hass.async_add_executor_job(_read, directory, message)
+        result = await hass.async_add_executor_job(_list_files, directory)
     except (OSError, ValueError, TypeError, yaml.YAMLError, RoundTripError) as error:
         connection.send_error(message["id"], "file_source_error", str(error))
     else:
@@ -55,20 +51,6 @@ async def list_files(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, message: dict[str, Any]
 ) -> None:
     """List only automations from the configured directory."""
-    await _respond(hass, connection, message)
-
-
-@websocket_api.websocket_command({
-    vol.Required("type"): "flode/files/read",
-    vol.Required("file"): str,
-    vol.Required("automation_id"): str,
-})
-@websocket_api.require_admin
-@websocket_api.async_response
-async def read_automation(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, message: dict[str, Any]
-) -> None:
-    """Read an individual automation without exposing a write command."""
     await _respond(hass, connection, message)
 
 

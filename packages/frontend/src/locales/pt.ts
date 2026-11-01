@@ -7,7 +7,8 @@ export const pt: Strings = {
     'Substitui objects/ pelos dispositivos, entidades e auxiliares atuais. Apenas ao clicar.',
   objectsExported:
     'Exportados: {devices} dispositivos, {entities} entidades, {helpers} auxiliares.',
-  gitUnsavedEditors: 'Guarde ou descarte as alterações do editor antes de atualizar os ficheiros.',
+  gitUnsavedEditors:
+    'Guarde ou descarte os rascunhos antes de fazer merge, reverter um merge ou consultar o histórico. Voltar a prod mantém os rascunhos.',
   gitReview: 'Rever alterações',
   gitPush: 'Push de prod',
   gitCommit: 'Commit de todas as alterações',

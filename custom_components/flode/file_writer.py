@@ -58,9 +58,20 @@ def open_automation(directory: str, file: str, automation_id: str) -> dict[str, 
         return {"config": config, "version": sha256(before).hexdigest(), "directory": str(source.root)}
 
 
+def _same_values(left: Any, right: Any) -> bool:
+    """Compare transported YAML values without equating booleans and numbers."""
+    if isinstance(left, bool) or isinstance(right, bool):
+        return isinstance(left, bool) and isinstance(right, bool) and left == right
+    if isinstance(left, dict) and isinstance(right, dict):
+        return left.keys() == right.keys() and all(_same_values(value, right[key]) for key, value in left.items())
+    if isinstance(left, list) and isinstance(right, list):
+        return len(left) == len(right) and all(_same_values(a, b) for a, b in zip(left, right, strict=True))
+    return left == right
+
+
 def _merge(old: Any, new: Any) -> Any:
     """Keep unchanged round-trip nodes, including their comments and quotes."""
-    if old == new:
+    if _same_values(old, new):
         return old
     if isinstance(old, dict) and isinstance(new, dict):
         for key in list(old):
@@ -120,6 +131,10 @@ def save_automation(
         text = original.decode("utf-8")
         if any(isinstance(token, (yaml.AliasToken, yaml.AnchorToken)) for token in yaml.scan(text)):
             raise ValueError("Files with YAML anchors or aliases are view-only")
+        if _same_values(entries[index], config):
+            if source._path(file) != path or _file_bytes(path) != original:
+                raise ValueError("The file changed during saving; reopen it and try again")
+            return {"config": config, "version": version, "directory": str(source.root)}
         document = YAML()
         document.preserve_quotes = True
         document.width = 4096
@@ -134,8 +149,10 @@ def save_automation(
             raise ValueError("YAML files must be smaller than 2 MiB")
         expected = [*entries]
         expected[index] = config
-        if yaml.safe_load(updated) != expected:
+        if not _same_values(yaml.safe_load(updated), expected):
             raise ValueError("The YAML round trip changed data; the original file was preserved")
+        if updated == original:
+            return {"config": config, "version": version, "directory": str(source.root)}
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".flode-", delete=False) as handle:

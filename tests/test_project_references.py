@@ -62,7 +62,11 @@ def test_missing_references_report_file_automation_and_field(project, checker, f
 
 @pytest.mark.parametrize('template', ["{{ states('sensor.removed') }}", "{{ is_state('sensor.removed', 'on') }}",
                                       "{{ state_attr(entity_id='sensor.removed', name='unit') }}", '{{ states.sensor.removed.state }}',
-                                      "{{ states['sensor.removed'] }}", "{{ 'sensor.removed' | expand }}"])
+                                      "{{ states['sensor.removed'] }}", "{{ 'sensor.removed' | expand }}",
+                                      "{{ ['sensor.removed'] | map('states') | list }}",
+                                      "{{ ['sensor.removed'] | select('is_state', 'on') | list }}",
+                                      "{{ ['sensor.removed'] | reject('is_state', 'on') | list }}",
+                                      "{{ 'sensor.removed' is is_state('on') }}"])
 def test_template_literal_references_are_checked(project, checker, template):
     root, _ = project
     write(root, [{'variables': {'temperature': template}}])
@@ -80,7 +84,9 @@ def test_known_jinja_references_constant_targets_and_special_targets(project, ch
 
 
 @pytest.mark.parametrize('action', [{'target': {'entity_id': '{{ selected_entity }}'}},
-                                   {'variables': {'x': '{{ states(selected_entity) }}'}}, {'variables': {'x': '{{ states[selected_entity] }}'}}])
+                                   {'variables': {'x': '{{ states(selected_entity) }}'}}, {'variables': {'x': '{{ states[selected_entity] }}'}},
+                                   {'variables': {'x': "{{ selected_entities | map('states') | list }}"}},
+                                   {'variables': {'x': "{{ selected_entities | select('is_state', 'on') | list }}"}}])
 def test_dynamic_references_are_explicit_failures_not_silently_skipped(project, checker, action):
     root, _ = project
     write(root, [action])
@@ -141,3 +147,14 @@ def test_native_ha_test_worker_runs_portable_test_and_reports_real_failures(proj
     write(root, [{'target': {'entity_id': 'input_boolean.deleted'}}])
     result = run_tests(str(root))
     assert not result['success'] and 'input_boolean.deleted' in result['output']
+
+
+@pytest.mark.parametrize('template', ["{{ ['sensor.temperature'] | map('states') | list }}",
+                                      "{{ ['input_boolean.enabled'] | select('is_state', 'on') | list }}",
+                                      "{{ ['input_boolean.enabled'] | reject('is_state', 'on') | list }}",
+                                      "{{ 'input_boolean.enabled' is is_state('on') }}",
+                                      "{{ [{'name': 'Unrelated'}] | map(attribute='name') | list }}"])
+def test_known_higher_order_jinja_references(project, checker, template):
+    root, _ = project
+    write(root, [{'variables': {'value': template}}])
+    assert checker(root) == []

@@ -7,7 +7,7 @@ export const fr: Strings = {
     'Remplace objects/ par les appareils, entités et assistants actuels. Uniquement sur demande.',
   objectsExported: 'Exportés : {devices} appareils, {entities} entités, {helpers} assistants.',
   gitUnsavedEditors:
-    'Enregistrez ou abandonnez les modifications de l’éditeur avant de mettre à jour les fichiers.',
+    'Enregistrez ou abandonnez les brouillons avant une fusion, son annulation ou un changement vers un commit historique. Le retour à prod conserve les brouillons.',
   gitReview: 'Examiner les modifications',
   gitPush: 'Pousser prod',
   gitCommit: 'Commiter toutes les modifications',

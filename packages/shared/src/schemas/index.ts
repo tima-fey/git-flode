@@ -39,6 +39,7 @@ export {
   type FileAutomationRef,
   FileAutomationRefSchema,
   FileAutomationSnapshotSchema,
+  type FileAutomationSnapshot,
 } from './file-source';
 export {
   type GitAction,

@@ -643,7 +643,7 @@ force-pushes automatically.
 
 | Purpose | Interface |
 | --- | --- |
-| List, read, open, save existing automation files | `flode/files/list`, `flode/files/read`, `flode/files/open`, `flode/files/save` |
+| List, open, save existing automation files | `flode/files/list`, `flode/files/open`, `flode/files/save` |
 | Git status, history, review, explicit action | `flode/git/status`, `flode/git/history`, `flode/git/changes`, `flode/git/action` |
 | Manual registry metadata snapshot | `flode/objects/export` |
 | Run trusted Python project tests | `flode/tests/run` |

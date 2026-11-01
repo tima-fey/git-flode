@@ -8,7 +8,7 @@ export const GitStatusSchema = z.object({
   dirty: z.boolean(),
   prod: z.string(),
   remote_main: z.string().nullable(),
-  remote_prod: z.string(),
+  remote_prod: z.string().nullable(),
   incoming: z.number().int().nonnegative(),
   merge_to_revert: z.string().nullable(),
   has_origin: z.boolean(),

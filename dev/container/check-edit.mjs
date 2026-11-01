@@ -82,10 +82,10 @@ for (const engine of ENGINES) {
         const first = listed.items.find((item) => item.name === 'File ventilation start');
         const neighbor = listed.items.find((item) => item.name === 'File ventilation stop');
         assert.ok(first && neighbor);
-        const before = await ws({ type: 'flode/files/read', file, automation_id: neighbor.id });
+        const before = (await ws({ type: 'flode/files/open', file, automation_id: neighbor.id }))
+          .config;
         await openFlow(page, first.name);
         assert.equal(await inPanel(page, (panel) => panel.readOnly), false);
-        assert.equal(await inPanel(page, (panel) => panel.fileMode), true);
         const commands = await inPanel(page, (panel) =>
           panel.paletteEntries().map((entry) => entry.id)
         );
@@ -119,10 +119,11 @@ for (const engine of ENGINES) {
         assert.equal(await inPanel(page, (panel) => panel.saveProblem), null);
         assert.equal(await inPanel(page, (panel) => panel.saveState), 'saved');
         assert.deepEqual(
-          await ws({ type: 'flode/files/read', file, automation_id: neighbor.id }),
+          (await ws({ type: 'flode/files/open', file, automation_id: neighbor.id })).config,
           before
         );
-        const stored = await ws({ type: 'flode/files/read', file, automation_id: first.id });
+        const stored = (await ws({ type: 'flode/files/open', file, automation_id: first.id }))
+          .config;
         assert.equal((stored.actions ?? stored.action)[0].delay, '00:00:03');
         assert.deepEqual(stored.future_option, { nested: [1, 2] });
         assert.match(await fs.readFile(source, 'utf8'), /Keep custom field/);

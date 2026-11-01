@@ -22,6 +22,9 @@ are identified explicitly.
 There are two independent kinds of pending work: saved filesystem changes and
 unsaved editor drafts. Merge, undo, and historical checkout require both to be
 clear. Git can report a clean tree while an open editor still has a draft.
+Returning from history to prod preserves editor drafts and requires only a
+clean working tree. This also lets you recover drafts created while a checkout
+was pending; their original file revisions still protect subsequent saves.
 
 Object exports also dirty the checkout. **Commit all changes** includes every
 listed changed/untracked non-ignored file, including `objects/` and `tests/`.
