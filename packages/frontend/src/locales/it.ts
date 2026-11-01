@@ -2,6 +2,15 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Italian (the keys and placeholders of `strings.ts`). */
 export const it: Strings = {
+  gitUnsavedEditors: 'Salva o scarta le modifiche dell’editor prima di aggiornare i file.',
+  gitReview: 'Esamina modifiche',
+  gitPush: 'Push di main',
+  gitCommit: 'Commit di tutte le modifiche',
+  gitCommitScope:
+    'Include tutte le modifiche elencate, compresi i nuovi file. Push pubblica solo i commit.',
+  gitNoChanges: 'Nessuna modifica ai file.',
+  gitDiffTruncated: 'Il diff supera 64 KiB. Esegui il commit con Git fuori da FLODE.',
+  gitCommitMessage: 'Messaggio del commit',
   testsRun: 'Esegui test',
   testsScope: 'Esegue i test Python unittest attendibili dalla cartella tests/ del progetto.',
   testsPassed: 'Test superati.',

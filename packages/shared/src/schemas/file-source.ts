@@ -10,3 +10,9 @@ export const FileAutomationListSchema = z.object({
 });
 
 export const FileAutomationConfigSchema = z.record(z.string(), z.unknown());
+
+export const FileAutomationSnapshotSchema = z.object({
+  config: FileAutomationConfigSchema,
+  version: z.string(),
+  directory: z.string(),
+});

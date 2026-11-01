@@ -13,7 +13,7 @@
   "integration_type": "service",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/SH1FT-W/flode/issues",
-  "requirements": [],
+  "requirements": ["ruamel.yaml==0.18.16"],
   "single_config_entry": true,
   "version": "26.10.17"
 }

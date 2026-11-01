@@ -61,7 +61,12 @@ import {
   withoutStaleOffsets,
 } from './branch-view';
 import { defineElement } from './define-element';
-import { listFileAutomations, loadFileAutomation } from './file-source';
+import {
+  listFileAutomations,
+  loadFileAutomation,
+  openFileAutomation,
+  saveFileAutomation,
+} from './file-source';
 import type { AddAt, CanvasMenuDetail, FlodeCanvas, SelectionAction } from './flode-canvas';
 import type { FlodeHaList } from './flode-ha-list';
 import { downloadFlowJson, type ImportedFlow, pickFlowJson } from './flode-io';
@@ -154,6 +159,7 @@ import {
 } from './selection';
 import {
   haDialogShowing,
+  isFileEditingCommand,
   isInDialog,
   isViewingCommand,
   labelWithHint,
@@ -362,8 +368,10 @@ function newFlowName(language: string, kind: FlowKind): string {
  * transpiler, so what lands in HA is plain, native automation/script YAML.
  */
 export class FlodePanel extends LitElement {
-  /** Viewing is the default for the fork; no UI action enables editing. */
-  readOnly = true;
+  /** Optional viewing mode; existing file automations are editable by default. */
+  readOnly = false;
+  /** Production storage supports existing file automations only. */
+  fileMode = true;
   static properties = {
     hass: { attribute: false },
     narrow: { attribute: false },
@@ -549,10 +557,18 @@ export class FlodePanel extends LitElement {
   private persistTimer: number | undefined;
 
   /** Tabs from before a reload; unchanged ones are refreshed from HA when shown. */
-  private restoreTabs(): void {
-    // Preserve existing editor drafts without displaying or overwriting them.
-    if (this.readOnly) return;
+  private restoreTabs(directory?: string): void {
+    // Resolve the configured root before restoring file drafts from local storage.
+    if (this.readOnly || (this.fileMode && !directory)) return;
     const stored = readTabs();
+    if (stored && this.fileMode)
+      stored.tabs = stored.tabs.filter(
+        (tab) =>
+          !tab.flow.isNew &&
+          tab.flow.item.source &&
+          tab.flow.fileVersion &&
+          tab.flow.fileDirectory === directory
+      );
     if (!stored || stored.tabs.length === 0) return;
     for (const tab of stored.tabs) this.knownTabIds.add(tab.id);
     this.tabs = stored.tabs;
@@ -564,7 +580,7 @@ export class FlodePanel extends LitElement {
   private persistTabs(): void {
     window.clearTimeout(this.persistTimer);
     this.persistTimer = undefined;
-    if (this.readOnly) return;
+    if (this.readOnly || (this.fileMode && !this.fileDirectory)) return;
     const viewport = this.canvas?.viewport;
     const stored = writeTabs(
       {
@@ -614,7 +630,7 @@ export class FlodePanel extends LitElement {
   private aiChoiceRead = 0;
 
   private async loadAiChoice(): Promise<void> {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     const hass = this.hass;
     if (!hass) return;
     const read = ++this.aiChoiceRead;
@@ -671,7 +687,7 @@ export class FlodePanel extends LitElement {
       variables?: Record<string, unknown>;
     }>
   ): Promise<void> {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     const hass = this.hass;
     const flow = this.flow;
     if (!hass || !flow) return;
@@ -723,7 +739,7 @@ export class FlodePanel extends LitElement {
 
   /** An imported flow (pasted YAML, FLODE file) opens as a new, unsaved draft. */
   private async openImported(flow: ImportedFlow): Promise<void> {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     const name = flow.graph.name || newFlowName(this.language, flow.kind);
     this.yamlImportOpen = false;
     const graph = await this.inDefaultDirection(flow.graph);
@@ -744,7 +760,7 @@ export class FlodePanel extends LitElement {
   }
 
   private async importJson(): Promise<void> {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     try {
       const flow = await pickFlowJson();
       if (flow) await this.openImported(flow);
@@ -765,7 +781,7 @@ export class FlodePanel extends LitElement {
 
   /** "Save as copy": the same flow as a new automation/script — HA's save dialog asks for the name. */
   private saveCopy(): void {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     const flow = this.flow;
     if (!flow) return;
     const name = t(this.language, 'ioCopyOf').replace('{name}', flow.graph.name);
@@ -779,7 +795,7 @@ export class FlodePanel extends LitElement {
   }
 
   private async mergeSelected(): Promise<void> {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     const hass = this.hass;
     if (!hass || this.mergeIds.length < 2) return;
     const items = listFlows(hass, 'automation').filter((item) =>
@@ -1177,7 +1193,9 @@ export class FlodePanel extends LitElement {
       );
     }
     return this.renderMenu(
-      entries,
+      this.fileMode
+        ? entries.filter((entry) => entry === 'divider' || isFileEditingCommand(entry.id))
+        : entries,
       html`<span
         slot="trigger"
         class="menu-anchor"
@@ -1259,7 +1277,7 @@ export class FlodePanel extends LitElement {
 
   /** Opens the run dialog for `id`: the card and everything after it, or the card alone. */
   private startRun(id: string, scope: SequenceScope): void {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     this.runScope = scope;
     this.runFromId = id;
   }
@@ -1426,9 +1444,12 @@ export class FlodePanel extends LitElement {
         });
       }
     }
-    return this.readOnly
-      ? entries.filter((entry) => entry.group === 'open' || isViewingCommand(entry.id))
+    const available = this.fileMode
+      ? entries.filter((entry) => isFileEditingCommand(entry.id))
       : entries;
+    return this.readOnly
+      ? available.filter((entry) => entry.group === 'open' || isViewingCommand(entry.id))
+      : available;
   }
 
   /**
@@ -1479,7 +1500,7 @@ export class FlodePanel extends LitElement {
   private async onAiDraft(
     event: CustomEvent<{ graph: FlowGraph; unknownEntityIds: string[]; kind: FlowKind }>
   ): Promise<void> {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     const { unknownEntityIds, kind } = event.detail;
     this.aiOpen = false;
     const graph = await this.inDefaultDirection(event.detail.graph);
@@ -1519,8 +1540,16 @@ export class FlodePanel extends LitElement {
     const flow = this.tabFlow(tab);
     if (flow.isNew || this.tabSaveState(tab) !== 'saved' || !this.refreshing.start(id)) return;
     try {
-      const config = await loadFileAutomation(hass, flow.item);
-      if (flow.haVersion === configFingerprint(config)) return;
+      const snapshot = flow.item.source ? await openFileAutomation(hass, flow.item) : null;
+      const config = snapshot?.config ?? (await loadFileAutomation(hass, flow.item));
+      if (flow.haVersion === configFingerprint(config)) {
+        if (snapshot)
+          this.updateTab(id, (open, saveState) => ({
+            flow: { ...open, fileVersion: snapshot.version, fileDirectory: snapshot.directory },
+            saveState,
+          }));
+        return;
+      }
       const fresh = await this.loadFlow(hass, this.currentItem(flow.item), undefined, config);
       // Only if nothing happened to the tab meanwhile (an edit, a save).
       const now = this.tabs.find((candidate) => candidate.id === id);
@@ -1609,7 +1638,7 @@ export class FlodePanel extends LitElement {
       if (!changed.get('hass') && this.activeTabId) void this.refreshFromHa(this.activeTabId);
       if (!changed.get('hass')) void this.loadAiChoice();
       if (!changed.get('hass')) void this.loadHaList();
-      if (!this.readOnly) void this.syncScripts(this.hass);
+      if (!this.readOnly && !this.fileMode) void this.syncScripts(this.hass);
     }
   }
 
@@ -1629,8 +1658,10 @@ export class FlodePanel extends LitElement {
         this.activeTabId = null;
         this.showHome = true;
       }
+      const firstRead = !this.fileDirectory;
       this.fileItems = result.items;
       this.fileDirectory = result.directory;
+      if (firstRead && this.fileMode) this.restoreTabs(result.directory);
       this.message = result.errors.map(({ file, error }) => `${file}: ${error}`).join('; ') || null;
     } catch (error) {
       this.fileItems = [];
@@ -1703,7 +1734,8 @@ export class FlodePanel extends LitElement {
   ): Promise<OpenFlow> {
     const language = this.language;
     report(t(language, 'progressConfig'), 0.1);
-    const config = loaded ?? (await loadFileAutomation(hass, item));
+    const snapshot = item.source ? await openFileAutomation(hass, item) : null;
+    const config = snapshot?.config ?? loaded ?? (await loadFileAutomation(hass, item));
     // A blueprint flow is shown read-only: the blueprint's steps with its inputs filled in.
     const blueprint = usesBlueprint(config) ? (blueprintPath(config) ?? '') : undefined;
     if (item.source && blueprint !== undefined)
@@ -1737,6 +1769,7 @@ export class FlodePanel extends LitElement {
       ...(blueprint === undefined ? {} : { blueprint }),
       registryEntry,
       haVersion: configFingerprint(config),
+      ...(snapshot ? { fileVersion: snapshot.version, fileDirectory: snapshot.directory } : {}),
       ...(result.warnings?.length ? { importWarnings: result.warnings } : {}),
     };
   }
@@ -1818,6 +1851,7 @@ export class FlodePanel extends LitElement {
     const hass = this.hass;
     const flow = this.flow;
     if (!hass || !flow) return;
+    if (this.fileMode && (!flow.item.source || flow.isNew)) return;
     // The tab can change while saving — the result belongs to the one saved.
     let current = flow;
     this.saveState = 'saving';
@@ -1849,7 +1883,7 @@ export class FlodePanel extends LitElement {
           saveState,
         }));
       }
-      if (!(await this.resolveConflict(tabId, current))) {
+      if (!current.item.source && !(await this.resolveConflict(tabId, current))) {
         // Cancelled, or HA's version was loaded instead (that tab is saved then).
         this.updateTab(tabId, (open, saveState) => ({
           flow: open,
@@ -1868,6 +1902,37 @@ export class FlodePanel extends LitElement {
             });
       if (!result.success || !result.config) throw new Error(result.errors?.join(', '));
       const configId = current.item.configId;
+      if (current.item.source) {
+        if (!current.fileVersion || !current.fileDirectory || current.isNew)
+          throw new Error('Reopen the existing automation before saving');
+        const stored = await saveFileAutomation(
+          hass,
+          current.item,
+          current.fileVersion,
+          current.fileDirectory,
+          result.config
+        );
+        this.updateTab(tabId, (open) =>
+          settleSave(open, {
+            graph: current.graph,
+            saved: {
+              configId,
+              entityId: '',
+              registryEntry: null,
+              haVersion: configFingerprint(stored.config),
+              fileVersion: stored.version,
+              fileDirectory: stored.directory,
+            },
+          })
+        );
+        this.fileItems = this.fileItems.map((item) =>
+          sameFlow(item, current.item) ? { ...item, name: current.graph.name } : item
+        );
+        this.message = null;
+        this.saveProblem = null;
+        return;
+      }
+      if (this.fileMode) throw new Error('Only existing file automations can be saved');
       await saveFlowConfig(hass, kind, configId, result.config);
       // It's in HA now — whatever comes next (another save, closing) must not create it again.
       this.updateTab(tabId, (open, saveState) => ({
@@ -2016,7 +2081,7 @@ export class FlodePanel extends LitElement {
 
   /** HA's own "run": the version saved in HA (fields → HA's dialog to fill them in). */
   private async runSavedScript(): Promise<void> {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     const hass = this.hass;
     const flow = this.flow;
     const host = this.renderRoot.querySelector('.dialog-host');
@@ -2045,7 +2110,7 @@ export class FlodePanel extends LitElement {
   private startNew(
     kind: FlowKind = this.flow?.item.kind ?? (this.homeKind === 'script' ? 'script' : 'automation')
   ): void {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     const name = newFlowName(this.language, kind);
     this.message = null;
     this.openTab({
@@ -2618,6 +2683,7 @@ export class FlodePanel extends LitElement {
 
   private shortcutAction(id: ShortcutId): (() => void) | null {
     if (this.readOnly && !isViewingCommand(id)) return () => undefined;
+    if (this.fileMode && !isFileEditingCommand(id)) return () => undefined;
     switch (id) {
       case 'palette':
         return () => {
@@ -3062,7 +3128,7 @@ export class FlodePanel extends LitElement {
   }
 
   private startMerge(): void {
-    if (this.readOnly) return;
+    if (this.readOnly || this.fileMode) return;
     this.homeKind = 'automation';
     this.mergeMode = true;
     this.mergeIds = [];
@@ -3080,7 +3146,7 @@ export class FlodePanel extends LitElement {
     view: HomeView
   ) {
     return html`${
-      this.readOnly
+      this.readOnly || this.fileMode
         ? repeat(
             groupAutomationsByFolder([...active, ...inactive], this.language),
             (group) => group.folder,
@@ -3165,7 +3231,7 @@ export class FlodePanel extends LitElement {
     const active = items.filter((item) => item.enabled);
     const inactive = items.filter((item) => !item.enabled);
     // HA's own table (filters, grouping, search) instead of FLODE's cards.
-    const haTable = !this.readOnly && this.haList === true && view !== 'map';
+    const haTable = !this.readOnly && !this.fileMode && this.haList === true && view !== 'map';
     return html`
       <div class="home-scroll ${haTable ? 'fill' : ''}">
         <header class="home-toolbar">
@@ -3186,6 +3252,7 @@ export class FlodePanel extends LitElement {
           </div>
         </header>
         <flode-git .hass=${this.hass} .directory=${this.fileDirectory}
+          .hasUnsavedChanges=${this.tabs.some((tab) => this.tabSaveState(tab) !== 'saved')}
           @files-changed=${() => {
             this.tabs = [];
             this.flow = null;
@@ -3211,7 +3278,7 @@ export class FlodePanel extends LitElement {
               </button>`
             )}
           </div>
-          <div class="home-actions" ?hidden=${this.readOnly} inert=${this.readOnly || nothing}>
+          <div class="home-actions" ?hidden=${this.readOnly || this.fileMode} inert=${this.readOnly || this.fileMode || nothing}>
             ${
               this.aiEntityId
                 ? html`<button class="save ai" @click=${() => {
@@ -3443,7 +3510,8 @@ export class FlodePanel extends LitElement {
               <ha-icon-button
                 class=${this.debugOpen ? 'active' : ''}
                 .label=${t(language, 'showRuns')}
-                .disabled=${flow.isNew}
+                ?hidden=${this.fileMode}
+                .disabled=${flow.isNew || this.fileMode}
                 @click=${() => {
                   this.debugOpen = !this.debugOpen;
                   if (this.debugOpen) this.assistOpen = false;
@@ -3472,12 +3540,16 @@ export class FlodePanel extends LitElement {
               <ha-icon icon="mdi:content-save-outline"></ha-icon>${t(language, 'save')}
             </button>
             ${this.renderMenu([
-              {
-                id: 'copy',
-                icon: 'mdi:content-duplicate',
-                label: t(language, 'ioSaveCopy'),
-                run: () => this.saveCopy(),
-              },
+              ...(this.fileMode
+                ? []
+                : [
+                    {
+                      id: 'copy',
+                      icon: 'mdi:content-duplicate',
+                      label: t(language, 'ioSaveCopy'),
+                      run: () => this.saveCopy(),
+                    },
+                  ]),
               {
                 id: 'yaml',
                 icon: 'mdi:code-braces-box',
@@ -3606,6 +3678,7 @@ export class FlodePanel extends LitElement {
                 ></flode-debug>`
                 : html`          <flode-inspector
               .readOnly=${this.readOnly}
+              .allowRun=${!this.fileMode}
               style=${this.inspectorWidth ? `--inspector-width: ${this.inspectorWidth}px` : ''}
               .hass=${this.hass}
               .node=${selected}
@@ -3654,7 +3727,8 @@ export class FlodePanel extends LitElement {
 
   /** No AI yet: how to set it up in HA (HA's own alert, links into HA's settings). */
   private renderAiSetup() {
-    if (this.readOnly || this.aiEntityId || this.aiSetupHidden || !this.hass) return nothing;
+    if (this.readOnly || this.fileMode || this.aiEntityId || this.aiSetupHidden || !this.hass)
+      return nothing;
     const language = this.language;
     return html`<ha-alert alert-type="info" .title=${t(language, 'aiSetupTitle')}>
       ${t(language, this.aiNeedsDefault ? 'aiSetupDefault' : 'aiSetupText')}
@@ -3730,7 +3804,7 @@ export class FlodePanel extends LitElement {
             </div>
           `;
         })}
-        <ha-icon-button ?hidden=${this.readOnly} .disabled=${this.readOnly} .label=${t(language, 'newTab')} @click=${() => this.startNew()}>
+        <ha-icon-button ?hidden=${this.readOnly || this.fileMode} .disabled=${this.readOnly || this.fileMode} .label=${t(language, 'newTab')} @click=${() => this.startNew()}>
           <ha-icon icon="mdi:plus"></ha-icon>
         </ha-icon-button>
       </nav>

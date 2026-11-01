@@ -11,6 +11,17 @@ import { pt } from './locales/pt.ts';
  */
 const STRINGS = {
   de: {
+    gitUnsavedEditors:
+      'Ungespeicherte Editoränderungen vor Dateiaktualisierungen speichern oder verwerfen.',
+    gitReview: 'Änderungen prüfen',
+    gitPush: 'main pushen',
+    gitCommit: 'Alle Änderungen committen',
+    gitCommitScope:
+      'Committet alle aufgeführten Dateiänderungen, einschließlich neuer Dateien. Push veröffentlicht nur Commits.',
+    gitNoChanges: 'Keine Dateiänderungen.',
+    gitDiffTruncated:
+      'Der Diff überschreitet 64 KiB. Diese Änderung außerhalb von FLODE mit Git committen.',
+    gitCommitMessage: 'Commit-Nachricht',
     testsRun: 'Tests ausführen',
     testsScope: 'Führt vertrauenswürdige Python-unittest-Tests aus dem Projektordner tests/ aus.',
     testsPassed: 'Tests bestanden.',
@@ -421,6 +432,15 @@ const STRINGS = {
       'Neu: Niederländisch, Französisch, Spanisch, Italienisch und Portugiesisch. FLODE folgt der Sprache, die du in Home Assistant eingestellt hast.',
   },
   en: {
+    gitUnsavedEditors: 'Save or discard unsaved editor changes before updating files.',
+    gitReview: 'Review changes',
+    gitPush: 'Push main',
+    gitCommit: 'Commit all changes',
+    gitCommitScope:
+      'Commits all listed working-file changes, including new files. Push publishes commits only.',
+    gitNoChanges: 'No working-file changes.',
+    gitDiffTruncated: 'The diff exceeds 64 KiB. Commit this change with Git outside FLODE.',
+    gitCommitMessage: 'Commit message',
     testsRun: 'Run tests',
     testsScope: 'Runs trusted Python unittest tests from the project’s tests/ folder.',
     testsPassed: 'Tests passed.',

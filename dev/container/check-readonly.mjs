@@ -51,6 +51,9 @@ for (const engine of ENGINES) {
     await gotoPanel(page, { reload: true });
     await result.check(`${engine}: inspect, shortcuts, drag, and mobile viewing`, async () => {
       errors.length = 0;
+      await inPanel(page, (panel) => {
+        panel.readOnly = true;
+      });
       const groups = page.locator('flode-panel .folder-group');
       await groups.first().waitFor();
       assert.deepEqual(

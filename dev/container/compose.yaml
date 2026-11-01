@@ -11,5 +11,5 @@ services:
       - ./runtime/config:/config
       - ../../custom_components/flode:/config/custom_components/flode:ro
       - ./runtime/repository:/flode-config
-      - ./runtime/remote.git:/git-test/remote.git:ro
+      - ./runtime/remote.git:/git-test/remote.git
     restart: "no"

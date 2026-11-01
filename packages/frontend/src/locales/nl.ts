@@ -2,6 +2,15 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Dutch (the keys and placeholders of `strings.ts`). */
 export const nl: Strings = {
+  gitUnsavedEditors: 'Sla editorwijzigingen op of verwerp ze voordat je bestanden bijwerkt.',
+  gitReview: 'Wijzigingen bekijken',
+  gitPush: 'Main pushen',
+  gitCommit: 'Alle wijzigingen committen',
+  gitCommitScope:
+    'Commit alle getoonde bestandswijzigingen, inclusief nieuwe bestanden. Push publiceert alleen commits.',
+  gitNoChanges: 'Geen bestandswijzigingen.',
+  gitDiffTruncated: 'De diff is groter dan 64 KiB. Commit deze wijziging met Git buiten FLODE.',
+  gitCommitMessage: 'Commitbericht',
   testsRun: 'Tests uitvoeren',
   testsScope: 'Voert vertrouwde Python-unittest-tests uit de map tests/ van het project uit.',
   testsPassed: 'Tests geslaagd.',

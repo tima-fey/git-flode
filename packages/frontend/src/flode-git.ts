@@ -1,8 +1,8 @@
-import type { GitAction, GitHistory, GitStatus } from '@flode/shared';
+import type { GitAction, GitChanges, GitHistory, GitStatus } from '@flode/shared';
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { defineElement } from './define-element';
-import { readGitHistory, readGitStatus, runGitAction } from './git-source';
-import { errorMessage, type HomeAssistant } from './ha';
+import { readGitChanges, readGitHistory, readGitStatus, runGitAction } from './git-source';
+import { ensureHaSelector, errorMessage, type HomeAssistant } from './ha';
 import { t } from './strings';
 
 /** Git updates the checkout explicitly; it never runs or reloads HA automations. */
@@ -10,15 +10,21 @@ export class FlodeGit extends LitElement {
   static properties = {
     hass: { attribute: false },
     directory: { type: String },
+    hasUnsavedChanges: { type: Boolean },
     status: { state: true },
     history: { state: true },
     busy: { state: true },
     error: { state: true },
+    changes: { state: true },
+    message: { state: true },
   };
   declare hass: HomeAssistant | undefined;
   directory = '';
+  hasUnsavedChanges = false;
   private status: GitStatus | null = null;
   private history: GitHistory = { commits: [], has_more: false };
+  private changes: GitChanges | null = null;
+  private message = '';
   private busy = false;
   private error: string | null = null;
 
@@ -33,6 +39,7 @@ export class FlodeGit extends LitElement {
     this.error = null;
     try {
       this.status = await readGitStatus(this.hass);
+      this.changes = null;
       this.history = await readGitHistory(this.hass);
     } catch (error) {
       this.error = errorMessage(error);
@@ -44,16 +51,50 @@ export class FlodeGit extends LitElement {
 
   private async act(action: GitAction, revision = ''): Promise<void> {
     if (!this.hass || !this.status || this.busy) return;
+    if (this.hasUnsavedChanges && ['pull', 'main', 'checkout'].includes(action)) return;
     this.busy = true;
     this.error = null;
     try {
-      this.status = await runGitAction(this.hass, action, this.status.commit, revision);
-      if (action !== 'fetch') this.dispatchEvent(new CustomEvent('files-changed'));
+      if (action === 'commit' && !this.changes) return;
+      this.status = await runGitAction(
+        this.hass,
+        action,
+        this.status.commit,
+        revision,
+        action === 'commit' && this.changes
+          ? {
+              expected_changes: this.changes.version,
+              message: this.message,
+            }
+          : undefined,
+        this.status.directory
+      );
+      this.changes = null;
+      if (action === 'commit') this.message = '';
+      if (['pull', 'main', 'checkout'].includes(action))
+        this.dispatchEvent(new CustomEvent('files-changed'));
       this.history = await readGitHistory(this.hass);
     } catch (error) {
       this.error = errorMessage(error);
+      this.changes = null;
       // A failed pull may still have fetched new remote history.
       this.status = await readGitStatus(this.hass).catch(() => null);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private async review(): Promise<void> {
+    if (!this.hass || this.busy) return;
+    this.busy = true;
+    this.error = null;
+    this.changes = null;
+    try {
+      if (!(await ensureHaSelector()))
+        throw new Error('Home Assistant text selectors are unavailable');
+      this.changes = await readGitChanges(this.hass);
+    } catch (error) {
+      this.error = errorMessage(error);
     } finally {
       this.busy = false;
     }
@@ -78,7 +119,7 @@ export class FlodeGit extends LitElement {
   render() {
     const language = this.hass?.language ?? 'en';
     const status = this.status;
-    const blocked = this.busy || status?.dirty;
+    const blocked = this.busy || status?.dirty || this.hasUnsavedChanges;
     return html`<ha-card>
       <header><strong>Git</strong>
         ${
@@ -97,12 +138,34 @@ export class FlodeGit extends LitElement {
         status
           ? html`
         <p>${status.remote ? t(language, 'gitAheadBehind').replace('{ahead}', String(status.ahead)).replace('{behind}', String(status.behind)) : 'origin/main: —'}</p>
+        ${this.hasUnsavedChanges ? html`<ha-alert alert-type="warning">${t(language, 'gitUnsavedEditors')}</ha-alert>` : nothing}
         ${status.dirty ? html`<ha-alert alert-type="warning">${t(language, 'gitDirty')}</ha-alert>` : nothing}
         <div class="controls">
           <ha-button data-action="fetch" .disabled=${this.busy || !status.has_origin} @click=${() => this.act('fetch')}>${t(language, 'gitFetch')}</ha-button>
           <ha-button data-action="pull" .disabled=${blocked || !status.has_origin || status.branch !== 'main'} @click=${() => this.act('pull')}>${t(language, 'gitPull')}</ha-button>
           <ha-button data-action="main" .disabled=${blocked || status.branch === 'main'} @click=${() => this.act('main')}>${t(language, 'gitMain')}</ha-button>
         </div>
+        <div class="controls publish">
+          <ha-button data-action="review" .disabled=${this.busy} @click=${() => this.review()}>${t(language, 'gitReview')}</ha-button>
+          <ha-button data-action="push" .disabled=${this.busy || !status.has_origin || status.branch !== 'main'} @click=${() => this.act('push')}>${t(language, 'gitPush')}</ha-button>
+        </div>
+        ${
+          this.changes
+            ? html`<section class="review">
+          <p>${t(language, 'gitCommitScope')}</p>
+          <ul>${this.changes.files.map((file) => html`<li><code>${file}</code></li>`)}</ul>
+          <pre class="diff">${this.changes.diff || t(language, 'gitNoChanges')}</pre>
+          ${this.changes.truncated ? html`<ha-alert alert-type="warning">${t(language, 'gitDiffTruncated')}</ha-alert>` : nothing}
+          <ha-selector data-field="message" .hass=${this.hass} .selector=${{ text: {} }}
+            .label=${t(language, 'gitCommitMessage')} .required=${true}
+            .value=${this.message} .disabled=${this.busy}
+            @value-changed=${(event: CustomEvent<{ value: unknown }>) => {
+              this.message = typeof event.detail.value === 'string' ? event.detail.value : '';
+            }}></ha-selector>
+          <ha-button data-action="commit" .disabled=${this.busy || status.branch !== 'main' || !this.changes.files.length || !this.message.trim() || this.changes.truncated} @click=${() => this.act('commit')}>${t(language, 'gitCommit')}</ha-button>
+        </section>`
+            : nothing
+        }
         <p class="muted">${t(language, 'gitFilesNotice')}</p>
         <details><summary>${t(language, 'gitHistory')}</summary>
           <ul>${this.history.commits.map(
@@ -124,6 +187,9 @@ export class FlodeGit extends LitElement {
     header, .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     header ha-icon-button { margin-left: auto; }
     p, summary { font-size: 14px; }
+    .publish { margin-top: 12px; }
+    .review { display: grid; gap: 12px; margin-top: 12px; }
+    .diff { max-height: 360px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
     .muted { color: var(--secondary-text-color); }
     ul { list-style: none; padding: 0; }
     li { display: flex; align-items: center; justify-content: space-between; gap: 12px;

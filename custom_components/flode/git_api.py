@@ -29,6 +29,8 @@ def _execute(directory: str, message: dict[str, Any]) -> dict[str, Any]:
         message["action"] if action == "action" else action,
         expected_head=message.get("expected_head", ""),
         revision=message.get("revision", ""), offset=message.get("offset", 0),
+        expected_changes=message.get("expected_changes", ""), message=message.get("message", ""),
+        expected_directory=message.get("expected_directory", ""),
     )
 
 
@@ -57,9 +59,12 @@ async def git_history(
 
 @websocket_api.websocket_command({
     vol.Required("type"): "flode/git/action",
-    vol.Required("action"): vol.In(("fetch", "pull", "main", "checkout")),
+    vol.Required("action"): vol.In(("fetch", "pull", "main", "checkout", "commit", "push")),
     vol.Required("expected_head"): str,
     vol.Optional("revision", default=""): str,
+    vol.Optional("expected_changes", default=""): str,
+    vol.Optional("expected_directory", default=""): str,
+    vol.Optional("message", default=""): str,
 })
 @websocket_api.require_admin
 @websocket_api.async_response
@@ -72,6 +77,16 @@ async def git_action(
 
 @callback
 def async_register_git_commands(hass: HomeAssistant) -> None:
-    """Register the pull-only Git surface."""
-    for command in (git_status, git_history, git_action):
+    """Register the explicit main-branch Git surface."""
+    for command in (git_status, git_history, git_changes, git_action):
         websocket_api.async_register_command(hass, command)
+
+
+@websocket_api.websocket_command({vol.Required("type"): "flode/git/changes"})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def git_changes(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, message: dict[str, Any]
+) -> None:
+    """Review pending changes without staging or committing them."""
+    await _respond(hass, connection, message)

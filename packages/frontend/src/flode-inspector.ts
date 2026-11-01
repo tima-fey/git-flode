@@ -61,6 +61,7 @@ function fromNestedStep(event: Event): boolean {
 export class FlodeInspector extends LitElement {
   static properties = {
     readOnly: { type: Boolean },
+    allowRun: { type: Boolean },
     hass: { attribute: false },
     node: { attribute: false },
     /** Where a step inside a choose / if sits ("Auswählen › Option 1 · Schritt 2"). */
@@ -77,6 +78,7 @@ export class FlodeInspector extends LitElement {
     narrow: { state: true },
   };
 
+  allowRun = true;
   declare readOnly: boolean;
   declare hass: HomeAssistant | undefined;
   declare node: FlowNode | null;
@@ -277,7 +279,7 @@ export class FlodeInspector extends LitElement {
     name: 'data-change' | 'step-change' | 'nodes-change' | 'delete' | 'run-from',
     detail: Record<string, unknown> = {}
   ): void {
-    if (this.readOnly) return;
+    if (this.readOnly || (name === 'run-from' && !this.allowRun)) return;
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
 
@@ -424,7 +426,7 @@ export class FlodeInspector extends LitElement {
         }
         ${
           // The card alone — a trigger (a script's start too) has no step to run.
-          node.type === 'trigger'
+          !this.allowRun || node.type === 'trigger'
             ? nothing
             : html`<ha-icon-button
                 .label=${t(language, 'runOnly')}
@@ -435,7 +437,7 @@ export class FlodeInspector extends LitElement {
         }
         ${
           // Run from here starts at a card of the flow, not inside a block.
-          isScriptStart(node.data) || this.context
+          !this.allowRun || isScriptStart(node.data) || this.context
             ? nothing
             : html`<ha-icon-button
                 .label=${t(language, 'runFrom')}

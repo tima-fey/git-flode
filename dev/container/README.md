@@ -63,10 +63,41 @@ starts HA, creates a disposable administrator, and registers FLODE. Open
 `dev/container/runtime/credentials.json`; use it for manual browser login.
 Credentials, tokens, HA storage, and logs are ignored by Git. Do not publish
 the runtime directory. The integration mount is read-only; HA's isolated config
-directory is writable so HA can maintain its own storage. The panel defaults
-to viewing: editor writes and action execution are disabled, and the inspector
-shows the selected step as YAML. The configuration checkout is writable for
+directory is writable so HA can maintain its own storage. The panel edits existing file automations through HA's native step editors.
+Creating automations, saving copies, imports as new automations, and action
+execution remain disabled. The configuration checkout is writable for
 explicit Git pull/version-switch operations.
+
+## Editing existing automations
+
+Open a card, edit its steps in the visual editor, and press Save. FLODE rewrites
+that same YAML file, replacing only the selected existing automation ID. Other
+files are untouched. IDs and paths cannot be changed, and missing files or IDs
+are never created. Saving changes only the local checkout: it does not commit,
+push, or reload HA.
+
+The writer uses `ruamel.yaml` to retain comments, quotes, multiline values, and
+unmodeled automation fields. It retains legacy top-level trigger/condition/action
+keys. YAML formatting may be normalized within the file. The complete serialized
+file is parsed and compared before an atomic replacement. Files with anchors,
+aliases, symlinked paths, blueprints, non-string mapping keys, or integers
+outside JavaScript's lossless range are not editable at this stage.
+
+A revision of the whole file and the configured root accompany every save.
+External changes, Git switches, or edits in another tab cause stale saves to
+fail without writing. Close and reopen the automation to load the current file
+before retrying. Unsaved file drafts survive browser reloads and retain the
+original revision, so restoring a draft cannot bypass conflict detection. Only
+drafts for the configured root are restored. File operations, Git, and project tests share a checkout lock.
+
+`check-edit.mjs` changes only the disposable synthetic file, verifies save and
+reopen, neighboring entries, unknown fields, stale-file rejection, and absence
+of HA automation config API writes. It also checks hashes, modification times, and permissions of every other
+working file after successful and refused saves. It restores the original
+fixture bytes. Backend tests cover separate folders, repeated IDs and filenames,
+CRLF, invalid neighboring YAML, binary files, objects, and tests. A save/commit/push
+regression verifies that exactly one path changes in both local and remote Git
+trees, with every other blob and mode preserved.
 
 ## Home Assistant controls
 
@@ -112,15 +143,46 @@ main branch. Network operations use its existing origin and authentication
 configured outside the checkout. Git must be available inside the HA runtime;
 Git in an SSH add-on is insufficient. The pinned test image already includes it.
 Local changes, stale requests, and diverged history stop file-changing actions;
-there is no automatic reset, stash, or push. Fetch remains available with local
-changes. No interface for local edits or commits is provided at this stage.
+there is no automatic reset, stash, or force push. Fetch remains available with
+local changes.
+
+Review changes shows the working-tree diff and untracked files without staging.
+Commit all changes requires that exact reviewed snapshot and a message.
+The author is read on the server from Git configuration (`user.name` and
+`user.email`); there are no author fields in the UI. Configure these once for
+the configuration checkout, where it is accessible:
+
+```sh
+git -C /flode-config config user.name "Your Name"
+git -C /flode-config config user.email "you@example.com"
+```
+
+Missing identity settings stop a commit before staging any files. Commit stages
+all listed working-file changes, including deletions and new non-ignored files.
+Partial staging is replaced by the reviewed working-file contents. Nothing is
+pushed automatically. The UI does not change Git identity settings. Keep
+credentials outside the checkout and configure `.gitignore`
+for generated/private files.
+
+Push main sends committed local main to origin/main, even if uncommitted work
+remains. It fetches first, refuses non-fast-forward updates, and never pushes
+other branches or tags. Commit and push are disabled on historical checkouts.
+The checkout root and HEAD are checked again on requests. Pull and version
+switches are also blocked while editor drafts have unsaved changes; commit and
+push do not close editor tabs. Git hooks and commit
+signing are disabled for these non-interactive operations. Remote access uses
+the existing Git authentication setup. Reviews are limited to 64 KiB; larger
+changes must be committed with Git outside FLODE. Errors do not discard files;
+a failed commit may leave reviewed files staged for retry.
 
 The test origin is a local bare repository, `runtime/remote.git`, mounted
-read-only in HA at `/git-test/remote.git`. `check-git.mjs` publishes temporary
+writable in HA at `/git-test/remote.git` for push checks. `check-git.mjs` publishes temporary
 synthetic changes through a separate disposable writer, exercises fetch/pull
 and historical checkout in both browsers, and restores fixture content through
 another normal commit and pull. It never touches the application checkout's
-Git history or a production remote.
+Git history or a production remote. `check-publish.mjs` exercises review,
+commit, and push through the UI in both browsers. It removes its temporary test
+file through another normal commit and push, leaving the checkout clean.
 
 Rebuild after frontend changes with `yarn build`, then reload the browser.
 After Python changes, restart HA:

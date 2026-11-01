@@ -17,12 +17,14 @@ mkdir -p "$root"
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
 git init --template= --bare --initial-branch=main "$remote"
 git init --template= --initial-branch=main "$checkout"
+git -C "$checkout" config user.name 'FLODE Test'
+git -C "$checkout" config user.email test@example.invalid
 cp -R dev/container/fixtures/automations dev/container/fixtures/objects dev/container/fixtures/tests "$checkout/"
 git -C "$checkout" add automations objects tests
-git -C "$checkout" -c user.name='FLODE Test' -c user.email=test@example.invalid commit -m 'Initial test automations'
+git -C "$checkout" commit -m 'Initial test automations'
 printf 'Disposable configuration checkout for FLODE Git tests.\n' > "$checkout/README.md"
 git -C "$checkout" add README.md
-git -C "$checkout" -c user.name='FLODE Test' -c user.email=test@example.invalid commit -m 'Document test checkout'
+git -C "$checkout" commit -m 'Document test checkout'
 git -C "$checkout" push "$remote" main
 # This path is intentionally the path inside HA Container, not a host remote.
 git -C "$checkout" remote add origin /git-test/remote.git

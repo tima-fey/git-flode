@@ -1,4 +1,8 @@
-import { FileAutomationConfigSchema, FileAutomationListSchema } from '@flode/shared';
+import {
+  FileAutomationConfigSchema,
+  FileAutomationListSchema,
+  FileAutomationSnapshotSchema,
+} from '@flode/shared';
 import type { AutomationListItem, HomeAssistant } from './ha';
 
 /** File reads are the only automation source; failures never fall back to HA. */
@@ -23,6 +27,37 @@ export async function loadFileAutomation(hass: HomeAssistant, item: AutomationLi
       type: 'flode/files/read',
       file: item.source.file,
       automation_id: item.source.id,
+    })
+  );
+}
+
+export async function openFileAutomation(hass: HomeAssistant, item: AutomationListItem) {
+  if (!item.source) throw new Error('This automation has no file source');
+  return FileAutomationSnapshotSchema.parse(
+    await hass.callWS({
+      type: 'flode/files/open',
+      file: item.source.file,
+      automation_id: item.source.id,
+    })
+  );
+}
+
+export async function saveFileAutomation(
+  hass: HomeAssistant,
+  item: AutomationListItem,
+  version: string,
+  directory: string,
+  config: Record<string, unknown>
+) {
+  if (!item.source) throw new Error('Only existing file automations can be saved');
+  return FileAutomationSnapshotSchema.parse(
+    await hass.callWS({
+      type: 'flode/files/save',
+      file: item.source.file,
+      automation_id: item.source.id,
+      version,
+      directory,
+      config: { ...config, id: item.source.id },
     })
   );
 }

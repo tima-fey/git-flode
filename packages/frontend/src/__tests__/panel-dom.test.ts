@@ -51,8 +51,9 @@ function draft(
   };
 }
 
-async function mountPanel(flow: OpenFlow, readOnly = false): Promise<FlodePanel> {
+async function mountPanel(flow: OpenFlow, readOnly = false, fileMode = false): Promise<FlodePanel> {
   const panel = new FlodePanel();
+  panel.fileMode = fileMode;
   panel.readOnly = readOnly;
   document.body.appendChild(panel);
   await panel.updateComplete;
@@ -206,8 +207,8 @@ describe('viewing mode', () => {
   const viewingFlow = () =>
     draft('automation', [trigger, action], [{ id: 'e1', source: trigger.id, target: action.id }]);
 
-  it('defaults to viewing and blocks document edits through commands and events', async () => {
-    expect(new FlodePanel().readOnly).toBe(true);
+  it('supports viewing mode and blocks document edits through commands and events', async () => {
+    expect(new FlodePanel().fileMode).toBe(true);
     const panel = await mountPanel(viewingFlow(), true);
     const graph = panel.flow?.graph;
     const tabs = panel.tabs.length;
@@ -268,5 +269,39 @@ describe('viewing mode', () => {
     expect(inspector?.shadowRoot?.querySelector('ha-icon-button')).toBeNull();
     expect(canvas?.shadowRoot?.querySelector('.add-next')).toBeNull();
     expect(panel.shadowRoot?.querySelector('.toolbar .save')).toBeNull();
+  });
+});
+
+describe('existing-file editing', () => {
+  it('allows graph edits but blocks new automations, copies, and execution', async () => {
+    const flow = draft(
+      'automation',
+      [trigger, action],
+      [{ id: 'e1', source: trigger.id, target: action.id }]
+    );
+    flow.isNew = false;
+    flow.item.source = { file: 'automations/climate/heating.yaml', id: 'existing' };
+    const panel = await mountPanel(flow, false, true);
+    const tabs = panel.tabs.length;
+    panel['startNew']('automation');
+    panel['saveCopy']();
+    panel['startRun'](action.id, 'only');
+    expect(panel.tabs.length).toBe(tabs);
+    expect(panel.runFromId).toBeNull();
+    panel['duplicateCard'](action);
+    await panel.updateComplete;
+    expect(panel.flow?.graph.nodes.length).toBe(3);
+    const commands = panel['paletteEntries']().map((entry) => entry.id);
+    for (const id of [
+      'new',
+      'newScript',
+      'saveCopy',
+      'importYaml',
+      'importJson',
+      'merge',
+      'runOnly',
+      'runFrom',
+    ])
+      expect(commands).not.toContain(id);
   });
 });

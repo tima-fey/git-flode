@@ -37,10 +37,15 @@ export {
   FileAutomationListSchema,
   type FileAutomationRef,
   FileAutomationRefSchema,
+  FileAutomationSnapshotSchema,
 } from './file-source';
 export {
   type GitAction,
   GitActionSchema,
+  type GitChanges,
+  GitChangesSchema,
+  type GitCommitDetails,
+  GitCommitDetailsSchema,
   type GitHistory,
   GitHistorySchema,
   type GitStatus,

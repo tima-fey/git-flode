@@ -1,4 +1,10 @@
-import { type GitAction, GitHistorySchema, GitStatusSchema } from '@flode/shared';
+import {
+  type GitAction,
+  GitChangesSchema,
+  type GitCommitDetails,
+  GitHistorySchema,
+  GitStatusSchema,
+} from '@flode/shared';
 import type { HomeAssistant } from './ha';
 
 export async function readGitStatus(hass: HomeAssistant) {
@@ -13,7 +19,9 @@ export async function runGitAction(
   hass: HomeAssistant,
   action: GitAction,
   expectedHead: string,
-  revision = ''
+  revision = '',
+  commit?: GitCommitDetails,
+  directory = ''
 ) {
   return GitStatusSchema.parse(
     await hass.callWS({
@@ -21,6 +29,12 @@ export async function runGitAction(
       action,
       expected_head: expectedHead,
       revision,
+      ...commit,
+      ...(['commit', 'push'].includes(action) ? { expected_directory: directory } : {}),
     })
   );
+}
+
+export async function readGitChanges(hass: HomeAssistant) {
+  return GitChangesSchema.parse(await hass.callWS({ type: 'flode/git/changes' }));
 }

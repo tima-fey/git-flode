@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { listFileAutomations, loadFileAutomation } from '../file-source';
+import {
+  listFileAutomations,
+  loadFileAutomation,
+  openFileAutomation,
+  saveFileAutomation,
+} from '../file-source';
 import type { HomeAssistant } from '../ha';
 
 function connection(reply: unknown) {
@@ -69,5 +74,37 @@ describe('file-only automation source', () => {
         lastTriggered: null,
       })
     ).rejects.toThrow('no file source');
+  });
+  it('opens and saves the same existing source with its directory and file revision', async () => {
+    const snapshot = {
+      config: { id: 'existing', alias: 'Changed' },
+      version: 'sha256',
+      directory: '/files',
+    };
+    const { hass, requests } = connection(snapshot);
+    const item = {
+      source: { file: 'automations/climate/heating.yaml', id: 'existing' },
+      kind: 'automation',
+      configId: 'file',
+      entityId: '',
+      name: 'Heating',
+      enabled: true,
+      lastTriggered: null,
+    } satisfies import('../ha').AutomationListItem;
+    expect(await openFileAutomation(hass, item)).toEqual(snapshot);
+    expect(
+      await saveFileAutomation(hass, item, 'original-version', '/files', { alias: 'Changed' })
+    ).toEqual(snapshot);
+    expect(requests).toEqual([
+      { type: 'flode/files/open', file: item.source.file, automation_id: 'existing' },
+      {
+        type: 'flode/files/save',
+        file: item.source.file,
+        automation_id: 'existing',
+        version: 'original-version',
+        directory: '/files',
+        config: { alias: 'Changed', id: 'existing' },
+      },
+    ]);
   });
 });

@@ -139,6 +139,25 @@ describe('remembered tabs', () => {
     expect(readTabs()?.tabs[0]?.flow.haVersion).toBe('v1');
   });
 
+  it('remembers the source and file revision of an unsaved file edit', () => {
+    const based = tab('file', 'unsaved');
+    based.flow = {
+      ...based.flow,
+      fileVersion: 'file-sha',
+      fileDirectory: '/flode-config',
+      item: {
+        ...based.flow.item,
+        source: { file: 'automations/climate/heating.yaml', id: 'first' },
+      },
+    };
+    writeTabs({ tabs: [based], activeTabId: 'file', showHome: false }, new Set(['file']));
+    const restored = readTabs()?.tabs[0];
+    expect(restored?.flow.fileVersion).toBe('file-sha');
+    expect(restored?.flow.fileDirectory).toBe('/flode-config');
+    expect(restored?.flow.item.source).toEqual(based.flow.item.source);
+    expect(restored?.saveState).toBe('unsaved');
+  });
+
   it('drops broken entries and survives garbage', () => {
     window.localStorage.setItem(
       'flode3.tabs',

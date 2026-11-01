@@ -4,7 +4,13 @@ import subprocess
 from types import SimpleNamespace
 
 import pytest
-from custom_components.flode.git_api import git_action, git_history, git_status
+from custom_components.flode.file_writer import open_automation, save_automation
+from custom_components.flode.git_api import (
+    git_action,
+    git_changes,
+    git_history,
+    git_status,
+)
 from custom_components.flode.git_source import GitError, GitRepository
 from homeassistant.exceptions import Unauthorized
 
@@ -16,6 +22,14 @@ def git(path, *args):
         cwd=path, env={**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"},
         check=True, capture_output=True, text=True,
     ).stdout.strip()
+
+
+def tree_entries(path, revision):
+    result = {}
+    for line in git(path, 'ls-tree', '-r', revision).splitlines():
+        metadata, file = line.split('\t', 1)
+        result[file] = metadata
+    return result
 
 
 @pytest.fixture
@@ -35,6 +49,8 @@ def checkout(tmp_path):
     git(writer, "remote", "add", "origin", str(remote))
     git(writer, "push", "origin", "main")
     git(tmp_path, "clone", str(remote), str(local))
+    git(local, 'config', 'user.name', 'FLODE Test')
+    git(local, 'config', 'user.email', 'test@example.invalid')
     return GitRepository(str(local)), writer, remote
 
 
@@ -158,7 +174,166 @@ def test_checkout_does_not_execute_repository_hooks(checkout):
     assert not (repo.root / "hook-was-run").exists()
 
 
-@pytest.mark.parametrize("handler", [git_status, git_history, git_action])
+@pytest.mark.parametrize("handler", [git_status, git_history, git_changes, git_action])
 def test_git_commands_require_admin(handler):
     with pytest.raises(Unauthorized):
         handler(None, SimpleNamespace(user=SimpleNamespace(is_admin=False)), {"id": 1})
+
+
+def commit_review(repo, message="Edit configuration", **overrides):
+    details = {
+        "expected_head": repo.request("status")["commit"],
+        "expected_directory": str(repo.root),
+        "expected_changes": repo.request("changes")["version"],
+        "message": message,
+        **overrides,
+    }
+    return repo.request("commit", **details)
+
+
+def test_review_commit_and_push_are_separate_and_include_new_files(checkout):
+    repo, _, remote = checkout
+    path = repo.root / "automations/test.yaml"
+    path.write_text("- id: test\n  alias: Local edit\n")
+    (repo.root / "tests").mkdir()
+    (repo.root / "tests/test_new.py").write_text("# New test\n")
+    before_remote = git(remote, "rev-parse", "main")
+    review = repo.request("changes")
+    assert set(review["files"]) == {"automations/test.yaml", "tests/test_new.py"}
+    assert "Local edit" in review["diff"] and "New test" in review["diff"]
+    assert not git(repo.root, "diff", "--cached", "--name-only")
+    committed = commit_review(repo)
+    assert not committed["dirty"]
+    assert committed["ahead"] == 1
+    assert git(remote, "rev-parse", "main") == before_remote
+    pushed = repo.request("push", expected_head=committed["commit"], expected_directory=str(repo.root))
+    assert pushed["ahead"] == pushed["behind"] == 0
+    assert git(remote, "rev-parse", "main") == committed["commit"]
+
+
+@pytest.mark.parametrize("kind", ["tracked", "untracked", "staged"])
+def test_commit_refuses_a_stale_review(checkout, kind):
+    repo, _, _ = checkout
+    path = repo.root / "automations/test.yaml"
+    path.write_text("changed before review\n")
+    reviewed = repo.request("changes")["version"]
+    if kind == "tracked":
+        path.write_text("changed after review\n")
+    elif kind == "untracked":
+        (repo.root / "new.txt").write_text("new after review\n")
+    else:
+        git(repo.root, "add", ".")
+    head = repo.request("status")["commit"]
+    with pytest.raises(GitError, match="review changes again"):
+        commit_review(repo, expected_changes=reviewed)
+    assert repo.request("status")["commit"] == head
+
+
+@pytest.mark.parametrize("missing", ["message", "name", "email"])
+def test_commit_validates_message_and_configured_identity_before_staging(checkout, missing):
+    repo, _, _ = checkout
+    (repo.root / "README.md").write_text("changed")
+    if missing == 'name':
+        git(repo.root, 'config', 'user.name', '')
+    elif missing == 'email':
+        git(repo.root, 'config', 'user.email', '')
+    with pytest.raises(GitError, match="Enter|Configure user.name"):
+        commit_review(repo, message=' ' if missing == 'message' else 'Valid message')
+    assert not git(repo.root, "diff", "--cached", "--name-only")
+
+
+def test_commit_and_push_refuse_a_different_configured_root(checkout):
+    repo, _, _ = checkout
+    with pytest.raises(GitError, match="project changed"):
+        commit_review(repo, expected_directory="/other-project")
+    with pytest.raises(GitError, match="project changed"):
+        repo.request("push", expected_head=repo.request("status")["commit"], expected_directory="/other-project")
+
+
+def test_push_never_overwrites_new_remote_commits(checkout):
+    repo, writer, remote = checkout
+    (repo.root / "README.md").write_text("local change")
+    committed = commit_review(repo)
+    publish(writer)
+    remote_head = git(remote, "rev-parse", "main")
+    with pytest.raises(GitError, match="missing locally"):
+        repo.request("push", expected_head=committed["commit"], expected_directory=str(repo.root))
+    assert git(remote, "rev-parse", "main") == remote_head
+    assert repo.request("status")["commit"] == committed["commit"]
+
+
+def test_push_does_not_include_uncommitted_files(checkout):
+    repo, _, remote = checkout
+    (repo.root / "README.md").write_text("committed")
+    committed = commit_review(repo)
+    (repo.root / "README.md").write_text("not committed")
+    repo.request("push", expected_head=committed["commit"], expected_directory=str(repo.root))
+    assert git(remote, "show", "main:README.md") == "committed"
+    assert (repo.root / "README.md").read_text() == "not committed"
+
+
+def test_detached_checkout_cannot_commit_or_push(checkout):
+    repo, _, _ = checkout
+    head = repo.request("status")["commit"]
+    repo.request("checkout", expected_head=head, revision=head)
+    for action in ("commit", "push"):
+        with pytest.raises(GitError, match="Return to main"):
+            repo.request(action, expected_head=head, expected_directory=str(repo.root))
+
+
+def test_commit_disables_hooks_and_signing(checkout):
+    repo, _, _ = checkout
+    hook = repo.root / ".git/hooks/pre-commit"
+    hook.write_text("#!/bin/sh\ntouch hook-ran\nexit 1\n")
+    hook.chmod(0o755)
+    git(repo.root, "config", "commit.gpgsign", "true")
+    (repo.root / "README.md").write_text("edit")
+    commit_review(repo, message="Literal $(touch not-executed) commit")
+    assert not (repo.root / "hook-ran").exists()
+    assert not (repo.root / "not-executed").exists()
+
+
+def test_oversized_review_cannot_be_committed_from_ui(checkout):
+    repo, _, _ = checkout
+    (repo.root / "README.md").write_text("x" * 70000)
+    assert repo.request("changes")["truncated"]
+    with pytest.raises(GitError, match="64 KiB"):
+        commit_review(repo)
+
+
+def test_configured_commit_author_overrides_server_environment(checkout, monkeypatch):
+    repo, _, _ = checkout
+    monkeypatch.setenv('GIT_AUTHOR_NAME', 'Unrelated server name')
+    monkeypatch.setenv('GIT_AUTHOR_EMAIL', 'server@example.invalid')
+    (repo.root / 'README.md').write_text('changed')
+    commit_review(repo)
+    assert git(repo.root, 'log', '-1', '--format=%an <%ae>') == 'FLODE Test <test@example.invalid>'
+
+
+def test_save_commit_and_push_change_only_one_file(
+    checkout, seed_isolation_project, snapshot_project_files,
+):
+    repo, _, remote = checkout
+    seed_isolation_project(repo.root)
+    git(repo.root, 'add', '.')
+    git(repo.root, 'commit', '-m', 'Seed independent configuration files')
+    git(repo.root, 'push', 'origin', 'main')
+    before_head = git(repo.root, 'rev-parse', 'HEAD')
+    before_files = snapshot_project_files(repo.root)
+    before_tree = tree_entries(repo.root, 'HEAD')
+    selected = 'automations/climate/heating.yaml'
+    snapshot = open_automation(str(repo.root), selected, 'first')
+    save_automation(str(repo.root), selected, 'first', snapshot['version'], str(repo.root),
+                    {**snapshot['config'], 'alias': 'One changed file'})
+    assert repo.request('changes')['files'] == [selected]
+    committed = commit_review(repo)
+    assert git(repo.root, 'diff', '--name-only', before_head, committed['commit']) == selected
+    after_files = snapshot_project_files(repo.root)
+    assert after_files.keys() == before_files.keys()
+    assert {file for file in before_files if before_files[file] != after_files[file]} == {selected}
+    repo.request('push', expected_head=committed['commit'], expected_directory=str(repo.root))
+    assert git(remote, 'diff', '--name-only', before_head, 'main') == selected
+    after_tree = tree_entries(remote, 'main')
+    assert after_tree.keys() == before_tree.keys()
+    assert {file for file in before_tree if before_tree[file] != after_tree[file]} == {selected}
+    assert snapshot_project_files(repo.root) == after_files, 'Push rewrote working files'

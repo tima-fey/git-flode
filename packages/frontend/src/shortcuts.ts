@@ -98,6 +98,23 @@ export function isViewingCommand(id: string): boolean {
   return VIEWING_COMMANDS.has(id);
 }
 
+const FILE_DISABLED_COMMANDS = new Set([
+  'new',
+  'newScript',
+  'importYaml',
+  'importJson',
+  'saveCopy',
+  'merge',
+  'runFrom',
+  'runOnly',
+  'map',
+]);
+
+/** File mode edits existing automations without creation or execution commands. */
+export function isFileEditingCommand(id: string): boolean {
+  return !FILE_DISABLED_COMMANDS.has(id);
+}
+
 export function isMac(): boolean {
   return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 }

@@ -1,4 +1,9 @@
-import { type FlowGraph, FlowGraphSchema, isPlainObject } from '@flode/shared';
+import {
+  FileAutomationRefSchema,
+  type FlowGraph,
+  FlowGraphSchema,
+  isPlainObject,
+} from '@flode/shared';
 import { randomId } from '@flode/ui-core';
 import type { Viewport } from '@xyflow/system';
 import type { AutomationListItem, RegistryEntry, RegistryUpdate } from './ha';
@@ -50,6 +55,8 @@ export interface OpenFlow {
    * a different one in HA means the flow was changed there meanwhile.
    */
   haVersion?: string;
+  fileVersion?: string;
+  fileDirectory?: string;
   /**
    * The graph as HA has it (opened, saved or reloaded) — undoing back to it
    * makes the tab saved again. Not remembered across a reload.
@@ -66,6 +73,8 @@ export interface SaveResult {
     registryEntry: RegistryEntry | null;
     /** Fingerprint of the config HA stored (see `OpenFlow.haVersion`). */
     haVersion?: string;
+    fileVersion?: string;
+    fileDirectory?: string;
   };
 }
 
@@ -78,7 +87,7 @@ export function settleSave(
   result: SaveResult | null
 ): { flow: OpenFlow; saveState: SaveState } {
   if (!result) return { flow, saveState: 'unsaved' };
-  const { configId, entityId, registryEntry, haVersion } = result.saved;
+  const { configId, entityId, registryEntry, haVersion, fileVersion, fileDirectory } = result.saved;
   const settled: OpenFlow =
     flow.item.configId === configId
       ? {
@@ -89,6 +98,8 @@ export function settleSave(
           registryUpdate: undefined,
           // Unknown when HA's stored config couldn't be read back — no check then.
           haVersion,
+          fileVersion,
+          fileDirectory,
           savedGraph: result.graph,
         }
       : flow;
@@ -233,7 +244,8 @@ function isItem(value: unknown): value is AutomationListItem {
     typeof value.entityId === 'string' &&
     typeof value.configId === 'string' &&
     typeof value.name === 'string' &&
-    (value.kind === 'automation' || value.kind === 'script')
+    (value.kind === 'automation' || value.kind === 'script') &&
+    (value.source === undefined || FileAutomationRefSchema.safeParse(value.source).success)
   );
 }
 
@@ -272,6 +284,8 @@ function restoreTab(value: unknown): EditorTab | null {
       registryEntry: isRegistryEntry(flow.registryEntry) ? flow.registryEntry : null,
       registryUpdate: isRegistryUpdate(flow.registryUpdate) ? flow.registryUpdate : undefined,
       ...(typeof flow.haVersion === 'string' ? { haVersion: flow.haVersion } : {}),
+      ...(typeof flow.fileVersion === 'string' ? { fileVersion: flow.fileVersion } : {}),
+      ...(typeof flow.fileDirectory === 'string' ? { fileDirectory: flow.fileDirectory } : {}),
       ...(saveState === 'saved' ? { savedGraph: restoredGraph } : {}),
     },
     past: [],
@@ -284,7 +298,9 @@ function restoreTab(value: unknown): EditorTab | null {
 
 /** The automation/script a tab shows — two windows may have left a tab for the same one. */
 function flowKey(tab: EditorTab): string | null {
-  return tab.flow.isNew ? null : `${tab.flow.item.kind}:${tab.flow.item.configId}`;
+  return tab.flow.isNew
+    ? null
+    : `${tab.flow.fileDirectory ?? ''}:${tab.flow.item.kind}:${tab.flow.item.configId}`;
 }
 
 /** One tab per automation/script: an unsaved draft beats a saved copy, else the first. */

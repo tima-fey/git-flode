@@ -3,7 +3,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { FlodeGit } from '../flode-git';
 import type { HomeAssistant } from '../ha';
 
+if (!customElements.get('ha-selector'))
+  customElements.define('ha-selector', class extends HTMLElement {});
+
 const initial = {
+  directory: '/files',
   commit: 'a'.repeat(40),
   short: 'aaaaaaa',
   branch: 'main',
@@ -29,11 +33,18 @@ async function mount(branch: string | null = 'main') {
     callWS: <T>(message: Record<string, unknown> & { type: string }) => {
       requests.push(message);
       const reply =
-        message.type === 'flode/git/history'
-          ? history
-          : message.type === 'flode/git/action' && message.action !== 'fetch'
-            ? { ...initial, commit: 'b'.repeat(40), short: 'bbbbbbb', behind: 0 }
-            : { ...initial, branch };
+        message.type === 'flode/git/changes'
+          ? {
+              files: ['automations/example.yaml'],
+              diff: '-old\n+new',
+              version: 'reviewed',
+              truncated: false,
+            }
+          : message.type === 'flode/git/history'
+            ? history
+            : message.type === 'flode/git/action' && message.action !== 'fetch'
+              ? { ...initial, commit: 'b'.repeat(40), short: 'bbbbbbb', behind: 0 }
+              : { ...initial, branch };
       return Promise.resolve<T>(JSON.parse(JSON.stringify(reply)));
     },
   };
@@ -90,5 +101,63 @@ describe('Git controls', () => {
       revision: '',
     });
     expect(changes).toBe(action === 'pull' ? 1 : 0);
+  });
+  it('commits only a reviewed snapshot and pushes separately without clearing editor tabs', async () => {
+    const { control, requests } = await mount();
+    let changes = 0;
+    control.addEventListener('files-changed', () => changes++);
+    control.shadowRoot?.querySelector('[data-action="review"]')?.dispatchEvent(new Event('click'));
+    await settle(control);
+    expect(control.shadowRoot?.textContent).toContain('-old');
+    expect(control.shadowRoot?.querySelector('[data-field="author-name"]')).toBeNull();
+    expect(control.shadowRoot?.querySelector('[data-field="author-email"]')).toBeNull();
+    expect(control.shadowRoot?.querySelectorAll('ha-selector')).toHaveLength(1);
+    const field = control.shadowRoot?.querySelector('[data-field="message"]');
+    if (!(field instanceof HTMLElement)) throw new Error('Missing message field');
+    field.dispatchEvent(
+      new CustomEvent('value-changed', { detail: { value: 'Edit existing automation' } })
+    );
+    await settle(control);
+    expect(control.shadowRoot?.querySelector('[data-action="commit"]')).toHaveProperty(
+      'disabled',
+      false
+    );
+    control.shadowRoot?.querySelector('[data-action="commit"]')?.dispatchEvent(new Event('click'));
+    await settle(control);
+    expect(requests).toContainEqual({
+      type: 'flode/git/action',
+      action: 'commit',
+      expected_head: initial.commit,
+      revision: '',
+      expected_changes: 'reviewed',
+      expected_directory: '/files',
+      message: 'Edit existing automation',
+    });
+    control.shadowRoot?.querySelector('[data-action="push"]')?.dispatchEvent(new Event('click'));
+    await settle(control);
+    expect(requests).toContainEqual({
+      type: 'flode/git/action',
+      action: 'push',
+      expected_head: 'b'.repeat(40),
+      revision: '',
+      expected_directory: '/files',
+    });
+    expect(changes).toBe(0);
+  });
+  it('protects unsaved editor drafts from pull while leaving push available', async () => {
+    const { control, requests } = await mount();
+    control.hasUnsavedChanges = true;
+    await settle(control);
+    expect(control.shadowRoot?.querySelector('[data-action="pull"]')).toHaveProperty(
+      'disabled',
+      true
+    );
+    expect(control.shadowRoot?.querySelector('[data-action="push"]')).toHaveProperty(
+      'disabled',
+      false
+    );
+    control.shadowRoot?.querySelector('[data-action="pull"]')?.dispatchEvent(new Event('click'));
+    await settle(control);
+    expect(requests.some((request) => request.type === 'flode/git/action')).toBe(false);
   });
 });
