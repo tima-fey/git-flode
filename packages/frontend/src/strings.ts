@@ -18,7 +18,7 @@ const STRINGS = {
     gitUnsavedEditors:
       'Ungespeicherte Editoränderungen vor Dateiaktualisierungen speichern oder verwerfen.',
     gitReview: 'Änderungen prüfen',
-    gitPush: 'main pushen',
+    gitPush: 'prod pushen',
     gitCommit: 'Alle Änderungen committen',
     gitCommitScope:
       'Committet alle aufgeführten Dateiänderungen, einschließlich neuer Dateien. Push veröffentlicht nur Commits.',
@@ -38,15 +38,23 @@ const STRINGS = {
     haInvalid: 'Die Konfiguration ist ungültig.',
     haReloaded: 'Schnelles Neuladen abgeschlossen.',
     haScope: 'Prüft und lädt die mit Home Assistant verbundene YAML-Konfiguration neu.',
+    gitIncoming: 'Noch nicht in prod gemergte Commits von origin/main: {count}',
+    gitProdUnpublished: 'prod wurde noch nicht veröffentlicht. prod pushen erstellt origin/prod.',
+    gitRevert: 'Letzten main-Merge rückgängig machen',
+    gitUndoNotice:
+      'Stellt mit einem neuen Commit die Dateien vor dem Merge wieder her. Um dieselben Änderungen erneut anzuwenden, zuerst prod in main mergen und dort diesen Revert rückgängig machen.',
+    gitWorkflow:
+      'HA arbeitet in prod. Updates werden aus main gemergt; lokale Commits und Pushes bleiben in prod.',
+
     gitRefresh: 'Git aktualisieren',
     gitFetch: 'Fetch (nur herunterladen)',
-    gitPull: 'main aktualisieren',
-    gitMain: 'Zurück zu main',
+    gitMerge: 'main in prod mergen',
+    gitProd: 'Zurück zu prod',
     gitHistory: 'Commit-Verlauf',
     gitCheckout: 'Commit verwenden',
     gitMore: 'Mehr laden',
     gitDetached: 'Historische Version',
-    gitAheadBehind: 'main zu origin/main: {ahead} voraus, {behind} zurück',
+    gitAheadBehind: 'prod zu origin/prod: {ahead} voraus, {behind} zurück',
     gitDirty: 'Lokale Änderungen erkannt. Versionswechsel sind gesperrt.',
     gitFilesNotice:
       'Git ändert Dateien in diesem Ordner. Home-Assistant-Automatisierungen werden nicht neu geladen.',
@@ -442,7 +450,7 @@ const STRINGS = {
     objectsExported: 'Exported: {devices} devices, {entities} entities, {helpers} helpers.',
     gitUnsavedEditors: 'Save or discard unsaved editor changes before updating files.',
     gitReview: 'Review changes',
-    gitPush: 'Push main',
+    gitPush: 'Push prod',
     gitCommit: 'Commit all changes',
     gitCommitScope:
       'Commits all listed working-file changes, including new files. Push publishes commits only.',
@@ -462,15 +470,23 @@ const STRINGS = {
     haInvalid: 'Configuration is invalid.',
     haReloaded: 'Quick reload completed.',
     haScope: 'Checks and reloads the YAML configuration connected to Home Assistant.',
+    gitIncoming: 'origin/main commits not merged into prod: {count}',
+    gitProdUnpublished: 'prod has not been published. Push prod to create origin/prod.',
+    gitRevert: 'Undo latest main merge',
+    gitUndoNotice:
+      'Restores files from before this merge using a new commit. To reapply the same changes later, merge prod into main and revert this undo there first.',
+    gitWorkflow:
+      'HA works in prod. Updates arrive by merging main; local commits and pushes stay in prod.',
+
     gitRefresh: 'Refresh Git',
     gitFetch: 'Fetch (download only)',
-    gitPull: 'Pull main',
-    gitMain: 'Return to main',
+    gitMerge: 'Merge main into prod',
+    gitProd: 'Return to prod',
     gitHistory: 'Commit history',
     gitCheckout: 'Use commit',
     gitMore: 'Load more',
     gitDetached: 'Historical version',
-    gitAheadBehind: 'main vs origin/main: {ahead} ahead, {behind} behind',
+    gitAheadBehind: 'prod vs origin/prod: {ahead} ahead, {behind} behind',
     gitDirty: 'Local changes detected. Switching versions is blocked.',
     gitFilesNotice:
       'Git changes files in this folder. Home Assistant automations are not reloaded.',

@@ -13,6 +13,7 @@ import yaml
 from ruamel.yaml import YAML
 
 from .file_source import FileSource
+from .git_source import require_prod_for_writes
 from .project_lock import project_lock
 
 # Keys represented by the visual automation graph; future HA keys remain intact.
@@ -91,6 +92,7 @@ def save_automation(
     if not lock.acquire(timeout=1):
         raise ValueError("Another project operation is running; try again when it finishes")
     try:
+        require_prod_for_writes(source.root)
         relative = Path(file)
         if any((source.root / Path(*relative.parts[:i])).is_symlink() for i in range(1, len(relative.parts) + 1)):
             raise ValueError("Symlinked automation paths cannot be edited")

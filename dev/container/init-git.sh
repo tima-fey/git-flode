@@ -26,5 +26,7 @@ printf 'Disposable configuration checkout for FLODE Git tests.\n' > "$checkout/R
 git -C "$checkout" add README.md
 git -C "$checkout" commit -m 'Document test checkout'
 git -C "$checkout" push "$remote" main
+git -C "$checkout" switch --create prod
+git -C "$checkout" push "$remote" prod
 # This path is intentionally the path inside HA Container, not a host remote.
 git -C "$checkout" remote add origin /git-test/remote.git

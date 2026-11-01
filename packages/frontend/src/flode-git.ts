@@ -46,12 +46,15 @@ export class FlodeGit extends LitElement {
       this.status = null;
     } finally {
       this.busy = false;
+      this.dispatchEvent(
+        new CustomEvent<GitStatus | null>('git-state-changed', { detail: this.status })
+      );
     }
   }
 
   private async act(action: GitAction, revision = ''): Promise<void> {
     if (!this.hass || !this.status || this.busy) return;
-    if (this.hasUnsavedChanges && ['pull', 'main', 'checkout'].includes(action)) return;
+    if (this.hasUnsavedChanges && ['merge', 'prod', 'checkout', 'revert'].includes(action)) return;
     this.busy = true;
     this.error = null;
     try {
@@ -71,16 +74,20 @@ export class FlodeGit extends LitElement {
       );
       this.changes = null;
       if (action === 'commit') this.message = '';
-      if (['pull', 'main', 'checkout'].includes(action))
+      if (['merge', 'prod', 'checkout', 'revert'].includes(action))
         this.dispatchEvent(new CustomEvent('files-changed'));
       this.history = await readGitHistory(this.hass);
     } catch (error) {
       this.error = errorMessage(error);
       this.changes = null;
-      // A failed pull may still have fetched new remote history.
+      // A failed merge may still have fetched new remote history.
       this.status = await readGitStatus(this.hass).catch(() => null);
+      this.history = await readGitHistory(this.hass).catch(() => this.history);
     } finally {
       this.busy = false;
+      this.dispatchEvent(
+        new CustomEvent<GitStatus | null>('git-state-changed', { detail: this.status })
+      );
     }
   }
 
@@ -137,17 +144,25 @@ export class FlodeGit extends LitElement {
       ${
         status
           ? html`
-        <p>${status.remote ? t(language, 'gitAheadBehind').replace('{ahead}', String(status.ahead)).replace('{behind}', String(status.behind)) : 'origin/main: —'}</p>
+        <p>${t(language, 'gitWorkflow')}</p>
+        <p>${status.remote_prod ? t(language, 'gitAheadBehind').replace('{ahead}', String(status.ahead)).replace('{behind}', String(status.behind)) : t(language, 'gitProdUnpublished')}</p>
+        <p>${status.remote_main ? t(language, 'gitIncoming').replace('{count}', String(status.incoming)) : 'origin/main: —'}</p>
         ${this.hasUnsavedChanges ? html`<ha-alert alert-type="warning">${t(language, 'gitUnsavedEditors')}</ha-alert>` : nothing}
         ${status.dirty ? html`<ha-alert alert-type="warning">${t(language, 'gitDirty')}</ha-alert>` : nothing}
         <div class="controls">
           <ha-button data-action="fetch" .disabled=${this.busy || !status.has_origin} @click=${() => this.act('fetch')}>${t(language, 'gitFetch')}</ha-button>
-          <ha-button data-action="pull" .disabled=${blocked || !status.has_origin || status.branch !== 'main'} @click=${() => this.act('pull')}>${t(language, 'gitPull')}</ha-button>
-          <ha-button data-action="main" .disabled=${blocked || status.branch === 'main'} @click=${() => this.act('main')}>${t(language, 'gitMain')}</ha-button>
+          <ha-button data-action="merge" .disabled=${blocked || !status.has_origin || status.branch !== 'prod'} @click=${() => this.act('merge')}>${t(language, 'gitMerge')}</ha-button>
+          <ha-button data-action="prod" .disabled=${blocked || status.branch === 'prod'} @click=${() => this.act('prod')}>${t(language, 'gitProd')}</ha-button>
         </div>
+        ${
+          status.merge_to_revert
+            ? html`<p>${t(language, 'gitUndoNotice')}</p>
+          <ha-button data-action="revert" .disabled=${blocked || status.branch !== 'prod'} @click=${() => this.act('revert', status.merge_to_revert ?? '')}>${t(language, 'gitRevert')}</ha-button>`
+            : nothing
+        }
         <div class="controls publish">
           <ha-button data-action="review" .disabled=${this.busy} @click=${() => this.review()}>${t(language, 'gitReview')}</ha-button>
-          <ha-button data-action="push" .disabled=${this.busy || !status.has_origin || status.branch !== 'main'} @click=${() => this.act('push')}>${t(language, 'gitPush')}</ha-button>
+          <ha-button data-action="push" .disabled=${this.busy || !status.has_origin || status.branch !== 'prod'} @click=${() => this.act('push')}>${t(language, 'gitPush')}</ha-button>
         </div>
         ${
           this.changes
@@ -162,7 +177,7 @@ export class FlodeGit extends LitElement {
             @value-changed=${(event: CustomEvent<{ value: unknown }>) => {
               this.message = typeof event.detail.value === 'string' ? event.detail.value : '';
             }}></ha-selector>
-          <ha-button data-action="commit" .disabled=${this.busy || status.branch !== 'main' || !this.changes.files.length || !this.message.trim()} @click=${() => this.act('commit')}>${t(language, 'gitCommit')}</ha-button>
+          <ha-button data-action="commit" .disabled=${this.busy || status.branch !== 'prod' || !this.changes.files.length || !this.message.trim()} @click=${() => this.act('commit')}>${t(language, 'gitCommit')}</ha-button>
         </section>`
             : nothing
         }
@@ -171,7 +186,7 @@ export class FlodeGit extends LitElement {
           <ul>${this.history.commits.map(
             (entry) => html`<li>
             <div><code>${entry.short}</code> · ${entry.date}<br>${entry.subject}</div>
-            <ha-button data-revision=${entry.commit} .disabled=${blocked || entry.commit === status.commit} @click=${() => this.act('checkout', entry.commit)}>${t(language, 'gitCheckout')}</ha-button>
+            <ha-button data-revision=${entry.commit} .disabled=${blocked || !status.prod || entry.commit === status.commit} @click=${() => this.act('checkout', entry.commit)}>${t(language, 'gitCheckout')}</ha-button>
           </li>`
           )}</ul>
           ${this.history.has_more ? html`<ha-button .disabled=${this.busy} @click=${() => this.more()}>${t(language, 'gitMore')}</ha-button>` : nothing}

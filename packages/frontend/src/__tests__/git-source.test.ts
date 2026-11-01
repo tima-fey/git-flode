@@ -10,17 +10,20 @@ const initial = {
   directory: '/files',
   commit: 'a'.repeat(40),
   short: 'aaaaaaa',
-  branch: 'main',
+  branch: 'prod',
   dirty: false,
-  main: 'a'.repeat(40),
-  remote: 'b'.repeat(40),
+  prod: 'a'.repeat(40),
+  remote_main: 'b'.repeat(40),
+  remote_prod: 'a'.repeat(40),
+  incoming: 1,
+  merge_to_revert: 'a'.repeat(40),
   has_origin: true,
   ahead: 0,
   behind: 1,
 };
 const history = { commits: [], has_more: false };
 
-async function mount(branch: string | null = 'main') {
+async function mount(branch: string | null = 'prod') {
   const requests: Record<string, unknown>[] = [];
   const hass: HomeAssistant = {
     states: {},
@@ -43,7 +46,14 @@ async function mount(branch: string | null = 'main') {
           : message.type === 'flode/git/history'
             ? history
             : message.type === 'flode/git/action' && message.action !== 'fetch'
-              ? { ...initial, commit: 'b'.repeat(40), short: 'bbbbbbb', behind: 0 }
+              ? {
+                  ...initial,
+                  commit: 'b'.repeat(40),
+                  prod: 'b'.repeat(40),
+                  short: 'bbbbbbb',
+                  behind: 0,
+                  merge_to_revert: message.action === 'merge' ? 'b'.repeat(40) : null,
+                }
               : { ...initial, branch };
       return Promise.resolve<T>(JSON.parse(JSON.stringify(reply)));
     },
@@ -65,15 +75,15 @@ afterEach(() => {
 });
 
 describe('Git controls', () => {
-  it('shows the current commit and keeps pull disabled on a historical checkout', async () => {
+  it('shows the current commit and keeps merge disabled on a historical checkout', async () => {
     const { control, requests } = await mount(null);
     expect(control.shadowRoot?.textContent).toContain('aaaaaaa');
     expect(control.shadowRoot?.textContent).toContain('Historical version');
-    expect(control.shadowRoot?.querySelector('[data-action="pull"]')).toHaveProperty(
+    expect(control.shadowRoot?.querySelector('[data-action="merge"]')).toHaveProperty(
       'disabled',
       true
     );
-    expect(control.shadowRoot?.querySelector('[data-action="main"]')).toHaveProperty(
+    expect(control.shadowRoot?.querySelector('[data-action="prod"]')).toHaveProperty(
       'disabled',
       false
     );
@@ -85,8 +95,8 @@ describe('Git controls', () => {
 
   it.each([
     'fetch',
-    'pull',
-  ])('%s sends the expected HEAD and invalidates files only for pull', async (action) => {
+    'merge',
+  ])('%s sends the expected HEAD and invalidates files only for merge', async (action) => {
     const { control, requests } = await mount();
     let changes = 0;
     control.addEventListener('files-changed', () => changes++);
@@ -99,8 +109,9 @@ describe('Git controls', () => {
       action,
       expected_head: initial.commit,
       revision: '',
+      expected_directory: '/files',
     });
-    expect(changes).toBe(action === 'pull' ? 1 : 0);
+    expect(changes).toBe(action === 'merge' ? 1 : 0);
   });
   it('commits only a reviewed snapshot and pushes separately without clearing editor tabs', async () => {
     const { control, requests } = await mount();
@@ -144,11 +155,11 @@ describe('Git controls', () => {
     });
     expect(changes).toBe(0);
   });
-  it('protects unsaved editor drafts from pull while leaving push available', async () => {
+  it('protects unsaved editor drafts from merge while leaving push available', async () => {
     const { control, requests } = await mount();
     control.hasUnsavedChanges = true;
     await settle(control);
-    expect(control.shadowRoot?.querySelector('[data-action="pull"]')).toHaveProperty(
+    expect(control.shadowRoot?.querySelector('[data-action="merge"]')).toHaveProperty(
       'disabled',
       true
     );
@@ -156,7 +167,49 @@ describe('Git controls', () => {
       'disabled',
       false
     );
-    control.shadowRoot?.querySelector('[data-action="pull"]')?.dispatchEvent(new Event('click'));
+    control.shadowRoot?.querySelector('[data-action="merge"]')?.dispatchEvent(new Event('click'));
+    await settle(control);
+    expect(requests.some((request) => request.type === 'flode/git/action')).toBe(false);
+  });
+  it('undoes only the displayed merge with root and HEAD guards and refreshes files', async () => {
+    const { control, requests } = await mount();
+    let changes = 0;
+    control.addEventListener('files-changed', () => changes++);
+    control.shadowRoot?.querySelector('[data-action="revert"]')?.dispatchEvent(new Event('click'));
+    await settle(control);
+    expect(requests).toContainEqual({
+      type: 'flode/git/action',
+      action: 'revert',
+      expected_head: initial.commit,
+      expected_directory: '/files',
+      revision: initial.merge_to_revert,
+    });
+    expect(changes).toBe(1);
+    expect(control.shadowRoot?.querySelector('[data-action="revert"]')).toBeNull();
+    expect(requests.some((request) => request.action === 'push')).toBe(false);
+  });
+  it('returns a historical checkout to prod without switching to main', async () => {
+    const { control, requests } = await mount(null);
+    control.shadowRoot?.querySelector('[data-action="prod"]')?.dispatchEvent(new Event('click'));
+    await settle(control);
+    expect(requests).toContainEqual({
+      type: 'flode/git/action',
+      action: 'prod',
+      expected_head: initial.commit,
+      expected_directory: '/files',
+      revision: '',
+    });
+    expect(requests.some((request) => request.action === 'main')).toBe(false);
+  });
+  it('protects unsaved drafts from undoing a merge', async () => {
+    const { control, requests } = await mount();
+    control.hasUnsavedChanges = true;
+    await settle(control);
+    expect(control.shadowRoot?.querySelector('[data-action="revert"]')).toHaveProperty(
+      'disabled',
+      true
+    );
+    control.shadowRoot?.querySelector('[data-action="revert"]')?.dispatchEvent(new Event('click'));
     await settle(control);
     expect(requests.some((request) => request.type === 'flode/git/action')).toBe(false);
   });

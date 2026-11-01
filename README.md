@@ -20,9 +20,9 @@ and runs project tests from inside Home Assistant. The panel still appears as
   name and source path.
 - Edit an existing automation using the inherited canvas and native HA forms.
   Save back to its original YAML file with revision checks.
-- See the current commit, fetch without changing files, pull main, inspect
-  history, and open a historical commit or return to main.
-- Review local changes, commit with a message, and push main. The author comes
+- See the current commit, fetch without changing files, merge main into prod, inspect
+  history, undo the latest merge, and return from a historical view to prod.
+- Review local changes, commit with a message, and push prod. The author comes
   from Git configuration in the HA runtime.
 - Explicitly check HA configuration and run **Quick reload** without restarting HA.
 - Export devices, entities, and helpers to `objects/` for offline reference.
@@ -38,7 +38,7 @@ in [CHANGELOG.md](CHANGELOG.md).
 
 Choose an existing absolute project root in **Settings → Devices & services →
 FLODE → Configure**. The root name and location are configurable. Git operations
-require this directory to be the checkout root, with an existing `main` branch.
+require this directory to be the checkout root, with an existing `prod` branch, active in HA.
 
 ```text
 flode-config/
@@ -135,14 +135,49 @@ git -C /flode-config config user.email "you@example.com"
 Configure origin and its authentication separately. The UI uses that setup;
 commit only requires a message. **Review changes** includes all changed and
 untracked non-ignored files. **Commit all changes** commits that exact reviewed
-snapshot; **Push main** is a separate action. The diff preview is limited to
+snapshot; **Push prod** is a separate action. The diff preview is limited to
 64 KiB, while the commit includes all listed content.
 
-**Fetch** downloads `origin/main` without changing working files. **Pull**
-fast-forwards main. Opening a historical commit uses detached HEAD;
-**Return to main** restores local main. Pull and checkout refuse dirty working trees or unsaved editor drafts.
-Synchronization also refuses conflicting history. There is no
-automatic reset, stash, or force push.
+The configuration checkout in HA works on **prod**. Only this HA writes and
+pushes prod; external work is committed to **main**. Set up prod before adding
+this checkout to FLODE, or clone an existing `origin/prod`. For a first setup
+inside the HA configuration checkout:
+
+```sh
+git -C /flode-config fetch origin
+git -C /flode-config switch --no-track --create prod origin/main
+git -C /flode-config push --set-upstream origin prod
+```
+
+**Fetch** updates cached `origin/main` and `origin/prod` without changing working
+files. **Merge main into prod** fetches again and merges `origin/main` into
+active prod. Every incoming update gets a dedicated merge commit, including
+updates that could otherwise fast-forward. No automatic push or reload follows.
+The UI shows prod's ahead/behind counts relative to origin/prod separately from
+main commits not yet merged into prod. **Push prod** publishes prod only.
+
+A conflicting merge is automatically aborted and the previous prod is restored.
+On your computer, merge `origin/prod` into main, resolve conflicts, and push
+main. Retry **Merge main into prod** in HA. Nobody else should push prod.
+Unexpected remote prod commits stop merge/push rather than being overwritten.
+
+**Undo latest main merge** creates a revert commit restoring the files from
+before that update. It is available while that FLODE merge is the tip of prod,
+with no pending file/editor changes. Push the revert with **Push prod** when
+ready. History is preserved and force push is never used. Later local commits
+are not discarded to undo an older update.
+
+Git still considers reverted main commits merged. To reapply the same changes,
+merge prod into main on your computer and revert the undo commit there, resolving
+any conflicts. Push main, then merge it into prod from HA. This keeps prod's
+single-writer rule intact.
+
+Opening history uses detached HEAD in viewing mode. **Return to prod** restores
+the working branch. Saving and object export are refused on historical Git
+revisions. Merge, undo, and checkout require clean files and saved/discarded
+editor drafts. There is no legacy main-only mode, automatic reset, stash, or
+force push. The application source repository's development branches are
+independent of this configuration-repository workflow.
 
 Save, commit, push, tests, config check, and reload are explicit actions. To
 apply this checkout to HA, connect its files to your HA configuration includes.

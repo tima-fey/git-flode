@@ -66,7 +66,7 @@ the runtime directory. The integration mount is read-only; HA's isolated config
 directory is writable so HA can maintain its own storage. The panel edits existing file automations through HA's native step editors.
 Creating automations, saving copies, imports as new automations, and action
 execution remain disabled. The configuration checkout is writable for
-explicit Git pull/version-switch operations.
+explicit Git merge/version-switch operations.
 
 ## Editing existing automations
 
@@ -120,7 +120,7 @@ at runtime. The process uses the project root as its working directory and can
 import project helpers. Empty suites and import errors count as failures.
 
 Only administrators can start a run. Runs are explicit, share a lock with Git,
-and never happen automatically on fetch, pull, or reload. Output is limited to
+and never happen automatically on fetch, merge, or reload. Output is limited to
 64 KiB and runs stop after 60 seconds by terminating the worker process group. Python
 bytecode is disabled to keep the checkout clean. The UI displays console output,
 pass/fail, and timeout results. Symlinks in `tests/` are rejected.
@@ -131,58 +131,70 @@ and HA services if their code does so; the example only reads YAML.
 
 ## Git controls
 
-The home screen shows the current branch/commit, main's ahead/behind counts,
-and paginated commit history. Fetch downloads origin/main without changing
-working files. Pull fetches and fast-forwards main. Opening a historical commit
-uses detached HEAD and preserves main; Return to main restores the local main
-checkout. Pull can then update it to origin/main. Git never reloads HA or runs
-an automation.
+The configured directory must be the configuration checkout root with an
+existing local **prod** branch. HA works on prod; the external writer works on
+**main**. There is no legacy main-only mode or automatic branch migration.
+Fresh `init-git.sh` fixtures create both branches and leave prod active. The
+application source checkout is separate and retains its development branch.
 
-The configured FLODE directory must be the checkout root, with an existing
-main branch. Network operations use its existing origin and authentication
-configured outside the checkout. Git must be available inside the HA runtime;
-Git in an SSH add-on is insufficient. The pinned test image already includes it.
-Local changes, stale requests, and diverged history stop file-changing actions;
-there is no automatic reset, stash, or force push. Fetch remains available with
-local changes.
+The card shows the current commit/branch, prod's ahead/behind counts relative to
+`origin/prod`, main commits not yet merged into prod, and paginated history from
+prod and fetched main/prod refs. A local main branch is not required.
 
-Review changes shows the working-tree diff and untracked files without staging.
-Commit all changes requires that exact reviewed snapshot and a message.
-The author is read on the server from Git configuration (`user.name` and
-`user.email`); there are no author fields in the UI. Configure these once for
-the configuration checkout, where it is accessible:
+- **Fetch** downloads origin/main and origin/prod without changing working files.
+- **Merge main into prod** fetches first, requires active prod and clean files,
+  and creates a dedicated merge commit with the previous prod as first parent
+  and fetched main as second parent. Already-merged main is a no-op.
+- A failed/conflicting merge is aborted. The previous HEAD and clean checkout
+  are verified after abort. If recovery itself fails, the error requires manual
+  repair; the app does not reset or discard files.
+- Resolve conflicts on your computer by merging prod into main, resolving,
+  and pushing main. Retry the main-to-prod merge in HA. External updates enter
+  prod only through main; another writer on origin/prod blocks merge/push.
+- **Undo latest main merge** runs `git revert -m 1` against the latest FLODE
+  merge at prod's tip, creating a new commit with the pre-merge file tree.
+  Later commits are preserved by refusing that shortcut once the tip changes.
+- **Push prod** sends committed prod to origin/prod through a normal push,
+  even with uncommitted files. It never publishes into main or force-pushes.
+- Historical checkout is detached and read-only for file saves and object
+  export. **Return to prod** restores the working branch. Unsaved editor drafts
+  block merge, undo, and version switches.
+
+Merge and revert use identity from Git configuration in the HA runtime. Set
+`user.name` and `user.email` once; no author fields are requested by the UI:
 
 ```sh
 git -C /flode-config config user.name "Your Name"
 git -C /flode-config config user.email "you@example.com"
 ```
 
-Missing identity settings stop a commit before staging any files. Commit stages
-all listed working-file changes, including deletions and new non-ignored files.
-Partial staging is replaced by the reviewed working-file contents. Nothing is
-pushed automatically. The UI does not change Git identity settings. Keep
-credentials outside the checkout and configure `.gitignore`
-for generated/private files.
+Review shows all changed and untracked non-ignored files without staging.
+Commit requires that exact review and a message, stages all listed changes,
+and commits only on prod. The 64-KiB diff preview limit does not truncate commit
+contents; the review token covers complete file contents and staging state.
+Git hooks and signing are disabled. Authentication and origin are configured
+outside the UI; Git must be installed inside the HA runtime. The pinned test
+image includes it. All action requests include expected root and HEAD guards.
 
-Push main sends committed local main to origin/main, even if uncommitted work
-remains. It fetches first, refuses non-fast-forward updates, and never pushes
-other branches or tags. Commit and push are disabled on historical checkouts.
-The checkout root and HEAD are checked again on requests. Pull and version
-switches are also blocked while editor drafts have unsaved changes; commit and
-push do not close editor tabs. Git hooks and commit
-signing are disabled for these non-interactive operations. Remote access uses
-the existing Git authentication setup. Diff previews are limited to 64 KiB; a commit includes all listed changes,
-including content beyond the preview. The review token covers their full contents. Errors do not discard files;
-a failed commit may leave reviewed files staged for retry.
+Merge, revert, commit, push, tests, object export, HA checks, and reload are
+separate explicit actions. A failed commit may leave reviewed files staged.
+Neither successful Git updates nor undo reload HA automatically. Apply changes
+through the separate native check/reload controls only when the checkout is
+included in HA configuration.
 
-The test origin is a local bare repository, `runtime/remote.git`, mounted
-writable in HA at `/git-test/remote.git` for push checks. `check-git.mjs` publishes temporary
-synthetic changes through a separate disposable writer, exercises fetch/pull
-and historical checkout in both browsers, and restores fixture content through
-another normal commit and pull. It never touches the application checkout's
-Git history or a production remote. `check-publish.mjs` exercises review,
-commit, and push through the UI in both browsers. It removes its temporary test
-file through another normal commit and push, leaving the checkout clean.
+Reverting a merge preserves its ancestry. Another merge of the same main will
+not reapply those changes. To restore them, merge prod into main on your computer,
+revert the undo commit in main, resolve as needed, and push main. HA can then
+merge that new main. This does not require another writer on prod.
+
+The test origin is `runtime/remote.git`, mounted at `/git-test/remote.git`.
+`check-git.mjs` exercises fetch, merge, prod push, published-merge undo, historical
+viewing, automatic conflict abort, and human resolution through main in both
+browsers. Its separate computer-side writer pushes only main. Cleanup restores
+fixture content through main and merges it into prod, preserving history.
+`check-publish.mjs` checks reviewed local commits, configured identity, and prod
+pushes; it removes its temporary file through another commit/push on prod.
+These tests never use the application's Git remote or production configuration.
 
 Rebuild after frontend changes with `yarn build`, then reload the browser.
 After Python changes, restart HA:

@@ -8,7 +8,7 @@ export const es: Strings = {
   objectsExported: 'Exportados: {devices} dispositivos, {entities} entidades, {helpers} ayudantes.',
   gitUnsavedEditors: 'Guarda o descarta los cambios del editor antes de actualizar los archivos.',
   gitReview: 'Revisar cambios',
-  gitPush: 'Push de main',
+  gitPush: 'Push de prod',
   gitCommit: 'Confirmar todos los cambios',
   gitCommitScope:
     'Confirma todos los cambios de archivos mostrados, incluidos los archivos nuevos. Push publica solo commits.',
@@ -28,15 +28,23 @@ export const es: Strings = {
   haInvalid: 'La configuración no es válida.',
   haReloaded: 'Recarga rápida completada.',
   haScope: 'Comprueba y recarga la configuración YAML conectada a Home Assistant.',
+  gitIncoming: 'Commits de origin/main sin fusionar en prod: {count}',
+  gitProdUnpublished: 'prod aún no se ha publicado. Push de prod crea origin/prod.',
+  gitRevert: 'Deshacer última fusión de main',
+  gitUndoNotice:
+    'Restaura los archivos anteriores a la fusión con un nuevo commit. Para aplicar los mismos cambios, fusiona prod en main y revierte allí esta anulación primero.',
+  gitWorkflow:
+    'HA trabaja en prod. Las actualizaciones llegan al fusionar main; los commits y pushes locales se quedan en prod.',
+
   gitRefresh: 'Actualizar Git',
   gitFetch: 'Fetch (solo descargar)',
-  gitPull: 'Actualizar main',
-  gitMain: 'Volver a main',
+  gitMerge: 'Fusionar main en prod',
+  gitProd: 'Volver a prod',
   gitHistory: 'Historial de commits',
   gitCheckout: 'Usar commit',
   gitMore: 'Cargar más',
   gitDetached: 'Versión histórica',
-  gitAheadBehind: 'main frente a origin/main: {ahead} por delante, {behind} por detrás',
+  gitAheadBehind: 'prod frente a origin/prod: {ahead} por delante, {behind} por detrás',
   gitDirty: 'Hay cambios locales. El cambio de versión está bloqueado.',
   gitFilesNotice:
     'Git modifica archivos de esta carpeta. Las automatizaciones de Home Assistant no se recargan.',

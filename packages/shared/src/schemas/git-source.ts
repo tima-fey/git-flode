@@ -1,13 +1,16 @@
 import { z } from 'zod';
 
 export const GitStatusSchema = z.object({
-  directory: z.string().default(''),
+  directory: z.string(),
   commit: z.string(),
   short: z.string(),
   branch: z.string().nullable(),
   dirty: z.boolean(),
-  main: z.string(),
-  remote: z.string().nullable(),
+  prod: z.string(),
+  remote_main: z.string().nullable(),
+  remote_prod: z.string(),
+  incoming: z.number().int().nonnegative(),
+  merge_to_revert: z.string().nullable(),
   has_origin: z.boolean(),
   ahead: z.number().int().nonnegative(),
   behind: z.number().int().nonnegative(),
@@ -25,7 +28,15 @@ export const GitHistorySchema = z.object({
   has_more: z.boolean(),
 });
 export type GitHistory = z.infer<typeof GitHistorySchema>;
-export const GitActionSchema = z.enum(['fetch', 'pull', 'main', 'checkout', 'commit', 'push']);
+export const GitActionSchema = z.enum([
+  'fetch',
+  'merge',
+  'prod',
+  'checkout',
+  'commit',
+  'push',
+  'revert',
+]);
 export type GitAction = z.infer<typeof GitActionSchema>;
 
 export const GitChangesSchema = z.object({

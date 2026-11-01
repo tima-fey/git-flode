@@ -30,7 +30,7 @@ export async function runGitAction(
       expected_head: expectedHead,
       revision,
       ...commit,
-      ...(['commit', 'push'].includes(action) ? { expected_directory: directory } : {}),
+      expected_directory: directory,
     })
   );
 }

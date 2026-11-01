@@ -8,7 +8,7 @@ export const nl: Strings = {
   objectsExported: 'Geëxporteerd: {devices} apparaten, {entities} entiteiten, {helpers} helpers.',
   gitUnsavedEditors: 'Sla editorwijzigingen op of verwerp ze voordat je bestanden bijwerkt.',
   gitReview: 'Wijzigingen bekijken',
-  gitPush: 'Main pushen',
+  gitPush: 'prod pushen',
   gitCommit: 'Alle wijzigingen committen',
   gitCommitScope:
     'Commit alle getoonde bestandswijzigingen, inclusief nieuwe bestanden. Push publiceert alleen commits.',
@@ -28,15 +28,23 @@ export const nl: Strings = {
   haInvalid: 'De configuratie is ongeldig.',
   haReloaded: 'Snel herladen voltooid.',
   haScope: 'Controleert en herlaadt de YAML-configuratie die met Home Assistant is verbonden.',
+  gitIncoming: 'Commits van origin/main nog niet samengevoegd in prod: {count}',
+  gitProdUnpublished: 'prod is nog niet gepubliceerd. Push prod om origin/prod te maken.',
+  gitRevert: 'Laatste main-samenvoeging terugdraaien',
+  gitUndoNotice:
+    'Herstelt de bestanden van vóór de samenvoeging met een nieuwe commit. Om dezelfde wijzigingen opnieuw toe te passen, voeg je prod samen in main en draai je deze revert daar terug.',
+  gitWorkflow:
+    'HA werkt in prod. Updates komen via samenvoeging van main; lokale commits en pushes blijven in prod.',
+
   gitRefresh: 'Git vernieuwen',
   gitFetch: 'Fetch (alleen downloaden)',
-  gitPull: 'main bijwerken',
-  gitMain: 'Terug naar main',
+  gitMerge: 'main samenvoegen in prod',
+  gitProd: 'Terug naar prod',
   gitHistory: 'Commitgeschiedenis',
   gitCheckout: 'Commit gebruiken',
   gitMore: 'Meer laden',
   gitDetached: 'Historische versie',
-  gitAheadBehind: 'main t.o.v. origin/main: {ahead} voor, {behind} achter',
+  gitAheadBehind: 'prod t.o.v. origin/prod: {ahead} voor, {behind} achter',
   gitDirty: 'Lokale wijzigingen gevonden. Versies wisselen is geblokkeerd.',
   gitFilesNotice:
     'Git wijzigt bestanden in deze map. Home Assistant-automatiseringen worden niet herladen.',

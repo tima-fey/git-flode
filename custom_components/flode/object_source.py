@@ -10,6 +10,7 @@ from urllib.parse import quote
 
 import yaml
 
+from .git_source import require_prod_for_writes
 from .project_lock import project_lock
 
 
@@ -80,6 +81,7 @@ def export_catalog(directory: str, expected_directory: str, catalog: dict[str, A
     published = False
     target = root / "objects"
     try:
+        require_prod_for_writes(root)
         if target.is_symlink() or (target.exists() and not target.is_dir()):
             raise ValueError("objects/ must be a real directory inside the project root")
         ownership = target.stat() if target.exists() else root.stat()

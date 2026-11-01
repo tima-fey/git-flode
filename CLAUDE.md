@@ -11,7 +11,7 @@
 by SH1FT-W and contributors, with earlier C.A.F.E. foundations (see
 [CREDITS.md](CREDITS.md)). The inherited Lit canvas and native HA forms edit
 existing automation YAML under a configured `automations/` directory. The fork
-adds main-only Git operations, explicit HA maintenance controls, manual object
+adds prod-only Git operations with updates merged from main, explicit HA maintenance controls, manual object
 exports to `objects/`, and project Python tests from `tests/` inside HA.
 
 Automation definitions come only from the configured file source. Save, Git,

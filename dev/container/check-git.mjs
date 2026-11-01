@@ -53,87 +53,246 @@ async function waitStatus(element, predicate) {
   throw new Error('Git UI did not reach the expected checkout state');
 }
 
+async function action(name, revision = '') {
+  const status = await ws({ type: 'flode/git/status' });
+  return ws({
+    type: 'flode/git/action',
+    action: name,
+    revision,
+    expected_head: status.commit,
+    expected_directory: status.directory,
+  });
+}
+
+async function click(control, page, key) {
+  await control.getByRole('button', { name: await label(page, key), exact: true }).click();
+}
+
+async function commitThroughUi(control, page, message) {
+  await control.locator('ha-icon-button').click();
+  await waitStatus(control, (status) => status.dirty);
+  await click(control, page, 'gitReview');
+  await control.locator('[data-field="message"] input').fill(message);
+  await click(control, page, 'gitCommit');
+  return waitStatus(control, (status) => !status.dirty);
+}
+
 for (const engine of ENGINES) {
   const writer = await fs.mkdtemp(path.join(runtime, 'git-writer-'));
   git(runtime, 'clone', remote, writer);
   const source = path.join(writer, relativeFile);
+  const local = path.join(checkout, relativeFile);
   const original = await fs.readFile(source, 'utf8');
   const updatedName = `File ventilation start from Git ${engine}`;
   const { browser, page, errors } = await openBrowser(engine);
+  const services = [];
+  page.on('websocket', (socket) =>
+    socket.on('framesent', ({ payload }) => {
+      if (JSON.parse(String(payload)).type === 'call_service') services.push(payload);
+    })
+  );
   try {
-    await gotoPanel(page);
+    await gotoPanel(page, { reload: true });
     const control = page.locator('flode-git');
-    await result.check(`${engine}: fetch, pull, historical checkout, return to main`, async () => {
-      const before = await waitStatus(control, (status) => status.branch === 'main');
-      const initialFiles = await fs.readFile(path.join(checkout, relativeFile), 'utf8');
+    await result.check(
+      `${engine}: fetch main, merge prod, push, undo published merge, history`,
+      async () => {
+        const before = await waitStatus(control, (status) => status.branch === 'prod');
+        assert.equal(before.dirty, false);
+        const initialFiles = await fs.readFile(local, 'utf8');
+        await fs.writeFile(
+          source,
+          original.replace('alias: File ventilation start\n', `alias: ${updatedName}\n`)
+        );
+        git(writer, 'add', relativeFile);
+        git(writer, 'commit', '-m', `Update synthetic fixture for ${engine}`);
+        git(writer, 'push', 'origin', 'main');
+        const incoming = git(writer, 'rev-parse', 'HEAD');
+        await click(control, page, 'gitFetch');
+        const fetched = await waitStatus(control, (status) => status.remote_main === incoming);
+        assert.equal(fetched.commit, before.commit);
+        assert.equal(fetched.incoming, 1);
+        assert.equal(await fs.readFile(local, 'utf8'), initialFiles);
+        await click(control, page, 'gitMerge');
+        const merged = await waitStatus(
+          control,
+          (status) => status.commit !== before.commit && status.incoming === 0
+        );
+        assert.equal(merged.branch, 'prod');
+        assert.equal(merged.merge_to_revert, merged.commit);
+        assert.deepEqual(git(checkout, 'show', '-s', '--format=%P', 'HEAD').split(' '), [
+          before.commit,
+          incoming,
+        ]);
+        assert.equal(git(remote, 'rev-parse', 'prod'), before.commit);
+        await waitForPanel(
+          page,
+          (panel, name) => panel.fileItems.some((item) => item.name === name),
+          updatedName
+        );
+        await click(control, page, 'gitPush');
+        await waitStatus(
+          control,
+          (status) => status.remote_prod === merged.commit && status.ahead === 0
+        );
+        assert.equal(git(remote, 'rev-parse', 'main'), incoming);
+        await click(control, page, 'gitRevert');
+        const reverted = await waitStatus(
+          control,
+          (status) => status.commit !== merged.commit && status.merge_to_revert === null
+        );
+        assert.equal(
+          git(checkout, 'rev-parse', 'HEAD^{tree}'),
+          git(checkout, 'rev-parse', `${before.commit}^{tree}`)
+        );
+        assert.equal(git(checkout, 'rev-parse', 'HEAD^'), merged.commit);
+        await click(control, page, 'gitPush');
+        await waitStatus(
+          control,
+          (status) => status.remote_prod === reverted.commit && status.ahead === 0
+        );
+        assert.equal(git(remote, 'rev-parse', 'main'), incoming);
+        await control.locator('summary').click();
+        await control.locator(`[data-revision="${before.commit}"]`).click();
+        const historical = await waitStatus(
+          control,
+          (status) => status.commit === before.commit && status.branch === null
+        );
+        assert.equal(historical.prod, reverted.commit);
+        await waitForPanel(page, (panel) => panel.readOnly === true);
+        assert.equal(
+          await page
+            .locator('flode-ha-controls [data-action=objects]')
+            .evaluate((button) => button.disabled),
+          true
+        );
+        await click(control, page, 'gitProd');
+        await waitStatus(
+          control,
+          (status) => status.commit === reverted.commit && status.branch === 'prod'
+        );
+        await waitForPanel(page, (panel) => panel.readOnly === false);
+        assert.deepEqual(services, []);
+      }
+    );
+
+    await result.check(`${engine}: conflict abort and human resolution via main`, async () => {
+      const localName = `HA local edit ${engine}`;
+      await fs.writeFile(
+        local,
+        original.replace('alias: File ventilation start\n', `alias: ${localName}\n`)
+      );
+      const committed = await commitThroughUi(control, page, `HA local fixture for ${engine}`);
+      await click(control, page, 'gitPush');
+      await waitStatus(
+        control,
+        (status) => status.remote_prod === committed.commit && status.ahead === 0
+      );
       await fs.writeFile(
         source,
-        original.replace('alias: File ventilation start\n', `alias: ${updatedName}\n`)
+        original.replace('alias: File ventilation start\n', `alias: Computer edit ${engine}\n`)
       );
       git(writer, 'add', relativeFile);
-      git(writer, 'commit', '-m', `Update synthetic fixture for ${engine}`);
+      git(writer, 'commit', '-m', `Create synthetic conflict for ${engine}`);
       git(writer, 'push', 'origin', 'main');
-      const incoming = git(writer, 'rev-parse', 'HEAD');
-
-      await control
-        .getByRole('button', { name: await label(page, 'gitFetch'), exact: true })
-        .click();
-      const fetched = await waitStatus(control, (status) => status.remote === incoming);
-      assert.equal(fetched.commit, before.commit);
-      assert.equal(fetched.behind, 1);
-      assert.equal(await fs.readFile(path.join(checkout, relativeFile), 'utf8'), initialFiles);
-
-      await control
-        .getByRole('button', { name: await label(page, 'gitPull'), exact: true })
-        .click();
-      await waitStatus(control, (status) => status.commit === incoming && status.branch === 'main');
+      await click(control, page, 'gitMerge');
+      const deadline = Date.now() + 35000;
+      let failure;
+      while (Date.now() < deadline) {
+        failure = await control.evaluate((element) => ({
+          busy: element.busy,
+          error: element.error,
+          status: element.status,
+        }));
+        if (!failure.busy && failure.error) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      assert.match(failure?.error ?? '', /previous prod was restored/);
+      assert.equal(failure.status.commit, committed.commit);
+      assert.equal(failure.status.dirty, false);
+      assert.match(await fs.readFile(local, 'utf8'), new RegExp(localName));
+      assert.equal(
+        await fs.stat(path.join(checkout, '.git/MERGE_HEAD')).then(
+          () => true,
+          () => false
+        ),
+        false
+      );
+      assert.equal(git(remote, 'rev-parse', 'prod'), committed.commit);
+      git(writer, 'fetch', 'origin', 'prod');
+      assert.throws(() => git(writer, 'merge', '--no-ff', '--no-edit', 'origin/prod'));
+      const resolvedName = `Resolved on main ${engine}`;
+      await fs.writeFile(
+        source,
+        original.replace('alias: File ventilation start\n', `alias: ${resolvedName}\n`)
+      );
+      git(writer, 'add', relativeFile);
+      git(writer, 'commit', '-m', `Resolve conflict on main for ${engine}`);
+      git(writer, 'push', 'origin', 'main');
+      const resolvedMain = git(writer, 'rev-parse', 'HEAD');
+      await click(control, page, 'gitMerge');
+      const resolved = await waitStatus(
+        control,
+        (status) => status.commit !== committed.commit && status.incoming === 0
+      );
+      assert.deepEqual(git(checkout, 'show', '-s', '--format=%P', 'HEAD').split(' '), [
+        committed.commit,
+        resolvedMain,
+      ]);
       await waitForPanel(
         page,
         (panel, name) => panel.fileItems.some((item) => item.name === name),
-        updatedName
+        resolvedName
       );
-      assert.ok(
-        await fs
-          .readFile(path.join(checkout, relativeFile), 'utf8')
-          .then((text) => text.includes(updatedName))
-      );
-
-      await control.locator('summary').click();
-      await control.locator(`[data-revision="${before.commit}"]`).click();
-      const historical = await waitStatus(
+      await click(control, page, 'gitPush');
+      await waitStatus(
         control,
-        (status) => status.commit === before.commit && status.branch === null
+        (status) => status.remote_prod === resolved.commit && status.ahead === 0
       );
-      assert.equal(historical.main, incoming);
-      await waitForPanel(page, (panel) =>
-        panel.fileItems.some((item) => item.name === 'File ventilation start')
-      );
-
-      await control
-        .getByRole('button', { name: await label(page, 'gitMain'), exact: true })
-        .click();
-      await waitStatus(control, (status) => status.commit === incoming && status.branch === 'main');
+      assert.deepEqual(services, []);
+      assert.deepEqual(errors, []);
       await page.setViewportSize({ width: 390, height: 844 });
       await inPanel(page, (panel) => {
         panel.narrow = true;
       });
       await page.screenshot({ path: path.join(runtime, `git-${engine}.png`) });
-      assert.deepEqual(errors, []);
     });
   } finally {
-    // Restore fixture content through another normal main commit and fast-forward pull.
-    await fs.writeFile(source, original);
-    if (git(writer, 'status', '--porcelain')) {
-      git(writer, 'add', relativeFile);
-      git(writer, 'commit', '-m', `Restore synthetic fixture after ${engine}`);
-      git(writer, 'push', 'origin', 'main');
+    try {
+      if (
+        await fs.stat(path.join(writer, '.git/MERGE_HEAD')).then(
+          () => true,
+          () => false
+        )
+      )
+        git(writer, 'merge', '--abort');
+      // Restore only owned fixture content through main, then merge/push prod.
+      await fs.writeFile(source, original);
+      if (git(writer, 'status', '--porcelain')) {
+        git(writer, 'add', relativeFile);
+        git(writer, 'commit', '-m', `Restore synthetic fixture after ${engine}`);
+        git(writer, 'push', 'origin', 'main');
+      }
+      let status = await ws({ type: 'flode/git/status' });
+      if (status.branch !== 'prod') status = await action('prod');
+      if (status.dirty) {
+        const changes = await ws({ type: 'flode/git/changes' });
+        assert.deepEqual(changes.files, [relativeFile]);
+        await ws({
+          type: 'flode/git/action',
+          action: 'commit',
+          expected_head: status.commit,
+          expected_directory: status.directory,
+          expected_changes: changes.version,
+          message: `Preserve ${engine} fixture before cleanup`,
+        });
+      }
+      await action('merge');
+      await action('push');
+    } finally {
+      await browser.close();
+      await fs.rm(writer, { recursive: true });
     }
-    let status = await ws({ type: 'flode/git/status' });
-    if (status.branch !== 'main')
-      status = await ws({ type: 'flode/git/action', action: 'main', expected_head: status.commit });
-    await ws({ type: 'flode/git/action', action: 'pull', expected_head: status.commit });
-    await browser.close();
-    await fs.rm(writer, { recursive: true });
   }
 }
 result.finish();

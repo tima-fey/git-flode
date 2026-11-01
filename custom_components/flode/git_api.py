@@ -53,17 +53,17 @@ async def git_status(
 async def git_history(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, message: dict[str, Any]
 ) -> None:
-    """Read a bounded page of local/fetched main history."""
+    """Read a bounded page of local/fetched prod and main history."""
     await _respond(hass, connection, message)
 
 
 @websocket_api.websocket_command({
     vol.Required("type"): "flode/git/action",
-    vol.Required("action"): vol.In(("fetch", "pull", "main", "checkout", "commit", "push")),
+    vol.Required("action"): vol.In(("fetch", "merge", "prod", "checkout", "commit", "push", "revert")),
     vol.Required("expected_head"): str,
     vol.Optional("revision", default=""): str,
     vol.Optional("expected_changes", default=""): str,
-    vol.Optional("expected_directory", default=""): str,
+    vol.Required("expected_directory"): str,
     vol.Optional("message", default=""): str,
 })
 @websocket_api.require_admin
@@ -77,7 +77,7 @@ async def git_action(
 
 @callback
 def async_register_git_commands(hass: HomeAssistant) -> None:
-    """Register the explicit main-branch Git surface."""
+    """Register the explicit prod-branch Git surface."""
     for command in (git_status, git_history, git_changes, git_action):
         websocket_api.async_register_command(hass, command)
 

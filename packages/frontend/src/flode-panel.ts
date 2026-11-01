@@ -4,6 +4,7 @@ import {
   FlowMetadataSchema,
   type FlowNode,
   flowAxis,
+  type GitStatus,
   isPlainObject,
   isScriptStart,
   NodeSchema,
@@ -369,10 +370,21 @@ function newFlowName(language: string, kind: FlowKind): string {
  */
 export class FlodePanel extends LitElement {
   /** Optional viewing mode; existing file automations are editable by default. */
-  readOnly = false;
+  private manualReadOnly = false;
+  private gitReadOnly = false;
+  get readOnly(): boolean {
+    return this.manualReadOnly || this.gitReadOnly;
+  }
+  set readOnly(value: boolean) {
+    const previous = this.readOnly;
+    this.manualReadOnly = value;
+    this.requestUpdate('readOnly', previous);
+  }
   /** Production storage supports existing file automations only. */
   fileMode = true;
   static properties = {
+    readOnly: { type: Boolean },
+    gitReadOnly: { state: true },
     hass: { attribute: false },
     narrow: { attribute: false },
     query: { state: true },
@@ -3252,6 +3264,9 @@ export class FlodePanel extends LitElement {
           </div>
         </header>
         <flode-git .hass=${this.hass} .directory=${this.fileDirectory}
+          @git-state-changed=${(event: CustomEvent<GitStatus | null>) => {
+            if (event.detail) this.gitReadOnly = event.detail.branch !== 'prod';
+          }}
           .hasUnsavedChanges=${this.tabs.some((tab) => this.tabSaveState(tab) !== 'saved')}
           @files-changed=${() => {
             this.tabs = [];
@@ -3261,7 +3276,7 @@ export class FlodePanel extends LitElement {
             void this.loadHaList();
           }}
         ></flode-git>
-        <flode-ha-controls .hass=${this.hass} .directory=${this.fileDirectory}></flode-ha-controls>
+        <flode-ha-controls .hass=${this.hass} .directory=${this.readOnly ? '' : this.fileDirectory}></flode-ha-controls>
         ${this.renderAiSetup()}
         <div class="home-bar">
           <div class="kinds" role="tablist">

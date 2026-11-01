@@ -10,8 +10,9 @@ See [CREDITS.md](CREDITS.md) for project lineage.
   `automations/` directory, with collapsible folder groups and source paths.
 - Edit an existing automation in its original YAML file with comment-preserving
   serialization, file-revision checks, and regression coverage for other files.
-- Add main-only Git status, fetch, fast-forward pull, historical checkout,
-  reviewed commits, and explicit push. Read author identity from Git config;
+- Add prod-only Git status, fetch, explicit main-to-prod merges, historical
+  viewing, reviewed commits, and prod push. Automatically abort conflicting
+  merges and undo the latest merge with a new revert commit. Read author identity from Git config;
   keep commit contents complete when the diff preview is truncated.
 - Add explicit native HA configuration check, Quick reload, and project Python
   unittest execution inside HA.

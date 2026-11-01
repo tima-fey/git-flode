@@ -1,4 +1,4 @@
-"""Explicit main-branch Git operations for the configured FLODE checkout."""
+"""Explicit prod-branch Git operations for the configured FLODE checkout."""
 from __future__ import annotations
 
 import json
@@ -18,7 +18,7 @@ class GitError(ValueError):
 
 
 class GitRepository:
-    """Manage main and historical revisions without resets, stashes, or force pushes."""
+    """Manage prod and historical revisions without resets, stashes, or force pushes."""
 
     def __init__(self, directory: str) -> None:
         if not directory or not Path(directory).is_absolute():
@@ -26,11 +26,15 @@ class GitRepository:
         self.root = Path(directory).resolve(strict=True)
         if self._git("rev-parse", "--show-toplevel") != str(self.root):
             raise GitError("The configured FLODE directory must be the Git repository root")
-        if not self._ref("refs/heads/main"):
-            raise GitError("The repository must have a main branch")
+        if not self._ref("refs/heads/prod"):
+            raise GitError("The HA checkout must have an existing prod branch")
 
-    def _git(self, *args: str, check: bool = True) -> str:
+    def _git(self, *args: str, check: bool = True, identity: tuple[str, str] | None = None) -> str:
         env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"}
+        if identity is not None:
+            name, email = identity
+            env.update(GIT_AUTHOR_NAME=name, GIT_AUTHOR_EMAIL=email,
+                       GIT_COMMITTER_NAME=name, GIT_COMMITTER_EMAIL=email)
         try:
             result = subprocess.run(
                 ["git", "-c", f"safe.directory={self.root}",
@@ -66,24 +70,84 @@ class GitRepository:
     def _fetch(self) -> None:
         self._git("-c", "fetch.recurseSubmodules=false", "fetch", "--no-tags", "origin",
                   "+refs/heads/main:refs/remotes/origin/main")
+        remote_prod = self._git("ls-remote", "--heads", "origin", "refs/heads/prod")
+        if remote_prod:
+            self._git("-c", "fetch.recurseSubmodules=false", "fetch", "--no-tags", "origin",
+                      "+refs/heads/prod:refs/remotes/origin/prod")
+        elif self._ref("refs/remotes/origin/prod"):
+            self._git("update-ref", "-d", "refs/remotes/origin/prod")
+
+    def _identity(self) -> tuple[str, str]:
+        name = self._git("config", "user.name", check=False).strip()
+        email = self._git("config", "user.email", check=False).strip()
+        if (len(name) > 256 or len(email) > 320 or not name or not email or "@" not in email
+            or any(char.isspace() for char in email)
+            or any(char in name + email for char in "\r\n\0<>")):
+            raise GitError("Configure user.name and user.email in the project Git config before committing")
+        return name, email
+
+    def _merge_to_revert(self) -> str | None:
+        parents = self._git("show", "-s", "--format=%P", "HEAD").split()
+        if len(parents) == 2 and f"FLODE-Main-Merge: {parents[1]}" in self._git("show", "-s", "--format=%B", "HEAD").splitlines():
+            return self._ref("HEAD")
+        return None
 
     def _status(self) -> dict[str, Any]:
         head = self._ref("HEAD")
-        remote = self._ref("refs/remotes/origin/main")
+        prod = self._ref("refs/heads/prod")
+        remote_main = self._ref("refs/remotes/origin/main")
+        remote_prod = self._ref("refs/remotes/origin/prod")
+        branch = self._git("symbolic-ref", "--short", "-q", "HEAD", check=False) or None
         ahead = behind = 0
-        if remote:
+        if prod and remote_prod:
             ahead, behind = map(int, self._git(
-                "rev-list", "--left-right", "--count", "main...refs/remotes/origin/main"
+                "rev-list", "--left-right", "--count", "refs/heads/prod...refs/remotes/origin/prod"
             ).split())
         return {
-            "directory": str(self.root),
-            "commit": head, "short": self._git("rev-parse", "--short", "HEAD"),
-            "branch": self._git("symbolic-ref", "--short", "-q", "HEAD", check=False) or None,
+            "directory": str(self.root), "commit": head,
+            "short": self._git("rev-parse", "--short", "HEAD"), "branch": branch,
             "dirty": bool(self._git("status", "--porcelain=v1", "--untracked-files=normal")),
-            "main": self._ref("refs/heads/main"), "remote": remote or None,
+            "prod": prod, "remote_main": remote_main or None, "remote_prod": remote_prod or None,
             "has_origin": "origin" in self._git("remote").splitlines(),
             "ahead": ahead, "behind": behind,
+            "incoming": int(self._git("rev-list", "--count", f"{prod or head}..{remote_main}")) if remote_main else 0,
+            "merge_to_revert": self._merge_to_revert() if branch == "prod" else None,
         }
+
+    def _unchanged(self, expected_head: str) -> None:
+        if self._ref("HEAD") != expected_head:
+            raise GitError("The checkout changed; refresh Git status and try again")
+
+    def _prod_not_rewritten(self) -> None:
+        remote = self._ref("refs/remotes/origin/prod")
+        if remote and self._git("merge-base", "HEAD", remote, check=False) != remote:
+            raise GitError("origin/prod has changes missing locally; another writer changed prod. Reconcile it outside HA before retrying")
+
+    def _abort(self, operation: str, expected_head: str) -> None:
+        marker = "MERGE_HEAD" if operation == "merge" else "REVERT_HEAD"
+        if (self.root / self._git("rev-parse", "--git-path", marker)).exists():
+            try:
+                self._git(operation, "--abort")
+            except GitError as error:
+                raise GitError("Automatic Git abort failed; resolve the in-progress operation outside HA before retrying") from error
+        self._unchanged(expected_head)
+        self._clean()
+
+    def _merge_main(self, expected_head: str) -> None:
+        self._fetch()
+        self._unchanged(expected_head)
+        self._clean()
+        self._prod_not_rewritten()
+        incoming = self._ref("refs/remotes/origin/main")
+        if self._git("merge-base", "HEAD", incoming, check=False) == incoming:
+            return
+        identity = self._identity()
+        try:
+            self._git("-c", "commit.gpgsign=false", "merge", "--no-ff", "--no-edit", "--no-verify",
+                      "-m", f"Merge origin/main into prod\n\nFLODE-Main-Merge: {incoming}", incoming, identity=identity)
+        except GitError as error:
+            self._abort("merge", expected_head)
+            raise GitError("Merge failed; previous prod was restored. Merge prod into main on your computer, resolve conflicts, push main, then retry. " + str(error)) from error
 
     def _changes(self) -> dict[str, Any]:
         """Review working files (including untracked files) with a stale-review token."""
@@ -127,9 +191,9 @@ class GitRepository:
                 "version": digest.hexdigest(), "truncated": truncated}
 
     def _history(self, offset: int) -> dict[str, Any]:
-        refs = ["refs/heads/main"]
-        if self._ref("refs/remotes/origin/main"):
-            refs.append("refs/remotes/origin/main")
+        refs = [ref for ref in ("refs/heads/prod", "refs/remotes/origin/main", "refs/remotes/origin/prod") if self._ref(ref)]
+        if not refs:
+            refs = ["HEAD"]
         lines = self._git("log", "--date-order", "--format=%H%x09%h%x09%cs%x09%s",
                           f"--skip={offset}", "--max-count=26", *refs, "--").splitlines()
         commits = []
@@ -153,68 +217,75 @@ class GitRepository:
                 return self._changes()
             if action == "history":
                 return self._history(offset)
+            if action not in ("fetch", "merge", "prod", "checkout", "commit", "push", "revert"):
+                raise GitError("Unsupported Git operation")
+            if expected_directory != str(self.root):
+                raise GitError("The configured project changed; refresh Git status")
             if action == "fetch":
                 self._fetch()
                 return self._status()
-            if action not in ("pull", "main", "checkout", "commit", "push"):
-                raise GitError("Unsupported Git operation")
-            if self._ref("HEAD") != expected_head:
-                raise GitError("The checkout changed; refresh Git status and try again")
+            self._unchanged(expected_head)
             self._idle()
             branch = self._git("symbolic-ref", "--short", "-q", "HEAD", check=False)
-            if branch not in ("", "main"):
-                raise GitError("Only main and detached historical revisions are supported")
-            if action in ("commit", "push"):
-                if expected_directory != str(self.root):
-                    raise GitError("The configured project changed; refresh Git status")
-                if branch != "main":
-                    raise GitError("Return to main before committing or pushing")
-                if action == "commit":
-                    if not message.strip() or len(message) > 4000 or "\0" in message:
-                        raise GitError("Enter a commit message (up to 4000 characters)")
-                    author_name = self._git("config", "user.name", check=False)
-                    author_email = self._git("config", "user.email", check=False)
-                    if (len(author_name) > 256 or len(author_email) > 320 or not author_name.strip() or not author_email.strip() or "@" not in author_email
-                        or any(char.isspace() for char in author_email)
-                        or any(char in author_name + author_email for char in "\r\n\0<>")):
-                        raise GitError("Configure user.name and user.email in the project Git config before committing")
-                    review = self._changes()
-                    if review["version"] != expected_changes:
-                        raise GitError("Files or staging changed; review changes again before committing")
-                    if not review["files"]:
-                        raise GitError("No working-file changes to commit")
-                    self._git("add", "--all", "--", ".")
-                    self._git("-c", "commit.gpgsign=false", "-c", f"user.name={author_name.strip()}",
-                              "-c", f"user.email={author_email.strip()}", "commit", "--no-verify", f"--author={author_name.strip()} <{author_email.strip()}>", "-m", message.strip())
-                else:
-                    self._fetch()
-                    if self._ref("HEAD") != expected_head:
-                        raise GitError("The checkout changed during fetch; refresh Git status")
-                    remote = "refs/remotes/origin/main"
-                    if self._git("merge-base", "refs/heads/main", remote, check=False) != self._ref(remote):
-                        raise GitError("origin/main has changes missing locally; pull or resolve divergence before pushing")
-                    self._git("-c", "push.followTags=false", "push", "--no-verify", "--recurse-submodules=no",
-                              "origin", "refs/heads/main:refs/heads/main")
-                return self._status()
-            self._clean()
-            if action == "pull":
-                if branch != "main":
-                    raise GitError("Return to main before pulling")
-                self._fetch()
+            if branch not in ("", "prod"):
+                raise GitError("Only prod and detached historical revisions are supported")
+            if action == "prod":
                 self._clean()
-                if self._ref("HEAD") != expected_head:
-                    raise GitError("The checkout changed during fetch; refresh Git status")
-                self._git("merge", "--ff-only", "refs/remotes/origin/main")
-            elif action == "main":
-                self._git("switch", "main")
-            else:
+                self._git("switch", "prod")
+                return self._status()
+            if action == "checkout":
+                self._clean()
                 if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", revision):
-                    raise GitError("Select a full commit hash from main's history")
+                    raise GitError("Select a full commit hash from history")
                 reachable = any(self._git("merge-base", ref, revision, check=False) == revision
-                                for ref in ("refs/heads/main", "refs/remotes/origin/main"))
+                                for ref in ("refs/heads/prod", "refs/remotes/origin/main", "refs/remotes/origin/prod") if self._ref(ref))
                 if not reachable:
-                    raise GitError("The commit is not in main's history; fetch or refresh history")
+                    raise GitError("The commit is not in prod or main history; fetch or refresh history")
                 self._git("switch", "--detach", revision)
+                return self._status()
+            if branch != "prod":
+                raise GitError("Return to prod before committing, merging, reverting, or pushing")
+            if action == "commit":
+                if not message.strip() or len(message) > 4000 or "\0" in message:
+                    raise GitError("Enter a commit message (up to 4000 characters)")
+                identity = self._identity()
+                review = self._changes()
+                if review["version"] != expected_changes:
+                    raise GitError("Files or staging changed; review changes again before committing")
+                if not review["files"]:
+                    raise GitError("No working-file changes to commit")
+                self._git("add", "--all", "--", ".")
+                self._git("-c", "commit.gpgsign=false", "commit", "--no-verify", "-m", message.strip(), identity=identity)
+            elif action == "push":
+                self._fetch()
+                self._unchanged(expected_head)
+                self._prod_not_rewritten()
+                self._git("-c", "push.followTags=false", "push", "--no-verify", "--recurse-submodules=no",
+                          "origin", "refs/heads/prod:refs/heads/prod")
+                # Refresh only the published destination after a normal push.
+                self._git("update-ref", "refs/remotes/origin/prod", self._ref("refs/heads/prod"))
+            else:
+                self._clean()
+                if action == "merge":
+                    self._merge_main(expected_head)
+                else:
+                    if not revision or revision != self._merge_to_revert():
+                        raise GitError("Only the latest FLODE main merge at the tip of prod can be undone; refresh history")
+                    identity = self._identity()
+                    try:
+                        self._git("-c", "commit.gpgsign=false", "revert", "--no-edit", "--mainline", "1", revision, identity=identity)
+                    except GitError as error:
+                        self._abort("revert", expected_head)
+                        raise GitError("Undo merge failed; previous prod was restored. " + str(error)) from error
             return self._status()
         finally:
             lock.release()
+
+
+def require_prod_for_writes(root: Path) -> None:
+    """Guard Git-backed file mutations while the caller holds the project lock."""
+    if (root / '.git').exists():
+        repository = GitRepository(str(root))
+        if repository._git('symbolic-ref', '--short', '-q', 'HEAD', check=False) != 'prod':
+            raise GitError('Return to prod before changing project files; historical revisions are read-only')
+        repository._idle()

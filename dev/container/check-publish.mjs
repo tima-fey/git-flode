@@ -12,7 +12,7 @@ const target = new URL(`./runtime/repository/${relative}`, import.meta.url);
 const result = report('git-publish');
 
 function remoteHead() {
-  return execFileSync('git', ['-C', `${runtime}/remote.git`, 'rev-parse', 'main'], {
+  return execFileSync('git', ['-C', `${runtime}/remote.git`, 'rev-parse', 'prod'], {
     encoding: 'utf8',
   }).trim();
 }
@@ -34,7 +34,7 @@ async function waitGit(control, predicate) {
 
 for (const engine of ENGINES) {
   const before = await ws({ type: 'flode/git/status' });
-  assert.equal(before.branch, 'main');
+  assert.equal(before.branch, 'prod');
   assert.equal(before.dirty, false);
   const beforeRemote = remoteHead();
   const authorName = execFileSync('git', ['-C', `${runtime}/repository`, 'config', 'user.name'], {
@@ -50,7 +50,7 @@ for (const engine of ENGINES) {
     await gotoPanel(page, { reload: true });
     const control = page.locator('flode-git');
     await result.check(
-      `${engine}: review, message only, configured author, commit locally, push main`,
+      `${engine}: review, message only, configured author, commit locally, push prod`,
       async () => {
         await waitGit(control, (status) => status.dirty);
         await control
@@ -87,11 +87,11 @@ for (const engine of ENGINES) {
           .click();
         await waitGit(
           control,
-          (status) => status.ahead === 0 && status.remote === committed.commit
+          (status) => status.ahead === 0 && status.remote_prod === committed.commit
         );
         assert.equal(remoteHead(), committed.commit);
         assert.equal(
-          execFileSync('git', ['-C', `${runtime}/remote.git`, 'show', `main:${relative}`], {
+          execFileSync('git', ['-C', `${runtime}/remote.git`, 'show', `prod:${relative}`], {
             encoding: 'utf8',
           }),
           content

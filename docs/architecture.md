@@ -577,7 +577,7 @@ HA's editors talk to their surroundings through Lit contexts (trigger descriptio
 `flode-panel.ts` owns open tabs, graph/undo state, file provenance, the
 configured root, file revisions, and editor drafts. Restored drafts retain the
 original revision and root, so reloading the browser cannot bypass stale-save
-checks. Pull and checkout are blocked while unsaved editor drafts exist.
+checks. Merge, revert, and checkout are blocked while unsaved editor drafts exist.
 
 File saves use the backend contract in section 2.2. A conflict requires loading
 the current file and reconciling the draft; there is no HA-config overwrite
@@ -632,8 +632,14 @@ File writes, Git, exports, and project tests share a lock keyed by canonical
 project root. Filesystem work and subprocesses run outside HA's event loop.
 Commands enforce administrator access independently of the panel's visibility.
 Root checks and revision/review tokens reject stale operations. Git uses an
-existing checkout, origin/authentication, and author configuration in the HA
-runtime. It never resets, stashes, or force-pushes automatically.
+existing prod checkout, origin/authentication, and author configuration in the HA
+runtime. Only HA writes prod; external updates enter through a dedicated
+`--no-ff` merge of fetched origin/main. Conflicts abort and restore the previous
+prod. The latest FLODE merge at the tip can be reverted with first-parent
+semantics; no local main branch or legacy main-only API is required. Push targets
+prod only and rejects unexpected remote prod changes. Historical Git checkouts
+are read-only for file saves and object export. It never resets, stashes, or
+force-pushes automatically.
 
 | Purpose | Interface |
 | --- | --- |

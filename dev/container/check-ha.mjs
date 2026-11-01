@@ -52,9 +52,15 @@ for (const engine of ENGINES) {
           await control.locator('.test-output').innerText(),
           /test_example_automations_can_be_read/
         );
-        assert.match(await control.locator('.test-output').innerText(), /test_all_automation_object_references_exist/);
+        assert.match(
+          await control.locator('.test-output').innerText(),
+          /test_all_automation_object_references_exist/
+        );
         const output = await control.locator('.test-output').innerText();
-        assert.match(output, /unknown entities reference 'input_boolean.summer'|Export HA objects first/);
+        assert.match(
+          output,
+          /unknown entities reference 'input_boolean.summer'|Export HA objects first/
+        );
         if (output.includes("unknown entities reference 'input_boolean.summer'"))
           assert.match(output, /automations\/climate\/heating.yaml/);
         assert.equal(services.length, 1);
