@@ -16,6 +16,7 @@ for (const engine of ENGINES) {
   await fs.cp(objects, path.join(backup, 'objects'), { recursive: true, preserveTimestamps: true });
   const { browser, page, errors } = await openBrowser(engine);
   const services = [];
+  const reloads = [];
   const checks = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname === '/api/config/core/check_config')
@@ -25,6 +26,7 @@ for (const engine of ENGINES) {
     socket.on('framesent', ({ payload }) => {
       const message = JSON.parse(String(payload));
       if (message.type === 'call_service') services.push(message);
+      if (message.type === 'flode/ha/reload') reloads.push(message);
     });
   });
   try {
@@ -45,9 +47,9 @@ for (const engine of ENGINES) {
           .getByRole('button', { name: await label(page, 'haReload'), exact: true })
           .click();
         await control.getByText(await label(page, 'haReloaded'), { exact: true }).waitFor();
-        assert.equal(services.length, 1);
-        assert.equal(services[0].domain, 'homeassistant');
-        assert.equal(services[0].service, 'reload_all');
+        assert.equal(services.length, 0);
+        assert.equal(reloads.length, 1);
+        assert.equal(reloads[0].directory, '/flode-config');
         await control
           .getByRole('button', { name: await label(page, 'objectsExport'), exact: true })
           .click();
@@ -70,7 +72,8 @@ for (const engine of ENGINES) {
         assert.match(output, /automations\/climate\/heating.yaml/);
         assert.match(output, /Checked 14 automations against \d+ entities and \d+ devices/);
         assert.doesNotMatch(output, /Export HA objects first/);
-        assert.equal(services.length, 1);
+        assert.equal(services.length, 0);
+        assert.equal(reloads.length, 1);
         assert.deepEqual(checks, ['POST']);
         assert.equal(await fs.readFile(source, 'utf8'), original);
         await page.setViewportSize({ width: 390, height: 844 });

@@ -21,19 +21,9 @@ import {
 } from './lib.mjs';
 
 /**
- * Covers the card kinds: triggers/conditions/delays, a choose with branches, templates,
- * targets, an or in the middle of a flow, parallel with conditions, a script's start card.
+ * Covers the first five deterministic file-backed automation scenarios in both
+ * browsers and both card-text modes. Missing scenarios fail preparation.
  */
-const SHOTS = [
-  'card_text',
-  '04_choose_with_default',
-  '09_templates',
-  '05_delays_and_waits',
-  '38_target_mixed',
-  'or_mid_flow',
-  'parallel_with_conditions',
-  'script_with_fields',
-];
 const VISUAL_DIR = path.join(OUT_DIR, 'visual');
 const BASELINE_DIR = path.join(VISUAL_DIR, 'baseline');
 const CURRENT_DIR = path.join(VISUAL_DIR, 'current');
@@ -42,7 +32,8 @@ const TOLERANCE = 0.002;
 
 const result = report('visual');
 const makeBaseline = process.argv.includes('--baseline');
-const flows = seededFlows().filter((flow) => SHOTS.some((name) => flow.id.endsWith(name)));
+const flows = seededFlows().slice(0, 5);
+if (!flows.length) throw new Error('No file-backed flows available for visual checks');
 
 /** Everything the cards cover, plus a margin — the canvas around them is just dots. */
 async function cardsClip(page) {

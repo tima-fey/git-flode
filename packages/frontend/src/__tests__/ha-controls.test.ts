@@ -63,18 +63,29 @@ describe('HA configuration controls', () => {
     expect(callWS).not.toHaveBeenCalled();
   });
 
-  it('uses the native Quick reload service and never restarts HA', async () => {
+  it('reloads through the backend lock with the displayed project identity', async () => {
     const { control, callApi, callWS } = await mount();
     click(control, 'reload');
     await settle(control);
     expect(callWS).toHaveBeenCalledExactlyOnceWith({
-      type: 'call_service',
-      domain: 'homeassistant',
-      service: 'reload_all',
-      service_data: {},
+      type: 'flode/ha/reload',
+      directory: '/flode-config',
     });
     expect(control.shadowRoot?.textContent).toContain('Quick reload completed.');
     expect(callApi).not.toHaveBeenCalled();
+  });
+
+  it('does not reload before a writable project is available', async () => {
+    const { control, callWS } = await mount();
+    control.directory = '';
+    await settle(control);
+    click(control, 'reload');
+    await settle(control);
+    expect(callWS).not.toHaveBeenCalled();
+    expect(control.shadowRoot?.querySelector('[data-action="reload"]')).toHaveProperty(
+      'disabled',
+      true
+    );
   });
 
   it('shows a failed reload without claiming success and allows retry', async () => {

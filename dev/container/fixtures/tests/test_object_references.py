@@ -189,6 +189,7 @@ def check_project(root):
         raise ValueError('Expected a real automations/ directory')
     errors = []
     count = 0
+    ids = {}
     for path in sorted(directory.rglob('*')):
         if path.is_symlink():
             errors.append(f'{path.relative_to(root)}: symlinks are not supported')
@@ -205,6 +206,16 @@ def check_project(root):
                     errors.append(f'{relative}[{index}]: expected an automation mapping')
                     continue
                 count += 1
+                automation_id = automation.get('id')
+                location = f'{relative}[{index}]'
+                if type(automation_id) not in (str, int) or not str(automation_id).strip():
+                    errors.append(f'{location}: expected a non-empty automation id')
+                else:
+                    key = str(automation_id)
+                    if key in ids:
+                        errors.append(f'{location}: duplicate automation id {key!r}; first defined at {ids[key]}')
+                    else:
+                        ids[key] = location
                 name = f'{automation.get("alias", "Unnamed")} (id={automation.get("id", "missing")})'
                 walk(automation, catalog, f'{relative}: {name}', errors)
         except (OSError, TypeError, ValueError, yaml.YAMLError) as error:

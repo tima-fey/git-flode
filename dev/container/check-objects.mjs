@@ -11,7 +11,7 @@ process.env.FLODE_GATE_TOKEN_FILE = new URL('./runtime/token', import.meta.url).
 const { ENGINES, gotoPanel, label, openBrowser, report, ws } = await import('../gate/lib.mjs');
 const root = new URL('./runtime/repository/', import.meta.url).pathname;
 const objects = path.join(root, 'objects');
-const result = report('object-export');
+const result = report('objects');
 
 async function snapshot(directory, exclude = []) {
   const files = {};

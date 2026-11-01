@@ -8,9 +8,9 @@ const { items, errors } = await ws({ type: 'flode/files/list' });
 if (errors.length) throw new Error(JSON.stringify(errors));
 if (items.length < 2) throw new Error('Expected two independent file automations');
 const states = await ws({ type: 'get_states' });
-for (const item of items) {
-  if (states.some((state) => state.attributes.id === item.id))
-    throw new Error(`File automation unexpectedly registered in HA: ${item.id}`);
+for (const id of ['file_ventilation_start', 'file_ventilation_stop']) {
+  if (!states.some((state) => state.attributes.id === id))
+    throw new Error(`Project automation not loaded through HA include: ${id}`);
 }
 await fs.mkdir(new URL('../../.gate/', import.meta.url), { recursive: true });
 await fs.writeFile(
@@ -22,5 +22,5 @@ await fs.writeFile(
   )
 );
 console.log(
-  `Prepared ${items.length} file-backed browser scenarios; none registered as HA automations`
+  `Prepared ${items.length} file-backed browser scenarios; synthetic project automations included in HA`
 );

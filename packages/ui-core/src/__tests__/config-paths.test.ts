@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { configShape, createTracePathResolver } from '../trace-mapping';
+import { createConfigPathResolver } from '../config-paths';
 
 const n = (id: string, type: string) => ({ id, type });
 const e = (source: string, target: string, sourceHandle?: string) => ({
@@ -8,10 +8,10 @@ const e = (source: string, target: string, sourceHandle?: string) => ({
   sourceHandle,
 });
 
-describe('createTracePathResolver', () => {
+describe('createConfigPathResolver', () => {
   it('linear flow: top-level condition, then delay and action share the action index', () => {
     // Time Condition & Delay: trigger → condition(yes only) → delay → action
-    const resolve = createTracePathResolver(
+    const resolve = createConfigPathResolver(
       [n('t', 'trigger'), n('c', 'condition'), n('d', 'delay'), n('a', 'action')],
       [e('t', 'c'), e('c', 'd', 'true'), e('d', 'a')]
     );
@@ -25,7 +25,7 @@ describe('createTracePathResolver', () => {
 
   it('a leading condition continuing only via No is a top-level (not) condition', () => {
     // The transpiler writes it as `conditions: [{condition: not, …}]`.
-    const resolve = createTracePathResolver(
+    const resolve = createConfigPathResolver(
       [n('t', 'trigger'), n('c', 'condition'), n('a', 'action')],
       [e('t', 'c'), e('c', 'a', 'false')]
     );
@@ -34,7 +34,7 @@ describe('createTracePathResolver', () => {
   });
 
   it('a leading condition with an unlabelled output is a step, as in the transpiler', () => {
-    const resolve = createTracePathResolver(
+    const resolve = createConfigPathResolver(
       [n('t', 'trigger'), n('c', 'condition'), n('a', 'action')],
       [e('t', 'c'), e('c', 'a')]
     );
@@ -44,7 +44,7 @@ describe('createTracePathResolver', () => {
 
   it('if/else in the sequence: branches nest, flow continues at the merge node', () => {
     // trigger → cond(yes: x, no: y) → both → z
-    const resolve = createTracePathResolver(
+    const resolve = createConfigPathResolver(
       [n('t', 'trigger'), n('c', 'condition'), n('x', 'action'), n('y', 'action'), n('z', 'delay')],
       [e('t', 'c'), e('c', 'x', 'true'), e('c', 'y', 'false'), e('x', 'z'), e('y', 'z')]
     );
@@ -58,7 +58,7 @@ describe('createTracePathResolver', () => {
 
   it('mid-flow condition with only a Yes branch nests the rest under then', () => {
     // trigger → a → cond(yes) → b → c2
-    const resolve = createTracePathResolver(
+    const resolve = createConfigPathResolver(
       [
         n('t', 'trigger'),
         n('a', 'action'),
@@ -76,7 +76,7 @@ describe('createTracePathResolver', () => {
   });
 
   it('ignores visual-only edges and unknown roots', () => {
-    const resolve = createTracePathResolver(
+    const resolve = createConfigPathResolver(
       [n('t', 'trigger'), n('a', 'action')],
       [e('t', 'a'), { source: 'a', target: 't', type: 'hint' }]
     );
@@ -85,48 +85,10 @@ describe('createTracePathResolver', () => {
   });
 });
 
-describe('configShape', () => {
-  const config = {
-    alias: 'Flur',
-    triggers: [{ trigger: 'state', entity_id: 'binary_sensor.a' }],
-    conditions: [{ condition: 'state', entity_id: 'sun.sun', state: 'below_horizon' }],
-    actions: [
-      { action: 'light.turn_on', target: { entity_id: 'light.a' } },
-      { if: [{ condition: 'template', value_template: '{{ x }}' }], then: [{ delay: 5 }] },
-    ],
-    variables: { _flode_metadata: { nodes: {} } },
-  };
-
-  it('ignores values, metadata and old key spellings', () => {
-    expect(
-      configShape({
-        alias: 'Anders',
-        mode: 'restart',
-        trigger: { platform: 'state', entity_id: 'binary_sensor.b' },
-        condition: [{ condition: 'state', entity_id: 'sun.sun', state: 'above_horizon' }],
-        action: [
-          { service: 'light.turn_off', target: { entity_id: 'light.b' } },
-          { then: [{ delay: '00:00:09' }], if: [{ condition: 'template', value_template: '1' }] },
-        ],
-      })
-    ).toBe(configShape(config));
-  });
-
-  it('differs when steps were added, removed or moved', () => {
-    expect(configShape({ ...config, actions: config.actions.slice(1) })).not.toBe(
-      configShape(config)
-    );
-    expect(configShape({ ...config, actions: [...config.actions].reverse() })).not.toBe(
-      configShape(config)
-    );
-    expect(configShape({ ...config, conditions: [] })).not.toBe(configShape(config));
-  });
-});
-
-describe('createTracePathResolver: condition steps of the actions', () => {
+describe('createConfigPathResolver: condition steps of the actions', () => {
   it('keeps them in the actions; the steps after them are siblings', () => {
     // As the transpiler writes it: `actions: [{condition: …}, {action: …}]`.
-    const resolve = createTracePathResolver(
+    const resolve = createConfigPathResolver(
       [
         n('t', 'trigger'),
         { id: 'c', type: 'condition', data: { condition: 'state', _step: true } },

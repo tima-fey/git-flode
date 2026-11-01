@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collectServices } from '../dependency-map';
+import { collectServices } from '../entity-references';
 import { createdEntityIds, stepIssues } from '../step-issues';
 
 const env = {

@@ -9,14 +9,14 @@ The configured directory is the FLODE project root. Automation definitions
 come only from its `automations/` subtree; `objects/` holds explicit HA metadata exports and is never
 scanned or read as automation data. A disposable Git checkout initialized from
 `dev/container/fixtures/` lives in `runtime/repository/` and is mounted at
-`/flode-config`. It is not included by HA. The original fixture files are never
+`/flode-config`. HA includes its automation subtree through an absolute `!include_dir_merge_list /flode-config/automations` directive. The original fixture files are never
 modified by Git tests. The two synthetic smoke entries and twelve real climate examples remain
 independent automations and do not need HA entities. The original HA demo automation is deliberately
 absent from FLODE's file list.
 
 Change the source in Settings → Devices & services → FLODE → Configure. Supply
 an existing absolute root accessible inside HA, containing `automations/`.
-Automation files may be nested under that subtree and must contain standard YAML lists with non-empty, unique IDs within each file.
+Automation files may be nested under that subtree and must contain standard YAML lists with non-empty, globally unique IDs across all project automation files.
 Example layout (the root name and location are configurable):
 
 ```text
@@ -163,9 +163,9 @@ prod and fetched main/prod refs. A local main branch is not required.
   Later commits are preserved by refusing that shortcut once the tip changes.
 - **Push prod** sends committed prod to origin/prod through a normal push,
   even with uncommitted files. It never publishes into main or force-pushes.
-- Historical checkout is detached and read-only for file saves and object
-  export. **Return to prod** restores the working branch. Unsaved editor drafts
-  block merge, undo, and historical checkout. Returning to prod preserves drafts.
+- History opens a read-only commit diff without changing files or HEAD.
+  **Return to prod** recovers an externally detached checkout. Unsaved editor drafts
+  block merge and undo. Returning to prod preserves drafts.
 
 Merge and revert use identity from Git configuration in the HA runtime. Set
 `user.name` and `user.email` once; no author fields are requested by the UI:
@@ -226,16 +226,13 @@ node dev/container/smoke.mjs
 ```
 
 The browser runner derives scenarios from the file backend, verifies that the
-file automations are not registered in HA, checks their cards in both browsers,
+synthetic file automations are registered in HA through the project include, checks their cards in both browsers,
 and exercises viewing interactions. It monitors forbidden HA automation/script
 configuration requests and mutations, and compares YAML hashes before/after.
 Screenshots and machine-readable results are written to ignored runtime folders.
-No HA automation fixtures are seeded or removed by this runner. It then runs
+No automation configuration API writes are used by this runner. It then runs
 the explicit Git synchronization tests against only the disposable checkout.
 
-The upstream editing, save, and visual suites remain available for later stages;
-they require matching file fixtures before use with this source. The historical
-API-based baseline does not certify the new file backend.
 See [baseline-results.md](baseline-results.md) for the first completed run.
 
 Stop the test instance without deleting its configuration:

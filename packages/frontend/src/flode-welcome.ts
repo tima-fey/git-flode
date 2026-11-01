@@ -14,25 +14,16 @@ interface Feature {
 /** First visit: what FLODE is. */
 const WELCOME: Feature[] = [
   { icon: 'mdi:sitemap-outline', title: 'welcomeFlowTitle', text: 'welcomeFlowText' },
-  { icon: 'mdi:history', title: 'welcomeRunsTitle', text: 'welcomeRunsText' },
-  { icon: 'mdi:creation-outline', title: 'welcomeAiTitle', text: 'welcomeAiText' },
-  { icon: 'mdi:graph-outline', title: 'welcomeMapTitle', text: 'welcomeMapText' },
+  { icon: 'mdi:git', title: 'welcomeGitTitle', text: 'welcomeGitText' },
+  { icon: 'mdi:database-export-outline', title: 'welcomeObjectsTitle', text: 'welcomeObjectsText' },
+  { icon: 'mdi:test-tube', title: 'welcomeTestsTitle', text: 'welcomeTestsText' },
 ];
 
-/**
- * After an update: the new features of this release. Update with every
- * release — shown once per version (`package.json`) to everyone who used an older one.
- */
-const WHATS_NEW: Feature[] = [
-  { icon: 'mdi:call-split', title: 'new261017ParallelTitle', text: 'new261017ParallelText' },
-  { icon: 'mdi:palette-outline', title: 'new261017ColorTitle', text: 'new261017ColorText' },
-  { icon: 'mdi:vector-polyline', title: 'new261017LinesTitle', text: 'new261017LinesText' },
-  { icon: 'mdi:note-text-outline', title: 'new261017NotesTitle', text: 'new261017NotesText' },
-  { icon: 'mdi:translate', title: 'new261017LangTitle', text: 'new261017LangText' },
-];
+/** Fork workflow highlights, also shown to users upgrading from FLODE. */
+const WHATS_NEW: Feature[] = WELCOME;
 
 const SEEN_KEY = 'flode3.seenVersion';
-const CHANGELOG_URL = 'https://github.com/SH1FT-W/flode/blob/main/CHANGELOG.md';
+const CHANGELOG_URL = 'https://github.com/tima-fey/git-flode/blob/main/CHANGELOG.md';
 
 export type WelcomeMode = 'welcome' | 'whatsNew';
 

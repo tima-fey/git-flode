@@ -11,7 +11,7 @@ are identified explicitly.
   publish changes to `main`.
 - Both names are fixed. HA requires an existing local `prod`, checked out before
   normal use, and a remote `origin` with `main`. A local HA `main` is unnecessary.
-  First-time branch creation is covered in the [README](../README.md#git-and-applying-changes).
+  First-time branch creation is covered in the [README](../README.md#prepare-your-configuration-repository).
 - External changes enter HA through **Merge main into prod**, using freshly
   fetched `origin/main`. **Push prod** never publishes into main.
 - Merge and undo create local commits. Publishing them and applying their files
@@ -20,15 +20,15 @@ are identified explicitly.
 ## What can block an update
 
 There are two independent kinds of pending work: saved filesystem changes and
-unsaved editor drafts. Merge, undo, and historical checkout require both to be
-clear. Git can report a clean tree while an open editor still has a draft.
-Returning from history to prod preserves editor drafts and requires only a
-clean working tree. This also lets you recover drafts created while a checkout
-was pending; their original file revisions still protect subsequent saves.
+unsaved editor drafts. Merge and undo require both to be clear. Git can report
+a clean tree while an editor has a draft. History inspection reads commit data
+without changing the checkout. Returning an externally detached checkout to
+prod requires clean files, including ignored paths that Git might overwrite.
 
 Object exports also dirty the checkout. **Commit all changes** includes every
 listed changed/untracked non-ignored file, including `objects/` and `tests/`.
-It replaces partial staging with the reviewed working-file contents. The
+It builds a private tree from the reviewed working-file contents and commits
+that exact tree. External writes after snapshot capture remain uncommitted. The
 64-KiB preview is a display limit; content beyond it is committed too. A changed
 file, index, root, or HEAD invalidates the relevant review/action and requires
 refreshing it.
@@ -39,7 +39,9 @@ prod first, so remote access needs read permission for main as well as read/writ
 permission for prod. Credentials and identity must be available to the HA
 process, not just a laptop or an SSH add-on. Git runs without interactive login
 prompts; commands time out after 30 seconds. Hooks and commit signing are disabled
-by the app, including for merges and reverts.
+by the app, including for merges and reverts. Origin fetch and push URLs must
+match; distinct destinations are rejected. A timed-out push is reconciled with
+the remote before its outcome is reported.
 
 ## Conflict: resolve on main, then retry from HA
 
@@ -91,7 +93,7 @@ separately. No force push is required.
 
 The shortcut is available only for the latest FLODE-created main merge at the
 tip of active prod, with clean files and no drafts. It is unavailable after a
-later local commit, after an earlier undo, during historical viewing, or for an
+later local commit, after an earlier undo, on a detached checkout, or for an
 ordinary/manual merge. This prevents dropping later local work. Older updates
 need a deliberate corrective change prepared on main.
 
@@ -160,10 +162,12 @@ operation already in progress when its request starts; it will not abort somebod
 else's session. An existing lock may belong to a running Git process, so establish
 that process's state before attempting lock-file cleanup.
 
-History viewing uses a real detached checkout: **files on disk change**. File
-editing and object export are blocked there. **Return to prod** before normal
-work or HA reload/restart. There is no automatic reload during viewing, but a
-separate reload/restart can read the historical files if HA includes them.
+History viewing uses `git show` to display a read-only commit diff. It never
+checks out historical files or changes the live HA configuration. If an external
+operator detached HEAD, **Return to prod** restores prod after clean-file checks.
+Quick reload requires prod and holds the shared project lock until HA finishes
+its reload, so panel Git changes cannot race that read. External Git processes
+and filesystem writers do not participate in this process-local lock.
 
 Git state and running HA state are independent. Undoing a published merge does
 not undo a previous HA reload. After choosing the intended prod revision, use

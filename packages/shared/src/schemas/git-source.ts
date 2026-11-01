@@ -28,15 +28,7 @@ export const GitHistorySchema = z.object({
   has_more: z.boolean(),
 });
 export type GitHistory = z.infer<typeof GitHistorySchema>;
-export const GitActionSchema = z.enum([
-  'fetch',
-  'merge',
-  'prod',
-  'checkout',
-  'commit',
-  'push',
-  'revert',
-]);
+export const GitActionSchema = z.enum(['fetch', 'merge', 'prod', 'commit', 'push', 'revert']);
 export type GitAction = z.infer<typeof GitActionSchema>;
 
 export const GitChangesSchema = z.object({
@@ -51,3 +43,10 @@ export const GitCommitDetailsSchema = z.object({
   message: z.string(),
 });
 export type GitCommitDetails = z.infer<typeof GitCommitDetailsSchema>;
+
+export const GitRevisionSchema = z.object({
+  revision: z.string(),
+  diff: z.string(),
+  truncated: z.boolean(),
+});
+export type GitRevision = z.infer<typeof GitRevisionSchema>;

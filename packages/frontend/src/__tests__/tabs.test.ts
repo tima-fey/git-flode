@@ -37,8 +37,6 @@ const tab = (id: string, saveState: EditorTab['saveState']): EditorTab => ({
       lastTriggered: null,
     },
     graph,
-    isNew: false,
-    registryEntry: { entity_id: 'automation.flur', area_id: 'flur' },
   },
   past: [graph],
   future: [],
@@ -77,7 +75,6 @@ describe('remembered tabs', () => {
     ]);
     expect(restored?.tabs[1]?.past).toEqual([]);
     expect(restored?.tabs[1]?.viewport).toEqual({ x: 1, y: 2, zoom: 0.5 });
-    expect(restored?.tabs[1]?.flow.registryEntry?.area_id).toBe('flur');
   });
 
   it('keeps the drafts another window wrote, but not tabs this window closed', () => {
@@ -173,15 +170,13 @@ describe('a finished save', () => {
   const saved = { configId: 'a', entityId: 'automation.neu', registryEntry: null };
   const newFlow = {
     ...tab('a', 'saving').flow,
-    isNew: true,
     item: { ...tab('a', 'saving').flow.item, entityId: '' },
   };
 
-  it('marks the flow saved and no longer new', () => {
+  it('marks the stored flow saved', () => {
     const result = settleSave(newFlow, { graph, saved: { ...saved, haVersion: 'v2' } });
     expect(result.flow.haVersion).toBe('v2');
     expect(result.saveState).toBe('saved');
-    expect(result.flow.isNew).toBe(false);
     expect(result.flow.item.entityId).toBe('automation.neu');
     expect(result.flow.graph).toBe(graph);
   });
@@ -191,7 +186,6 @@ describe('a finished save', () => {
     const result = settleSave(edited, { graph, saved });
     expect(result.saveState).toBe('unsaved');
     expect(result.flow.graph.name).toBe('Flur 2');
-    expect(result.flow.isNew).toBe(false);
   });
 
   it('leaves another flow alone and stays unsaved when saving failed', () => {
@@ -218,11 +212,6 @@ describe('undoing back to what HA has', () => {
   it('is saved again only at the saved graph', () => {
     expect(historySaveState(flow, graph)).toBe('saved');
     expect(historySaveState(flow, edited)).toBe('unsaved');
-  });
-
-  it('stays unsaved for a new flow or pending area/labels', () => {
-    expect(historySaveState({ ...flow, isNew: true }, graph)).toBe('unsaved');
-    expect(historySaveState({ ...flow, registryUpdate: { area: 'x' } }, graph)).toBe('unsaved');
   });
 
   it('remembers the saved graph after a save', () => {

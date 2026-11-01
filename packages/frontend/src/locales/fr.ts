@@ -7,7 +7,7 @@ export const fr: Strings = {
     'Remplace objects/ par les appareils, entités et assistants actuels. Uniquement sur demande.',
   objectsExported: 'Exportés : {devices} appareils, {entities} entités, {helpers} assistants.',
   gitUnsavedEditors:
-    'Enregistrez ou abandonnez les brouillons avant une fusion, son annulation ou un changement vers un commit historique. Le retour à prod conserve les brouillons.',
+    'Enregistrez ou abandonnez les brouillons avant de fusionner ou annuler une fusion. Le retour à prod conserve les brouillons ; l’historique reste consultable.',
   gitReview: 'Examiner les modifications',
   gitPush: 'Pousser prod',
   gitCommit: 'Commiter toutes les modifications',
@@ -42,7 +42,7 @@ export const fr: Strings = {
   gitMerge: 'Fusionner main dans prod',
   gitProd: 'Revenir à prod',
   gitHistory: 'Historique des commits',
-  gitCheckout: 'Utiliser ce commit',
+  gitShow: 'Voir le commit',
   gitMore: 'Charger plus',
   gitDetached: 'Version historique',
   gitAheadBehind: 'prod face à origin/prod : {ahead} en avance, {behind} en retard',
@@ -81,14 +81,7 @@ export const fr: Strings = {
   editYaml: 'Modifier en YAML',
   editUi: "Modifier dans l'éditeur visuel",
   addHint: 'Ouvre le sélecteur de Home Assistant',
-  newAutomation: 'Nouvelle automatisation',
   ioMore: "Plus d'actions",
-  ioYamlTitle: 'Coller du YAML',
-  ioYamlIntro:
-    "Collez une automatisation ou un script en YAML (p. ex. depuis la vue YAML de HA ou un forum). FLODE l'ouvre comme brouillon – rien n'est enregistré tant que vous n'enregistrez pas.",
-  ioOpenDraft: 'Ouvrir comme brouillon',
-  ioImportYaml: 'Coller du YAML …',
-  ioImportJson: 'Importer un fichier FLODE (JSON) …',
   ioExportJson: 'Exporter en fichier FLODE (JSON)',
   ioCopyYaml: 'Copier le YAML',
   ioShowYaml: 'Afficher le YAML',
@@ -120,7 +113,6 @@ export const fr: Strings = {
   selectionCopied: 'Sélection copiée',
   colorWheel: 'Choisir une couleur',
   ioYamlCopied: 'YAML copié dans le presse-papiers',
-  ioSaveCopy: 'Enregistrer une copie …',
   shortcutsTitle: 'Raccourcis clavier',
   minimap: 'Mini-carte',
   haCardText: 'Texte des cartes comme dans Home Assistant',
@@ -137,61 +129,12 @@ export const fr: Strings = {
   toggleEnabledCard: 'Activer/désactiver la carte',
   deleteCard: 'Supprimer la carte ou la connexion',
   cardCopied: 'Carte copiée – {keys} la colle',
-  ioCopyOf: 'Copie de {name}',
-  ioImported: 'Ouvert comme brouillon – vérifiez-le, puis enregistrez',
-  ioImportFailed: "Échec de l'importation :",
-  mergeStart: 'Fusionner …',
-  mergeHint:
-    'Choisissez au moins deux automatisations à fusionner en une nouvelle. Les originales restent inchangées.',
-  mergeSelected: '{n} sélectionnée(s)',
-  mergeRun: 'Fusionner',
-  mergeName: 'Fusion : {names}',
-  mergeFailed: 'Échec de la fusion :',
-  mergeDone:
-    'Fusionnées – ouverte comme nouvelle automatisation. Les originales restent inchangées.',
-  mergeWarnVariable:
-    "La variable « {name} » de « {source} » s'appelle désormais « {renamed} » – ses modèles ont été mis à jour.",
-  mergeWarnVariableCheck:
-    "La variable « {name} » de « {source} » s'appelle désormais « {renamed} » – vérifiez ses modèles, toutes les utilisations n'ont pas pu être mises à jour de façon sûre.",
-  mergeWarnMode:
-    "Les automatisations s'exécutaient dans des modes différents ({modes}) – la fusion s'exécute maintenant en « {mode} » pour qu'aucune ne bloque l'autre.",
-  mergeWarnInfoTitle: 'Ajusté lors de la fusion',
-  mergeWarnInfoText:
-    'Pour que les automatisations fonctionnent ensemble, FLODE a modifié ce qui suit :',
-  mergeWarnCheckTitle: 'Fusionnées – à vérifier',
-  mergeWarnCheckText:
-    "Lors de la fusion, FLODE a ajusté ce qui suit. Vérifiez-le avant d'enregistrer (⋮ → Afficher le YAML) :",
-  manualTitle: "Exécuter à partir d'ici",
   manualRunning: 'Exécution …',
   manualDone: 'Terminé',
   manualNoChanges:
     "Aucun changement dans l'activité – les appareils étaient probablement déjà dans cet état.",
-  manualLogbook: "Ce qui s'est passé",
   manualLogbookEmpty:
     "Rien dans l'activité pour l'instant – Home Assistant l'écrit avec quelques secondes de retard.",
-  manualHint:
-    "Home Assistant ne garde pas d'historique pour les étapes lancées à la main – FLODE les affiche ici jusqu'au rechargement de la page.",
-  runFrom: "Exécuter à partir d'ici",
-  runFromTitle: "Exécuter à partir d'ici",
-  runFromIntro:
-    "Exécute maintenant pour de vrai « {name} » et tout ce qui suit dans Home Assistant – les appareils changent réellement d'état. Les conditions sont vérifiées avec les états actuels.",
-  runFromPreparing: 'Préparation …',
-  runFromInvalid: 'Cette partie du flux ne peut pas être exécutée ainsi :',
-  runFromStep: '{n} étape sera exécutée.',
-  runFromSteps: '{n} étapes seront exécutées.',
-  runFromTriggerData:
-    "Certaines étapes utilisent des données du déclencheur (trigger.…). Elles n'existent qu'après une première exécution de l'automatisation enregistrée – d'ici là, ces étapes peuvent échouer ou utiliser des valeurs vides.",
-  runFromLastTrigger:
-    'Les données du déclencheur (trigger.…) proviennent de la dernière exécution :',
-  runFromConfirm: 'Exécuter maintenant',
-  runFromStarted: "« {name} » est en cours d'exécution …",
-  runFromDone: '« {name} » et les étapes suivantes sont terminés',
-  runFromFailed: "Échec de l'exécution :",
-  runOnly: 'Exécuter cette carte',
-  runOnlyTitle: 'Exécuter cette carte',
-  runOnlyIntro:
-    "Exécute maintenant pour de vrai uniquement « {name} » dans Home Assistant – les appareils changent réellement d'état. Une condition est vérifiée avec les états actuels.",
-  runOnlyDone: '« {name} » est terminé',
   tplTitle: 'Atelier de modèles',
   tplIntro:
     'Home Assistant affiche le rendu du modèle en direct – avec le type du résultat et tout ce à quoi il réagit.',
@@ -203,13 +146,8 @@ export const fr: Strings = {
   tplStatic: 'rien – statique',
   tplIdle: 'Écrivez un modèle avec {{ … }} ou {% … %}.',
   tplResult: 'Résultat',
-  tplVariables: 'Variables',
   tplCopy: 'Copier',
   tplCopied: 'Modèle copié',
-  tplSourceNone: 'Aucune',
-  tplSourceGiven: "De l'étape d'exécution",
-  tplSourceLastRun: 'Dernière exécution',
-  tplTestWithRun: 'Tester un modèle avec ces variables',
   tplType_text: 'Texte',
   tplType_number: 'Nombre',
   tplType_boolean: 'Oui/Non',
@@ -233,94 +171,10 @@ export const fr: Strings = {
   paletteHome: "Aller à l'écran d'accueil",
   searchHint: 'Rechercher des automatisations …',
   searchPaletteHint: '{keys} pour les commandes',
-  assistButton: 'Assistant IA',
-  assistTitle: 'Assistant IA',
-  assistIntro:
-    "Posez une question sur cette automatisation ou confiez-lui une tâche – p. ex. « Pourquoi la lumière ne s'allume-t-elle pas la nuit ? » ou « Ajoute une notification ». L'IA ne fait que proposer des changements ; rien n'est appliqué tant que vous ne cliquez pas.",
-  assistIntroScript:
-    "Posez une question sur ce script ou confiez-lui une tâche. L'IA ne fait que proposer des changements ; rien n'est appliqué tant que vous ne cliquez pas.",
-  assistFindErrors: 'Trouver les erreurs',
-  assistFindErrorsPrompt:
-    "Vérifie le flux à la recherche d'erreurs, d'erreurs de logique et de cas limites (p. ex. redémarrages, appareils indisponibles, conditions incorrectes). Liste les problèmes trouvés avec une courte explication. Ne propose pas encore de YAML.",
-  assistOptimize: 'Optimiser',
-  assistOptimizePrompt:
-    'Optimise le flux : plus robuste, plus simple et conforme aux bonnes pratiques de Home Assistant, sans changer son comportement. Explique brièvement les changements et donne la nouvelle version complète.',
-  assistExplain: 'Que fait-il ?',
-  assistExplainPrompt: "Explique en quelques phrases ce que fait ce flux et quand il s'exécute.",
-  assistPlaceholder: 'Question ou tâche (⌘↩ envoie)',
-  assistSend: 'Envoyer',
-  assistThinking: "L'IA réfléchit …",
-  assistClear: 'Effacer la conversation',
-  assistProposal: 'Proposition : nouvelle version avec {n} blocs',
-  assistUnreadable: "La proposition n'a pas pu être lue",
-  assistUnknownEntity: 'Entité inconnue :',
-  assistApply: 'Appliquer le changement',
-  assistApplied: 'Appliqué',
-  assistAppliedToast: 'Changement appliqué – ⌘Z pour annuler',
-  assistAppliedDone: 'Changement appliqué',
-  assistNotApplied: 'Non appliqué : un autre flux est ouvert maintenant.',
-  assistNoTriggers:
-    "La proposition n'a pas de déclencheurs – elle supprimerait tous les déclencheurs.",
-  assistStale:
-    'Le flux a changé depuis votre question – appliquer remplace ces changements par la proposition.',
-  assistApplyAnyway: 'Appliquer quand même',
-  assistPrivacy:
-    "La version actuelle et les entités correspondantes sont envoyées à l'IA de votre Home Assistant. Rien n'est enregistré sans vous.",
   disabledGroup: 'Désactivées',
   issueService: "⚠ Ce service n'existe pas",
   issueEntity: "⚠ Cette entité n'existe pas",
-  aiButton: "Créer avec l'IA",
-  aiTitle: "Créer avec l'IA",
-  aiTitleScript: "Créer un script avec l'IA",
-  aiIntro: "Décrivez ce qui doit se passer. L'IA de votre Home Assistant en fait un brouillon.",
-  aiIntroScript:
-    "Décrivez ce que le script doit faire. L'IA de votre Home Assistant en fait un brouillon.",
-  aiDescribe: 'Description',
-  aiExample1:
-    "Quand la porte d'entrée s'ouvre après le coucher du soleil, allumer la lumière du couloir pendant 5 minutes",
-  aiExample2: 'En semaine à 6 h 30, augmenter doucement la lumière du salon',
-  aiExample3: 'Me prévenir quand la machine à laver a terminé',
-  aiExampleScript1: 'Script bonjour : lumière à une luminosité choisie, puis ouvrir les stores',
-  aiExampleScript2:
-    "Tout éteindre : éteindre toutes les lumières et tous les lecteurs multimédias, verrouiller la porte d'entrée",
-  aiExampleScript3: 'Script minuteur : allumer la cafetière pendant un nombre de minutes choisi',
-  aiCreate: 'Créer le brouillon',
-  aiProblems: 'Le brouillon a encore des problèmes',
-  aiOpenAnyway: 'Ouvrir quand même',
-  aiRunning: "L'IA construit le flux …",
-  aiPrivacy:
-    "Juste un brouillon – rien n'est enregistré tant que vous n'enregistrez pas. Votre description et les noms/ID des entités correspondantes sont envoyés à l'IA configurée dans Home Assistant.",
-  aiUnknown: "Brouillon créé, mais ces entités n'existent pas : ",
-  aiDone: 'Brouillon créé – vérifiez-le, puis enregistrez',
-  aiSetupTitle: "Créer des automatisations avec l'IA",
-  aiSetupText:
-    "FLODE utilise l'IA configurée dans Home Assistant (une intégration avec « Tâche IA », p. ex. OpenAI, Anthropic, Google ou Ollama). Choisissez-la ensuite sous Paramètres → Système → IA → « Suggestions de l'IA » → « Tâches de génération de données ».",
-  aiSetupDefault:
-    "Vous avez déjà une IA avec « Tâche IA », mais aucune n'est choisie par défaut pour la génération de données. Choisissez-la sous Paramètres → Système → IA → « Suggestions de l'IA ».",
-  aiOpenIntegrations: 'Ouvrir Appareils et services',
-  aiOpenDefault: "Choisir l'IA",
-  aiDismiss: "Masquer l'astuce",
-  aiExplain: "Expliquer l'exécution",
-  aiExplaining: "L'IA lit l'exécution …",
-  aiExplainAgain: 'Expliquer à nouveau',
-  cancel: 'Annuler',
   runs: 'Exécutions',
-  refresh: 'Actualiser',
-  noRuns: "Pas encore d'exécution – déclenchez l'automatisation une fois.",
-  runOutdated:
-    "Cette exécution provient d'une autre version du flux – les cartes ne sont pas marquées car ses étapes ne correspondent plus.",
-  runsHint:
-    'Home Assistant ne conserve que les dernières exécutions par automatisation (par défaut : 5).',
-  timeline: 'Chronologie',
-  stepDetails: 'Étape',
-  pickStep: 'Cliquez sur une étape de la chronologie pour voir ses détails.',
-  run_running: "En cours d'exécution",
-  run_finished: 'Terminé',
-  run_failed_conditions: 'Condition non remplie',
-  run_error: 'Erreur',
-  run_aborted: 'Interrompu',
-  run_other: 'Arrêté',
-  lastRun: 'Dernière exécution',
   showRuns: 'Afficher les exécutions',
   addNext: 'Ajouter une action (après celle-ci)',
   addAfterTrigger: 'Ajouter une condition ou une action (après celle-ci)',
@@ -345,14 +199,10 @@ export const fr: Strings = {
   branchContext: '{block} › {branch} · étape {n}',
   fields: 'Champs',
   emptyHint: "Qu'est-ce qui doit lancer l'automatisation ?",
-  newScript: 'Nouveau script',
   automations: 'Automatisations',
   scripts: 'Scripts',
-  run: 'Exécuter (version enregistrée)',
-  runNeedsSave: "Enregistrez d'abord, puis exécutez",
   rename: 'Renommer',
   tabsLabel: 'Automatisations ouvertes',
-  newTab: 'Nouvelle automatisation dans un nouvel onglet',
   closeTab: "Fermer l'onglet",
   tidy: 'Ranger',
   tidied: 'Rangé – ⌘Z pour annuler',
@@ -391,12 +241,7 @@ export const fr: Strings = {
   conflictReload: 'Charger depuis Home Assistant',
   tabsStorageFull:
     'Le stockage du navigateur est plein – les onglets ouverts et les brouillons non enregistrés ne sont plus mémorisés.',
-  blueprintReadOnlyTitle: 'Blueprint – lecture seule',
-  blueprintReadOnlyText:
-    "Cette automatisation est créée à partir d'un blueprint. FLODE affiche ses étapes avec ses entrées mais ne l'enregistre pas – modifiez-la dans Home Assistant. Blueprint :",
   openInHa: 'Ouvrir dans HA',
-  blueprintNoSave:
-    "Cette automatisation est créée à partir d'un blueprint – FLODE ne l'enregistre pas. Modifiez-la dans Home Assistant.",
   invalid: 'Invalide',
   type_trigger: 'Déclencheur',
   type_automation: 'Automatisation',
@@ -406,35 +251,19 @@ export const fr: Strings = {
   type_delay: 'Délai',
   type_wait: 'Attente',
   type_set_variables: 'Variables',
-  welcomeTitle: 'Bienvenue dans FLODE',
-  welcomeFlowTitle: 'Les automatisations en flux',
+  welcomeTitle: 'Bienvenue dans git-flode',
+  welcomeFlowTitle: 'Fichiers d’automatisation',
   welcomeFlowText:
-    'Déclencheurs, conditions et actions sous forme de blocs sur un canevas – enregistrés en YAML Home Assistant standard.',
-  welcomeRunsTitle: 'Comprendre les exécutions',
-  welcomeRunsText:
-    "Chaque exécution s'affiche directement sur le flux : le chemin emprunté et l'endroit où elle s'est bloquée.",
-  welcomeAiTitle: "Créer avec l'IA",
-  welcomeAiText:
-    "Décrivez ce qui doit se passer – FLODE ébauche le flux avec l'IA de votre Home Assistant (facultatif).",
-  welcomeMapTitle: 'Dépendances',
-  welcomeMapText:
-    "Voyez d'un coup d'œil ce qui commande quoi, où des automatisations se contredisent et ce qui manque.",
+    'Modifiez visuellement le YAML Home Assistant existant et enregistrez le fichier source.',
+  welcomeGitTitle: 'Workflow Git',
+  welcomeGitText: 'Vérifiez et commitez sur prod, fusionnez main et consultez l’historique.',
+  welcomeObjectsTitle: 'Instantanés des objets',
+  welcomeObjectsText:
+    'Exportez les métadonnées Home Assistant vers objects/ pour vérifier les références.',
+  welcomeTestsTitle: 'Tests du projet',
+  welcomeTestsText:
+    'Exécutez les tests Python, vérifiez la configuration et rechargez Home Assistant explicitement.',
   whatsNewTitle: 'Nouveau dans FLODE {version}',
   whatsNewAll: 'Tous les changements',
   continue: 'Continuer',
-  new261017NotesTitle: 'Notes, cadres, sélection multiple',
-  new261017NotesText:
-    'Clic droit sur le canevas vide → « Ajouter une note ici » ou « Ajouter un cadre ici ». Maj + glisser sélectionne plusieurs cartes à déplacer, copier ou supprimer ensemble.',
-  new261017ParallelTitle: 'Actions parallèles en cartes',
-  new261017ParallelText:
-    'Un bloc parallèle a maintenant une sortie par action (« Parallèle 1 », « Parallèle 2 » …) et chaque action est sa propre carte. Il est toujours enregistré comme un parallel normal.',
-  new261017ColorTitle: 'Colorer les cartes',
-  new261017ColorText:
-    'Clic droit sur une carte → « Colorer la carte ». Si-alors, Choisir et les autres blocs sont maintenant indigo au lieu de vert et se distinguent des actions.',
-  new261017LinesTitle: 'Tracer les lignes soi-même',
-  new261017LinesText:
-    'Cliquez sur une ligne et faites glisser le point en son milieu : la ligne passe à angle droit par vos coudes. Un double-clic en supprime un, « Ranger » les supprime tous.',
-  new261017LangTitle: 'FLODE parle désormais 7 langues',
-  new261017LangText:
-    'Nouveau : néerlandais, français, espagnol, italien et portugais. FLODE suit la langue définie dans votre profil Home Assistant.',
 };

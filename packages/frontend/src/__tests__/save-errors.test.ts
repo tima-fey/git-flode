@@ -1,6 +1,5 @@
 import type { FlowGraph } from '@flode/shared';
 import { describe, expect, it } from 'vitest';
-import { mergeWarningsHeading } from '../merge-warnings';
 import { describeFlowCheckErrors, describeHaSaveError, haErrorLocation } from '../save-errors';
 
 const graph: FlowGraph = {
@@ -94,18 +93,5 @@ describe('a refused save, explained', () => {
       text: 'The card isn’t connected to any trigger – connect or delete it.',
     });
     expect(problem.detail).not.toContain('action_a1');
-  });
-});
-
-describe('merge banner heading', () => {
-  it('asks to check only when a template could not be adapted', () => {
-    expect(
-      mergeWarningsHeading([{ kind: 'modeChanged', modes: ['single', 'queued'], mode: 'queued' }])
-        .title
-    ).toBe('mergeWarnInfoTitle');
-    expect(
-      mergeWarningsHeading([{ kind: 'variableCheck', name: 'a', source: 'X', renamed: 'a_2' }])
-        .title
-    ).toBe('mergeWarnCheckTitle');
   });
 });

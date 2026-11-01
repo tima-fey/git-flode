@@ -33,13 +33,13 @@ before changing graph, parser, transpiler, storage, or execution behavior.
 | Location | Purpose |
 | --- | --- |
 | `packages/frontend` | Lit panel, native HA editors, file provenance, Git and HA controls |
-| `packages/ui-core` | Framework-free card summaries, relations, AI, traces, and locales |
+| `packages/ui-core` | Framework-free card summaries, graph and configuration-path helpers, and locales |
 | `packages/shared` | Shared types and Zod schemas, including backend contracts |
 | `packages/transpiler` | YAML/graph conversion and structural regression fixtures |
 | `custom_components/flode` | HA integration, file storage, Git, object export, and test runner |
 | `tests` | Python backend and portable project-test regressions |
 | `dev/container` | Disposable HA Container and file-workflow browser checks |
-| `dev/gate` | Inherited upstream release checks and shared browser utilities |
+| `dev/gate` | File-workflow release certification and shared browser utilities |
 
 ## Checks
 
@@ -109,9 +109,9 @@ implicitly authorize a release.
 
 The current manifest/frontend versions retain upstream numbering. Keep them
 synchronized for an authorized release and follow the exact-commit release
-procedure in CLAUDE.md and [the release gate guide](dev/gate/README.md). The
-inherited HA-API gate and fork file-workflow browser tests cover different
-paths; neither should be presented as validating the other.
+procedure in CLAUDE.md and [the release gate guide](dev/gate/README.md). Run the full file-workflow gate for the exact clean release commit before
+tagging or pushing. It builds the integration, restarts disposable HA, and
+verifies file saves, Git, metadata, tests, reload, and visual changes.
 
 ## Reporting issues
 

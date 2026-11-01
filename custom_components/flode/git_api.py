@@ -59,7 +59,7 @@ async def git_history(
 
 @websocket_api.websocket_command({
     vol.Required("type"): "flode/git/action",
-    vol.Required("action"): vol.In(("fetch", "merge", "prod", "checkout", "commit", "push", "revert")),
+    vol.Required("action"): vol.In(("fetch", "merge", "prod", "commit", "push", "revert")),
     vol.Required("expected_head"): str,
     vol.Optional("revision", default=""): str,
     vol.Optional("expected_changes", default=""): str,
@@ -78,7 +78,7 @@ async def git_action(
 @callback
 def async_register_git_commands(hass: HomeAssistant) -> None:
     """Register the explicit prod-branch Git surface."""
-    for command in (git_status, git_history, git_changes, git_action):
+    for command in (git_status, git_history, git_changes, git_show, git_action):
         websocket_api.async_register_command(hass, command)
 
 
@@ -89,4 +89,17 @@ async def git_changes(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, message: dict[str, Any]
 ) -> None:
     """Review pending changes without staging or committing them."""
+    await _respond(hass, connection, message)
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "flode/git/show",
+    vol.Required("revision"): str,
+})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def git_show(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, message: dict[str, Any]
+) -> None:
+    """Read a historical commit without changing live configuration files."""
     await _respond(hass, connection, message)

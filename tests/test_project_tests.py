@@ -4,10 +4,11 @@ from textwrap import indent
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.exceptions import Unauthorized
+
 from custom_components.flode import test_source
 from custom_components.flode.project_lock import project_lock
 from custom_components.flode.test_api import run_project_tests
-from homeassistant.exceptions import Unauthorized
 
 
 def project(tmp_path: Path, body: str) -> Path:

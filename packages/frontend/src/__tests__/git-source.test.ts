@@ -188,7 +188,7 @@ describe('Git controls', () => {
     expect(control.shadowRoot?.querySelector('[data-action="revert"]')).toBeNull();
     expect(requests.some((request) => request.action === 'push')).toBe(false);
   });
-  it('returns a historical checkout to prod while preserving editor drafts', async () => {
+  it('returns an external historical checkout to prod while preserving drafts', async () => {
     const { control, requests } = await mount(null);
     control.hasUnsavedChanges = true;
     await settle(control);
@@ -219,4 +219,30 @@ describe('Git controls', () => {
     await settle(control);
     expect(requests.some((request) => request.type === 'flode/git/action')).toBe(false);
   });
+});
+
+it('reads historical changes without mutating Git or refreshing live files', async () => {
+  const { control, requests } = await mount();
+  let changes = 0;
+  control.addEventListener('files-changed', () => changes++);
+  const revision = 'c'.repeat(40);
+  const original = control['status'];
+  const hass = control.hass;
+  if (!hass) throw new Error('Missing Home Assistant');
+  const callWS = hass.callWS;
+  hass.callWS = <T>(message: Record<string, unknown> & { type: string }) => {
+    if (message.type !== 'flode/git/show') return callWS<T>(message);
+    requests.push(message);
+    return Promise.resolve<T>(
+      JSON.parse(JSON.stringify({ revision, diff: '-old\n+new', truncated: false }))
+    );
+  };
+  control.hasUnsavedChanges = true;
+  await control['showRevision'](revision);
+  await settle(control);
+  expect(requests).toContainEqual({ type: 'flode/git/show', revision });
+  expect(requests.some((request) => request.type === 'flode/git/action')).toBe(false);
+  expect(control['status']).toBe(original);
+  expect(control.shadowRoot?.querySelector('.review pre')?.textContent).toContain('+new');
+  expect(changes).toBe(0);
 });

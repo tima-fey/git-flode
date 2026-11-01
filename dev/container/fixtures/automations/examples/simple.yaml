@@ -1,4 +1,4 @@
-# This directory is deliberately not included by Home Assistant.
+# Loaded only by the disposable Home Assistant test instance.
 - id: file_ventilation_start
   alias: File ventilation start
   triggers:

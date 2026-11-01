@@ -1,8 +1,8 @@
 import type { FlowGraph, FlowNode } from '@flode/shared';
+import { nodeForPath } from './config-path';
 import type { FlowKind, HomeAssistant } from './ha';
 import { summarize } from './node-meta';
 import { type StringKey, t } from './strings';
-import { nodeForPath } from './trace';
 
 /** A card with a problem and the words for it (its red border's tooltip). */
 export interface CardIssue {

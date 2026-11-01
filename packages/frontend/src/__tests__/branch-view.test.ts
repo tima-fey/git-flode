@@ -17,10 +17,10 @@ import {
   tintCards,
   withoutStaleOffsets,
 } from '../branch-view';
+import { nodeForPath } from '../config-path';
 import { NODE_WIDTH, runsBack, withEnabledToggled } from '../flow-model';
 import { flowYaml } from '../flow-yaml';
 import { nodeToStep } from '../ha-step';
-import { type HaTrace, nodeForPath, runMarks } from '../trace';
 
 /** The automation from #27, plus a step after the choose. */
 const choose = {
@@ -233,27 +233,7 @@ describe('branch view (#27)', () => {
     expect(storedPosition(view, 'n', drawn)).toEqual({ x: 800, y: 0 });
   });
 
-  it('marks the branch a run took, and only that one', () => {
-    const trace: HaTrace = {
-      run_id: '1',
-      state: 'stopped',
-      timestamp: { start: '' },
-      context: { id: 'c' },
-      config: {},
-      trace: {
-        'trigger/0': [{ path: 'trigger/0', timestamp: '' }],
-        'action/0': [{ path: 'action/0', timestamp: '' }],
-        'action/0/choose/0': [
-          { path: 'action/0/choose/0', timestamp: '', result: { result: true } },
-        ],
-        'action/0/choose/0/sequence/0': [{ path: 'action/0/choose/0/sequence/0', timestamp: '' }],
-        'action/1': [{ path: 'action/1', timestamp: '' }],
-      },
-    };
-    const marks = runMarks(flow(), 'automation', trace);
-    expect(marks.get(option)).toBe('done');
-    expect(marks.has(fallback)).toBe(false);
-    expect(marks.get('b')).toBe('done');
+  it('maps nested validation paths to branch cards', () => {
     expect(nodeForPath(flow(), 'automation', 'action/0/choose/0/sequence/0')).toBe(option);
     expect(nodeForPath(flow(), 'automation', 'action/0/choose/0')).toBe('b');
   });
@@ -620,29 +600,6 @@ describe('parallel block (#39)', () => {
         ],
       },
     });
-  });
-
-  it('marks the parallel steps a run went through', () => {
-    const trace: HaTrace = {
-      run_id: '1',
-      state: 'stopped',
-      timestamp: { start: '' },
-      context: { id: 'c' },
-      config: {},
-      trace: {
-        'trigger/0': [{ path: 'trigger/0', timestamp: '' }],
-        'action/0': [{ path: 'action/0', timestamp: '' }],
-        'action/0/parallel/0': [{ path: 'action/0/parallel/0', timestamp: '' }],
-        'action/0/parallel/1/sequence/0': [
-          { path: 'action/0/parallel/1/sequence/0', timestamp: '' },
-        ],
-      },
-    };
-    const marks = runMarks(flow(parallel), 'automation', trace);
-    expect(marks.get(single)).toBe('done');
-    expect(marks.get(sequenceFirst)).toBe('done');
-    expect(marks.has(sequenceSecond)).toBe(false);
-    expect(marks.get('b')).toBe('done');
   });
 });
 

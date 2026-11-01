@@ -12,7 +12,7 @@ guidelines and release procedures.
 ## Structure
 
 - `packages/frontend`: Lit panel and Home Assistant component integration.
-- `packages/ui-core`: framework-free logic, card summaries, AI, traces, and locales.
+- `packages/ui-core`: framework-free card summaries, template helpers, configuration-path mapping, and locales.
 - `packages/shared`: shared TypeScript types and Zod schemas.
 - `packages/transpiler`: YAML parsing, graph analysis, and YAML generation.
 - `custom_components/flode`: Python Home Assistant integration.

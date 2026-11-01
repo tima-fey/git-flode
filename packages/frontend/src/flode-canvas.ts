@@ -88,7 +88,6 @@ import {
 } from './node-meta';
 import type { CardIssue } from './save-errors';
 import { t } from './strings';
-import type { RunMark } from './trace';
 import { isNarrow, isTouch } from './viewport';
 
 /**
@@ -330,8 +329,6 @@ export class FlodeCanvas extends LitElement {
     graph: { attribute: false },
     hass: { attribute: false },
     selectedId: { attribute: false },
-    runMarks: { attribute: false },
-    activeRunNode: { attribute: false },
     saveIssue: { attribute: false },
     minimap: { type: Boolean },
     haText: { type: Boolean },
@@ -351,9 +348,7 @@ export class FlodeCanvas extends LitElement {
   declare hass: HomeAssistant | undefined;
   declare selectedId: string | null;
   /** Cards of the run shown in the debug view (null = not debugging). */
-  declare runMarks: Map<string, RunMark> | null;
   /** The card of the step picked in HA's timeline. */
-  declare activeRunNode: string | null;
   /** The card Home Assistant refused on the last save — marked red with its explanation. */
   declare saveIssue: CardIssue | null;
   declare viewport: Viewport;
@@ -414,8 +409,6 @@ export class FlodeCanvas extends LitElement {
     this.multiIds = [];
     this.marquee = null;
     this.tinting = [];
-    this.runMarks = null;
-    this.activeRunNode = null;
     this.minimap = false;
     this.paneSize = { width: 0, height: 0 };
   }
@@ -1541,13 +1534,6 @@ export class FlodeCanvas extends LitElement {
     return svg`<path class="edge-line preview" d=${path}></path>`;
   }
 
-  private runClass(id: string): string {
-    const marks = this.runMarks;
-    if (!marks) return '';
-    const mark = marks.get(id);
-    return `${mark ? `run-${mark}` : 'run-skipped'} ${this.activeRunNode === id ? 'run-active' : ''}`;
-  }
-
   /** The card's text: FLODE's sentence, or HA's own wording when the user picked that. */
   private cardSummary(node: FlowNode, fullNames = false): NodeSummary {
     const own = summarize(node, this.hass, fullNames);
@@ -1605,7 +1591,7 @@ export class FlodeCanvas extends LitElement {
     const ends = endsRun(this.view, node);
     return html`
       <div
-        class="node nopan ${branches ? 'branching' : ''} ${handles.includes('true') ? 'two-way' : ''} ${this.view.cards.has(node.id) ? 'branch-step' : ''} ${kindIsKey(node) ? 'kind-key' : ''} ${issues.length > 0 ? 'faulty' : ''} ${selected ? 'selected' : ''} ${off ? 'off' : ''} ${ends ? `ends ${ends}` : ''} ${this.drag?.id === node.id ? 'dragging' : ''} ${tint ? 'tinted' : ''} ${this.runClass(node.id)}"
+        class="node nopan ${branches ? 'branching' : ''} ${handles.includes('true') ? 'two-way' : ''} ${this.view.cards.has(node.id) ? 'branch-step' : ''} ${kindIsKey(node) ? 'kind-key' : ''} ${issues.length > 0 ? 'faulty' : ''} ${selected ? 'selected' : ''} ${off ? 'off' : ''} ${ends ? `ends ${ends}` : ''} ${this.drag?.id === node.id ? 'dragging' : ''} ${tint ? 'tinted' : ''}"
         style="transform: translate(${node.position.x}px, ${node.position.y}px); height: ${height}px; --node-color: ${color}${tint ? `; --card-tint: ${tint}` : ''}"
         data-node-id=${node.id}
         title=${[
@@ -1992,24 +1978,6 @@ export class FlodeCanvas extends LitElement {
     .node.selected.faulty {
       border-color: var(--error-color, #db4437);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--error-color, #db4437) 45%, transparent);
-    }
-    /* Debug view: what the selected run did. */
-    .node.run-done {
-      border-color: var(--success-color, #43a047);
-    }
-    .node.run-failed {
-      border-color: var(--warning-color, #ffa600);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning-color, #ffa600) 35%, transparent);
-    }
-    .node.run-error {
-      border-color: var(--error-color, #db4437);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--error-color, #db4437) 35%, transparent);
-    }
-    .node.run-skipped {
-      opacity: 0.4;
-    }
-    .node.run-active {
-      box-shadow: 0 0 0 3px var(--primary-color);
     }
     .node.dragging {
       cursor: grabbing;

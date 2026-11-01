@@ -11,7 +11,6 @@ export type ShortcutId =
   | 'templates'
   | 'shortcuts'
   | 'save'
-  | 'saveCopy'
   | 'undo'
   | 'redo'
   | 'add'
@@ -51,7 +50,6 @@ export const SHORTCUTS: readonly Shortcut[] = [
     notInText: true,
   },
   { id: 'save', group: 'general', keys: ['mod+s'], label: 'save' },
-  { id: 'saveCopy', group: 'general', keys: ['mod+shift+s'], label: 'ioSaveCopy' },
   { id: 'undo', group: 'edit', keys: ['mod+z'], label: 'undo', notInText: true },
   { id: 'redo', group: 'edit', keys: ['mod+shift+z', 'mod+y'], label: 'redo', notInText: true },
   { id: 'add', group: 'edit', keys: ['mod+b'], label: 'add', notInText: true },
@@ -84,35 +82,16 @@ const VIEWING_COMMANDS = new Set([
   'copy',
   'fit',
   'minimap',
-  'runs',
   'haCardText',
   'autoSide',
   'home',
   'showYaml',
   'copyYaml',
   'exportJson',
-  'map',
 ]);
 
 export function isViewingCommand(id: string): boolean {
   return VIEWING_COMMANDS.has(id);
-}
-
-const FILE_DISABLED_COMMANDS = new Set([
-  'new',
-  'newScript',
-  'importYaml',
-  'importJson',
-  'saveCopy',
-  'merge',
-  'runFrom',
-  'runOnly',
-  'map',
-]);
-
-/** File mode edits existing automations without creation or execution commands. */
-export function isFileEditingCommand(id: string): boolean {
-  return !FILE_DISABLED_COMMANDS.has(id);
 }
 
 export function isMac(): boolean {

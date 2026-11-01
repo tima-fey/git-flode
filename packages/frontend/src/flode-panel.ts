@@ -88,9 +88,7 @@ import {
   flowName,
   type HomeAssistant,
   loadSummaryTranslations,
-  navigateInHa,
   promptAutomationDialog,
-  type RegistryUpdate,
   sameFlow,
   usesBlueprint,
 } from './ha';
@@ -123,7 +121,6 @@ import {
 } from './selection';
 import {
   haDialogShowing,
-  isFileEditingCommand,
   isInDialog,
   isViewingCommand,
   labelWithHint,
@@ -161,7 +158,7 @@ const MINIMAP_KEY = 'flode3.minimap';
 const HA_CARD_TEXT_KEY = 'flode3.haCardText';
 /** Flows without a saved direction open top to bottom (#29). */
 const VERTICAL_KEY = 'flode3.vertical';
-/** The side panel shows only while a card, the assistant or the runs are open (#28). */
+/** Automatically hide the inspector when no card is selected. */
 const AUTO_SIDE_KEY = 'flode3.autoSide';
 const DIRECTION_ICON: Record<FlowDirection, string> = {
   right: 'mdi:arrow-right',
@@ -338,7 +335,6 @@ export class FlodePanel extends LitElement {
     fileItems: { state: true },
     fileDirectory: { state: true },
     welcome: { state: true },
-    templateVars: { state: true },
   };
   declare hass: HomeAssistant | undefined;
   declare narrow: boolean;
@@ -387,7 +383,6 @@ export class FlodePanel extends LitElement {
   /** Start sheet: welcome on the first visit, what's new after an update. */
   declare welcome: WelcomeMode | null;
   /** Variables supplied to the template workbench. */
-  declare templateVars: Record<string, unknown> | null;
   private past: FlowGraph[] = [];
   private future: FlowGraph[] = [];
   /** The last edit in the undo history — typing in HA's form continues it (see `continuesStep`). */
@@ -422,7 +417,6 @@ export class FlodePanel extends LitElement {
     this.yamlViewOpen = false;
     this.canvasMenu = null;
     this.templatesOpen = false;
-    this.templateVars = null;
     this.filesLoaded = false;
     this.progress = null;
     this.welcome = welcomeMode();
@@ -438,7 +432,6 @@ export class FlodePanel extends LitElement {
     if (stored)
       stored.tabs = stored.tabs.filter(
         (tab) =>
-          !tab.flow.isNew &&
           tab.flow.item.kind === 'automation' &&
           tab.flow.item.source &&
           tab.flow.fileVersion &&
@@ -499,7 +492,7 @@ export class FlodePanel extends LitElement {
    * shortcut, with an undo button instead.
    */
   private notifyUndoable(before: FlowGraph, done: StringKey, withShortcut: StringKey): void {
-    // Not taken (a blueprint flow says so itself): nothing to undo.
+    // An unchanged graph has nothing to undo.
     if (!this.flow || this.flow.graph === before) return;
     if (!isTouch()) {
       this.notify(t(this.language, withShortcut));
@@ -663,7 +656,7 @@ export class FlodePanel extends LitElement {
     if (!menu) return nothing;
     const language = this.language;
     // A step inside a choose / if branch gets the card's menu too (#30) — minus
-    // what only a card of the flow has (its connections, run from here).
+    // the connections only a top-level graph card has.
     const branchCard = this.branchCard(menu.nodeId);
     const node = branchCard
       ? cachedBranchView(flow.graph).graph.nodes.find((n) => n.id === menu.nodeId)
@@ -769,10 +762,8 @@ export class FlodePanel extends LitElement {
         label: t(language, 'disconnectCard'),
         run,
       });
-      // The card alone (its step is all it needs); a trigger has no step to run.
       if (branchCard) {
-        // A branch step runs on its own, but not "from here": it has no connections of the
-        // graph. Its only connection is its place in the branch: out of it, as a card of its own (#35).
+        // Detaching a branch step makes it a card in the stored graph (#35).
         entries.push(
           'divider',
           disconnect(() => {
@@ -843,7 +834,7 @@ export class FlodePanel extends LitElement {
       );
     }
     return this.renderMenu(
-      entries.filter((entry) => entry === 'divider' || isFileEditingCommand(entry.id)),
+      entries,
       html`<span
         slot="trigger"
         class="menu-anchor"
@@ -918,8 +909,7 @@ export class FlodePanel extends LitElement {
       add('add-parallel', 'mdi:call-split', t(language, 'addParallel'), 'action', after),
     ];
   }
-  private openTemplates(variables: Record<string, unknown> | null): void {
-    this.templateVars = variables;
+  private openTemplates(): void {
     this.templatesOpen = true;
   }
   /** Everything ⌘K offers right now: commands, adding blocks (editor), opening flows. */
@@ -1000,9 +990,7 @@ export class FlodePanel extends LitElement {
         downloadFlowJson(flow.graph)
       );
     }
-    command('templates', t(language, 'tplTitle'), 'mdi:code-braces', () =>
-      this.openTemplates(null)
-    );
+    command('templates', t(language, 'tplTitle'), 'mdi:code-braces', () => this.openTemplates());
     command('shortcuts', t(language, 'shortcutsTitle'), 'mdi:keyboard-outline', () => {
       this.shortcutsOpen = true;
     });
@@ -1022,10 +1010,9 @@ export class FlodePanel extends LitElement {
         });
       }
     }
-    const available = entries.filter((entry) => isFileEditingCommand(entry.id));
     return this.readOnly
-      ? available.filter((entry) => entry.group === 'open' || isViewingCommand(entry.id))
-      : available;
+      ? entries.filter((entry) => entry.group === 'open' || isViewingCommand(entry.id))
+      : entries;
   }
   private readonly refreshing = new InFlight();
   /** Refresh unchanged tabs from disk without replacing drafts or their revisions. */
@@ -1034,7 +1021,7 @@ export class FlodePanel extends LitElement {
     const tab = this.tabs.find((candidate) => candidate.id === id);
     if (!hass || !tab) return;
     const flow = this.tabFlow(tab);
-    if (flow.isNew || this.tabSaveState(tab) !== 'saved' || !this.refreshing.start(id)) return;
+    if (this.tabSaveState(tab) !== 'saved' || !this.refreshing.start(id)) return;
     try {
       const snapshot = await openFileAutomation(hass, flow.item);
       const config = snapshot.config;
@@ -1236,8 +1223,6 @@ export class FlodePanel extends LitElement {
         name: flowName(config, item.name),
         description: typeof config.description === 'string' ? config.description : '',
       },
-      isNew: false,
-      registryEntry: null,
       haVersion: configFingerprint(config),
       fileVersion: snapshot.version,
       fileDirectory: snapshot.directory,
@@ -1281,7 +1266,7 @@ export class FlodePanel extends LitElement {
       if (this.opening.end(key)) this.progress = null;
     }
   }
-  /** Saves run one after another: a later one sees the first one's result (`isNew`, config id). */
+  /** Serialize saves so each uses the revision returned by the preceding save. */
   private readonly saves = new Serial();
   /** Serialize saves so each one uses the revision returned by the previous save. */
   private save(): Promise<void> {
@@ -1303,7 +1288,6 @@ export class FlodePanel extends LitElement {
     return Boolean(
       this.hass &&
         this.flow?.item.source &&
-        !this.flow.isNew &&
         tabId === this.activeTabId &&
         this.saveState !== 'saved'
     );
@@ -1314,7 +1298,7 @@ export class FlodePanel extends LitElement {
     const hass = this.hass;
     const flow = this.flow;
     if (!hass || !flow) return;
-    if (!flow.item.source || flow.isNew) return;
+    if (!flow.item.source) return;
     // The tab can change while saving — the result belongs to the one saved.
     const current = flow;
     this.saveState = 'saving';
@@ -1330,10 +1314,6 @@ export class FlodePanel extends LitElement {
           })
         );
       }
-      // Blueprint expansion is not part of existing-file editing.
-      if (current.blueprint !== undefined && !current.isNew) {
-        throw new Error(t(this.language, 'blueprintNoSave'));
-      }
       // Offsets of steps no longer in their branch aren't saved.
       const graph = withoutStaleOffsets(current.graph);
       const result = buildAutomationSaveConfig(transpiler, graph, {
@@ -1343,7 +1323,7 @@ export class FlodePanel extends LitElement {
       if (!result.success || !result.config) throw new Error(result.errors?.join(', '));
       const configId = current.item.configId;
       if (current.item.source) {
-        if (!current.fileVersion || !current.fileDirectory || current.isNew)
+        if (!current.fileVersion || !current.fileDirectory)
           throw new Error('Reopen the existing automation before saving');
         const stored = await saveFileAutomation(
           hass,
@@ -1358,7 +1338,6 @@ export class FlodePanel extends LitElement {
             saved: {
               configId,
               entityId: '',
-              registryEntry: null,
               haVersion: configFingerprint(stored.config),
               fileVersion: stored.version,
               fileDirectory: stored.directory,
@@ -1542,11 +1521,10 @@ export class FlodePanel extends LitElement {
       const proceed = await this.withHaDialog(() =>
         confirmUnsavedChanges(hass, host, {
           flowKind: flow.item.kind,
-          configId: flow.isNew ? undefined : flow.item.configId,
+          configId: flow.item.configId,
           settings: this.settingsOf(flow),
-          registry: { entry: flow.registryEntry, update: flow.registryUpdate },
-          save: async (settings, registryUpdate) => {
-            this.applySettings(settings, registryUpdate);
+          save: async (settings) => {
+            this.applySettings(settings);
             await this.save();
             return this.saveState === 'saved';
           },
@@ -1587,20 +1565,17 @@ export class FlodePanel extends LitElement {
     if (!hass || !flow || !(host instanceof HTMLElement)) return false;
     const target = {
       flowKind: flow.item.kind,
-      configId: flow.isNew ? undefined : flow.item.configId,
+      configId: flow.item.configId,
     };
     const result = await this.withHaDialog(() =>
-      promptAutomationDialog(hass, host, target, kind, this.settingsOf(flow), {
-        entry: flow.registryEntry,
-        update: flow.registryUpdate,
-      })
+      promptAutomationDialog(hass, host, target, kind, this.settingsOf(flow))
     );
     if (!result || !this.flow) return false;
-    this.applySettings(result.settings, result.registryUpdate);
+    this.applySettings(result.settings);
     return true;
   }
   /** Name, description and mode from one of HA's dialogs — one undo step. */
-  private applySettings(settings: AutomationSettings, registryUpdate?: RegistryUpdate): void {
+  private applySettings(settings: AutomationSettings): void {
     if (this.readOnly) return;
     const current = this.flow;
     if (!current) return;
@@ -1622,7 +1597,6 @@ export class FlodePanel extends LitElement {
     this.flow = {
       ...latest,
       item: { ...latest.item, name: alias || latest.item.name },
-      registryUpdate: registryUpdate ?? latest.registryUpdate,
     };
     this.saveState = 'unsaved';
   }
@@ -1637,11 +1611,6 @@ export class FlodePanel extends LitElement {
     // A script always begins somewhere (its start node is hidden, see flow-model).
     const graph = ensureScriptEntry(next);
     if (!flow || graph === flow.graph) return;
-    // A blueprint flow is only shown, so it can't be changed either.
-    if (flow.blueprint !== undefined && !flow.isNew) {
-      this.notify(t(this.language, 'blueprintNoSave'));
-      return;
-    }
     const now = Date.now();
     if (!continuesStep(this.lastEdit, editKey, now)) this.past = withHistory(this.past, flow.graph);
     this.lastEdit = editKey === undefined ? null : { key: editKey, at: now };
@@ -1926,14 +1895,13 @@ export class FlodePanel extends LitElement {
   }
   private shortcutAction(id: ShortcutId): (() => void) | null {
     if (this.readOnly && !isViewingCommand(id)) return () => undefined;
-    if (!isFileEditingCommand(id)) return () => undefined;
     switch (id) {
       case 'palette':
         return () => {
           this.paletteOpen = true;
         };
       case 'templates':
-        return () => this.openTemplates(null);
+        return () => this.openTemplates();
       case 'shortcuts':
         return () => {
           this.shortcutsOpen = true;
@@ -2002,47 +1970,21 @@ export class FlodePanel extends LitElement {
    * Parts of the automation the transpiler didn't recognise when it was opened
    * — HA's own warning, so nobody saves over something FLODE didn't read.
    */
-  private renderBlueprintNote(flow: OpenFlow) {
-    if (flow.blueprint === undefined || flow.isNew) return nothing;
-    const language = this.language;
-    const { kind, configId } = flow.item;
-    return html`<ha-alert
-      class="import-warnings"
-      alert-type="info"
-      .title=${t(language, 'blueprintReadOnlyTitle')}
-    >
-      ${t(language, 'blueprintReadOnlyText')}
-      <code>${flow.blueprint}</code>
-      <ha-button
-        slot="action"
-        ?hidden=${this.readOnly}
-        .disabled=${this.readOnly}
-        appearance="plain"
-        @click=${() => navigateInHa(`/config/${kind}/edit/${encodeURIComponent(configId)}`)}
-      >
-        ${t(language, 'openInHa')}
-      </ha-button>
-    </ha-alert>`;
-  }
   private renderImportWarnings(flow: OpenFlow) {
     const warnings = flow.importWarnings;
     if (!warnings?.length) return nothing;
-    const heading = flow.importWarningsHeading ?? {
-      title: 'importWarnTitle',
-      text: 'importWarnText',
-    };
     return html`<ha-alert
       class="import-warnings"
       alert-type="warning"
-      .title=${t(this.language, heading.title)}
+      .title=${t(this.language, 'importWarnTitle')}
       dismissable
       @alert-dismissed-clicked=${() => {
         if (this.flow) {
-          this.flow = { ...this.flow, importWarnings: undefined, importWarningsHeading: undefined };
+          this.flow = { ...this.flow, importWarnings: undefined };
         }
       }}
     >
-      ${t(this.language, heading.text)}
+      ${t(this.language, 'importWarnText')}
       <ul>
         ${warnings.map((warning) => html`<li>${warning}</li>`)}
       </ul>
@@ -2268,10 +2210,8 @@ export class FlodePanel extends LitElement {
           <ha-card
             class="item ${item.enabled ? '' : 'off'} ${''}"
             @click=${() => {
-              {
-                void this.open(item);
-                return;
-              }
+              void this.open(item);
+              return;
             }}
           >
             <div class="item-name">
@@ -2528,7 +2468,7 @@ export class FlodePanel extends LitElement {
               >
                 <ha-icon icon="mdi:debug-step-over"></ha-icon>
               </ha-icon-button>
-              <ha-icon-button .label=${labelWithHint(t(language, 'tplTitle'), 'templates')} @click=${() => this.openTemplates(null)}>
+              <ha-icon-button .label=${labelWithHint(t(language, 'tplTitle'), 'templates')} @click=${() => this.openTemplates()}>
                 <ha-icon icon="mdi:code-braces"></ha-icon>
               </ha-icon-button>
 
@@ -2572,7 +2512,6 @@ export class FlodePanel extends LitElement {
         </header>
         ${this.renderTabs()}
         ${this.renderSaveProblem()}
-        ${this.renderBlueprintNote(flow)}
         ${this.renderImportWarnings(flow)}
         <div class="work" @pointerdown=${this.closeCanvasMenuOutside}>
           <flode-canvas
@@ -2583,8 +2522,6 @@ export class FlodePanel extends LitElement {
             .hass=${this.hass}
             .selectedId=${this.selectedId}
             .multiIds=${this.multiIds}
-            .runMarks=${null}
-            .activeRunNode=${null}
             .saveIssue=${this.saveProblem?.issue ?? null}
             @graph-change=${(
               e: CustomEvent<{
@@ -2652,7 +2589,6 @@ export class FlodePanel extends LitElement {
           </div>
           <flode-inspector
               .readOnly=${this.readOnly}
-              .allowRun=${false}
               style=${this.inspectorWidth ? `--inspector-width: ${this.inspectorWidth}px` : ''}
               .hass=${this.hass}
               .node=${selected}
@@ -2778,8 +2714,6 @@ export class FlodePanel extends LitElement {
       <flode-templates
         .hass=${this.hass}
         .open=${this.templatesOpen}
-        .item=${this.flow && !this.showHome && !this.flow.isNew ? this.flow.item : null}
-        .given=${this.templateVars}
         @closed=${() => {
           this.templatesOpen = false;
         }}
@@ -3119,7 +3053,6 @@ export class FlodePanel extends LitElement {
       margin: 0 8px;
       background: color-mix(in srgb, var(--secondary-text-color) 45%, transparent);
     }
-    /* Panels you switch on (runs, AI) carry their name — icons alone got hard to tell apart. */
     .tools ha-icon-button.active {
       color: var(--primary-color);
     }

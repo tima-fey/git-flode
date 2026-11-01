@@ -12,7 +12,7 @@ void i18n.init({
   resources: coreResources,
   lng: 'en',
   fallbackLng: 'en',
-  ns: ['common', 'nodes', 'map'],
+  ns: ['common', 'nodes'],
   defaultNS: 'common',
   interpolation: { escapeValue: false },
   initAsync: false,
@@ -132,13 +132,4 @@ export function summaryContext(
   });
   contexts.set(hass, context);
   return context;
-}
-
-/** A string of the shared `map` namespace (Zusammenhänge), with plurals/interpolation. */
-export function mapT(
-  language: string | undefined,
-  key: string,
-  options?: Record<string, unknown>
-): string {
-  return i18n.getFixedT(uiLanguage(language), 'map')(key, options);
 }

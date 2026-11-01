@@ -50,6 +50,8 @@ export {
   GitCommitDetailsSchema,
   type GitHistory,
   GitHistorySchema,
+  type GitRevision,
+  GitRevisionSchema,
   type GitStatus,
   GitStatusSchema,
 } from './git-source';

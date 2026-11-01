@@ -6,18 +6,8 @@ import path from 'node:path';
 
 process.env.FLODE_GATE_URL = 'http://127.0.0.1:18123';
 process.env.FLODE_GATE_TOKEN_FILE = new URL('./runtime/token', import.meta.url).pathname;
-const {
-  ENGINES,
-  gotoPanel,
-  inPanel,
-  label,
-  openBrowser,
-  openFlow,
-  readCards,
-  report,
-  waitForPanel,
-  ws,
-} = await import('../gate/lib.mjs');
+const { ENGINES, gotoPanel, inPanel, openBrowser, openFlow, readCards, report, waitForPanel, ws } =
+  await import('../gate/lib.mjs');
 const source = new URL('./runtime/repository/automations/examples/simple.yaml', import.meta.url);
 const file = 'automations/examples/simple.yaml';
 const original = await fs.readFile(source);
@@ -89,20 +79,22 @@ for (const engine of ENGINES) {
         const commands = await inPanel(page, (panel) =>
           panel.paletteEntries().map((entry) => entry.id)
         );
-        for (const command of ['new', 'newScript', 'saveCopy', 'importYaml', 'importJson', 'merge'])
+        for (const command of [
+          'new',
+          'newScript',
+          'saveCopy',
+          'importYaml',
+          'importJson',
+          'merge',
+          'runOnly',
+          'runFrom',
+        ])
           assert.ok(!commands.includes(command));
         const card = (await readCards(page)).find((entry) => entry.type === 'Delay');
         assert.ok(card);
         await page.locator(`flode-canvas .node[data-node-id="${card.id}"]`).click();
         const editor = page.locator('flode-inspector ha-automation-action-editor');
         await editor.waitFor();
-        assert.equal(
-          await page
-            .locator('flode-inspector')
-            .getByRole('button', { name: await label(page, 'runOnly'), exact: true })
-            .count(),
-          0
-        );
         await editor.evaluate((element) =>
           element.dispatchEvent(
             new CustomEvent('value-changed', {

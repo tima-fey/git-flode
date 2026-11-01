@@ -14,7 +14,7 @@ http:
 history:
 logbook:
 recorder:
-automation: !include automations.yaml
+automation: !include_dir_merge_list /flode-config/automations
 script: !include scripts.yaml
 input_boolean:
   flode_test:

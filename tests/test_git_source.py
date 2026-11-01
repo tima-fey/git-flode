@@ -4,6 +4,8 @@ import subprocess
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.exceptions import Unauthorized
+
 from custom_components.flode.file_writer import open_automation, save_automation
 from custom_components.flode.git_api import (
     git_action,
@@ -12,7 +14,6 @@ from custom_components.flode.git_api import (
     git_status,
 )
 from custom_components.flode.git_source import GitError, GitRepository
-from homeassistant.exceptions import Unauthorized
 
 
 def git(path, *args):
@@ -84,18 +85,18 @@ def test_fetch_downloads_history_without_changing_files_then_merge_updates_prod(
     assert "Updated" in (repo.root / "automations" / "test.yaml").read_text()
 
 
-def test_history_checkout_preserves_prod_and_can_return(checkout):
+def test_history_view_does_not_change_live_files_or_branch(checkout):
     repo, _, _ = checkout
     before = request(repo, "status")
     old = request(repo, "history")["commits"][-1]["commit"]
-    historical = request(repo, "checkout", expected_head=before["commit"], revision=old)
-    assert historical["branch"] is None
-    assert historical["commit"] == old
-    assert historical["prod"] == before["prod"]
-    assert not (repo.root / "README.md").exists()
-    restored = request(repo, "prod", expected_head=old)
-    assert restored["branch"] == "prod"
-    assert restored["commit"] == before["commit"]
+    content = (repo.root / "README.md").read_bytes()
+    viewed = request(repo, "show", revision=old)
+    assert viewed["revision"] == old
+    assert "Initial configuration" in viewed["diff"]
+    assert request(repo, "status") == before
+    assert (repo.root / "README.md").read_bytes() == content
+    with pytest.raises(GitError, match="Unsupported Git operation"):
+        request(repo, "checkout", expected_head=before["commit"], revision=old)
 
 
 @pytest.mark.parametrize("untracked", [False, True])
@@ -104,7 +105,7 @@ def test_local_changes_are_never_discarded_and_fetch_is_still_allowed(checkout, 
     before = request(repo, "status")
     file = repo.root / ("new.yaml" if untracked else "automations/test.yaml")
     file.write_text("local changes")
-    for action in ["merge", "prod", "checkout"]:
+    for action in ["merge", "prod"]:
         with pytest.raises(GitError, match="Local changes"):
             request(repo, action, expected_head=before["commit"], revision=before["commit"])
     assert request(repo, "fetch")["dirty"]
@@ -133,7 +134,7 @@ def test_stale_requests_cannot_switch_a_newer_checkout(checkout):
     repo, _, _ = checkout
     old = request(repo, "history")["commits"][-1]["commit"]
     with pytest.raises(GitError, match="checkout changed"):
-        request(repo, "checkout", expected_head=old, revision=old)
+        request(repo, "prod", expected_head=old)
 
 
 @pytest.mark.parametrize("revision", ["--force", "HEAD~1", "main", "a" * 40])
@@ -177,9 +178,8 @@ def test_checkout_does_not_execute_repository_hooks(checkout):
     hook = repo.root / ".git" / "hooks" / "post-checkout"
     hook.write_text("#!/bin/sh\ntouch hook-was-run\n")
     hook.chmod(0o755)
-    before = request(repo, "status")
     old = request(repo, "history")["commits"][-1]["commit"]
-    request(repo, "checkout", expected_head=before["commit"], revision=old)
+    request(repo, "show", revision=old)
     assert not (repo.root / "hook-was-run").exists()
 
 
@@ -301,7 +301,7 @@ def test_push_does_not_include_uncommitted_files(checkout):
 def test_detached_checkout_cannot_commit_or_push(checkout):
     repo, _, _ = checkout
     head = request(repo, "status")["commit"]
-    request(repo, "checkout", expected_head=head, revision=head)
+    git(repo.root, "switch", "--detach", head)
     for action in ("commit", "push"):
         with pytest.raises(GitError, match="Return to prod"):
             request(repo, action, expected_head=head, expected_directory=str(repo.root))
@@ -381,7 +381,7 @@ def test_main_and_other_branches_cannot_be_modified_through_ha(checkout):
     repo, _, _ = checkout
     git(repo.root, 'switch', 'main')
     before = git(repo.root, 'rev-parse', 'HEAD')
-    for action in ('commit', 'push', 'merge', 'revert', 'prod', 'checkout'):
+    for action in ('commit', 'push', 'merge', 'revert', 'prod'):
         with pytest.raises(GitError, match='Only prod'):
             request(repo, action, expected_head=before)
     assert git(repo.root, 'rev-parse', 'HEAD') == before
@@ -477,7 +477,7 @@ def test_merge_and_revert_use_configured_identity_without_hooks_or_signing(check
     assert not (repo.root / 'hook-was-run').exists()
 
 
-@pytest.mark.parametrize('action', ['fetch', 'merge', 'prod', 'checkout', 'revert'])
+@pytest.mark.parametrize('action', ['fetch', 'merge', 'prod', 'revert'])
 def test_all_git_actions_reject_a_changed_project_root(checkout, action):
     repo, _, _ = checkout
     before = request(repo, 'status')['commit']
@@ -531,7 +531,7 @@ def test_historical_files_cannot_be_saved_or_replaced_by_object_export(checkout)
     repo, _, _ = checkout
     snapshot = open_automation(str(repo.root), 'automations/test.yaml', 'test')
     head = request(repo, 'status')['commit']
-    request(repo, 'checkout', expected_head=head, revision=head)
+    git(repo.root, "switch", "--detach", head)
     with pytest.raises(GitError, match='historical revisions are read-only'):
         save_automation(str(repo.root), 'automations/test.yaml', 'test', snapshot['version'], str(repo.root),
                         {**snapshot['config'], 'alias': 'Forbidden historical edit'})
@@ -540,3 +540,184 @@ def test_historical_files_cannot_be_saved_or_replaced_by_object_export(checkout)
     assert not request(repo, 'status')['dirty']
     request(repo, 'prod', expected_head=head)
     assert request(repo, 'status')['branch'] == 'prod'
+
+
+@pytest.mark.parametrize("action", ["prod", "merge"])
+def test_unrelated_ignored_files_do_not_block_git_operations(checkout, action):
+    repo, _, _ = checkout
+    (repo.root / '.gitignore').write_text('.env\n.venv/\n')
+    git(repo.root, 'add', '.')
+    git(repo.root, 'commit', '-m', 'Ignore local environment')
+    (repo.root / '.env').write_text('local private content')
+    (repo.root / '.venv').mkdir()
+    (repo.root / '.venv/cache').write_text('local cache')
+    before = request(repo, 'status')['commit']
+    request(repo, action, expected_head=before)
+    assert (repo.root / '.env').read_text() == 'local private content'
+    assert (repo.root / '.venv/cache').read_text() == 'local cache'
+
+
+@pytest.mark.parametrize('kind', ['tracked', 'untracked'])
+def test_external_write_after_snapshot_is_preserved_and_never_committed(checkout, monkeypatch, kind):
+    repo, _, _ = checkout
+    path = repo.root / ('README.md' if kind == 'tracked' else 'new.txt')
+    path.write_text('reviewed content')
+    original = repo._git
+    def raced(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if 'commit-tree' in args:
+            path.write_text('external write after snapshot')
+        return result
+    monkeypatch.setattr(repo, '_git', raced)
+    committed = commit_review(repo)
+    assert git(repo.root, 'show', 'HEAD:' + path.name) == 'reviewed content'
+    assert path.read_text() == 'external write after snapshot'
+    assert committed['dirty']
+
+
+def test_external_write_during_snapshot_rejects_review_and_preserves_index(checkout, monkeypatch):
+    repo, _, _ = checkout
+    path = repo.root / 'README.md'
+    path.write_text('reviewed content')
+    review = request(repo, 'changes')['version']
+    original = repo._git
+    def raced(*args, **kwargs):
+        if args[:2] == ('add', '--all'):
+            path.write_text('external write before staging')
+        return original(*args, **kwargs)
+    monkeypatch.setattr(repo, '_git', raced)
+    before = git(repo.root, 'rev-parse', 'HEAD')
+    with pytest.raises(GitError, match='review changes again'):
+        commit_review(repo, expected_changes=review)
+    assert git(repo.root, 'rev-parse', 'HEAD') == before
+    assert not git(repo.root, 'diff', '--cached', '--name-only')
+    assert path.read_text() == 'external write before staging'
+
+
+def test_differing_push_destination_is_rejected(checkout, tmp_path):
+    repo, _, _ = checkout
+    git(repo.root, 'remote', 'set-url', '--push', 'origin', str(tmp_path / 'other.git'))
+    with pytest.raises(GitError, match='identical fetch and push'):
+        request(repo, 'push', expected_head=request(repo, 'status')['commit'])
+
+
+def test_push_timeout_is_reconciled_with_actual_remote(checkout, monkeypatch):
+    repo, _, remote = checkout
+    (repo.root / 'README.md').write_text('publish this')
+    committed = commit_review(repo)
+    original = repo._git
+    def timed_out(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if 'push' in args:
+            raise GitError('Git timed out')
+        return result
+    monkeypatch.setattr(repo, '_git', timed_out)
+    result = request(repo, 'push', expected_head=committed['commit'])
+    assert result['remote_prod'] == git(remote, 'rev-parse', 'prod') == committed['commit']
+
+
+@pytest.mark.parametrize('branch', ['main', 'detached'])
+def test_nested_project_cannot_bypass_save_and_export_guards(checkout, branch):
+    from custom_components.flode.object_source import export_catalog
+    repo, _, _ = checkout
+    nested = repo.root / 'nested'
+    (nested / 'automations').mkdir(parents=True)
+    (nested / 'automations/test.yaml').write_text('- id: nested\n  alias: Nested\n')
+    if branch == 'detached':
+        git(repo.root, 'switch', '--detach', 'HEAD')
+    else:
+        git(repo.root, 'switch', 'main')
+    snapshot = open_automation(str(nested), 'automations/test.yaml', 'nested')
+    with pytest.raises(GitError, match='repository root'):
+        save_automation(str(nested), 'automations/test.yaml', 'nested', snapshot['version'], str(nested),
+                        {**snapshot['config'], 'alias': 'Forbidden'})
+    with pytest.raises(GitError, match='repository root'):
+        export_catalog(str(nested), str(nested), {})
+
+
+def test_return_to_prod_preserves_ignored_recreated_historical_file(checkout):
+    repo, _, _ = checkout
+    private = repo.root / 'private.yaml'
+    private.write_text('tracked prod content')
+    git(repo.root, 'add', '.')
+    git(repo.root, 'commit', '-m', 'Track configuration')
+    prod = git(repo.root, 'rev-parse', 'HEAD')
+    git(repo.root, 'switch', '--detach', prod)
+    git(repo.root, 'rm', 'private.yaml')
+    (repo.root / '.gitignore').write_text('private.yaml\n')
+    git(repo.root, 'add', '.')
+    git(repo.root, 'commit', '-m', 'Historical ignored configuration')
+    private.write_text('local secret must survive')
+    detached = git(repo.root, 'rev-parse', 'HEAD')
+    with pytest.raises(GitError, match='Local changes'):
+        request(repo, 'prod', expected_head=detached)
+    assert private.read_text() == 'local secret must survive'
+    assert git(repo.root, 'rev-parse', 'HEAD') == detached
+
+
+def test_merge_preserves_ignored_file_introduced_by_main(checkout):
+    repo, writer, _ = checkout
+    (repo.root / '.gitignore').write_text('private.yaml\n')
+    git(repo.root, 'add', '.')
+    git(repo.root, 'commit', '-m', 'Ignore private configuration')
+    (repo.root / 'private.yaml').write_text('local secret must survive')
+    (writer / 'private.yaml').write_text('incoming tracked content')
+    git(writer, 'add', '.')
+    git(writer, 'commit', '-m', 'Introduce conflicting configuration')
+    git(writer, 'push', 'origin', 'main')
+    before = git(repo.root, 'rev-parse', 'HEAD')
+    with pytest.raises(GitError, match='Local changes'):
+        request(repo, 'merge', expected_head=before)
+    assert (repo.root / 'private.yaml').read_text() == 'local secret must survive'
+    assert git(repo.root, 'rev-parse', 'HEAD') == before
+
+
+@pytest.mark.parametrize('stderr', ['fatal: detected dubious ownership in repository', 'fatal: Permission denied'])
+def test_git_detection_errors_fail_closed(tmp_path, monkeypatch, stderr):
+    from custom_components.flode.git_source import require_prod_for_writes
+    monkeypatch.setattr(subprocess, 'run', lambda *args, **kwargs: SimpleNamespace(returncode=128, stderr=stderr))
+    with pytest.raises(GitError, match='file changes are blocked'):
+        require_prod_for_writes(tmp_path)
+
+
+def test_invalid_git_marker_never_disables_write_guard(tmp_path):
+    from custom_components.flode.git_source import require_prod_for_writes
+    (tmp_path / '.git').mkdir()
+    with pytest.raises(GitError, match='file changes are blocked'):
+        require_prod_for_writes(tmp_path)
+
+
+def test_non_git_project_can_still_be_written(tmp_path):
+    from custom_components.flode.git_source import require_prod_for_writes
+    require_prod_for_writes(tmp_path)
+
+
+
+def test_history_merge_view_shows_deployed_changes_against_previous_prod(checkout):
+    repo, writer, _ = checkout
+    before = request(repo, 'status')['commit']
+    publish(writer)
+    merged = request(repo, 'merge', expected_head=before)
+    viewed = request(repo, 'show', revision=merged['commit'])
+    assert '-  alias: First' in viewed['diff']
+    assert '+  alias: Updated' in viewed['diff']
+    assert request(repo, 'status')['commit'] == merged['commit']
+
+
+
+def test_ignored_collision_check_preserves_leading_whitespace_in_paths(checkout):
+    repo, _, _ = checkout
+    private = repo.root / ' private.yaml'
+    private.write_text('tracked prod content')
+    git(repo.root, 'add', '.')
+    git(repo.root, 'commit', '-m', 'Track whitespace configuration path')
+    prod = git(repo.root, 'rev-parse', 'HEAD')
+    git(repo.root, 'switch', '--detach', prod)
+    git(repo.root, 'rm', ' private.yaml')
+    (repo.root / '.gitignore').write_text(' private.yaml\n')
+    git(repo.root, 'add', '.')
+    git(repo.root, 'commit', '-m', 'Ignore whitespace configuration path')
+    private.write_text('local secret must survive')
+    with pytest.raises(GitError, match='ignored files'):
+        repo._protect_ignored('refs/heads/prod')
+    assert private.read_text() == 'local secret must survive'

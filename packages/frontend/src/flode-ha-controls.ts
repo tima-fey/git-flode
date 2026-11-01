@@ -34,7 +34,7 @@ export class FlodeHaControls extends LitElement {
 
   private async run(action: 'check' | 'reload' | 'tests' | 'objects'): Promise<void> {
     if (!this.hass?.user?.is_admin || this.busy) return;
-    if (action === 'objects' && !this.directory) return;
+    if ((action === 'objects' || action === 'reload') && !this.directory) return;
     this.busy = true;
     this.objects = null;
     this.result = null;
@@ -55,12 +55,10 @@ export class FlodeHaControls extends LitElement {
           await this.hass.callWS({ type: 'flode/tests/run' })
         );
       } else {
-        // HA validates configuration before reloading all supported YAML domains.
+        // The backend holds the project lock until HA finishes its native reload.
         await this.hass.callWS({
-          type: 'call_service',
-          domain: 'homeassistant',
-          service: 'reload_all',
-          service_data: {},
+          type: 'flode/ha/reload',
+          directory: this.directory,
         });
         this.reloaded = true;
       }
@@ -79,7 +77,7 @@ export class FlodeHaControls extends LitElement {
       <p>${t(language, 'haScope')}</p>
       <div class="controls">
         <ha-button data-action="check" .disabled=${this.busy} @click=${() => this.run('check')}>${t(language, 'haCheck')}</ha-button>
-        <ha-button data-action="reload" .disabled=${this.busy} @click=${() => this.run('reload')}>${t(language, 'haReload')}</ha-button>
+        <ha-button data-action="reload" .disabled=${this.busy || !this.directory} @click=${() => this.run('reload')}>${t(language, 'haReload')}</ha-button>
         <ha-button data-action="tests" .disabled=${this.busy} @click=${() => this.run('tests')}>${t(language, 'testsRun')}</ha-button>
       </div>
       <p>${t(language, 'testsScope')}</p>

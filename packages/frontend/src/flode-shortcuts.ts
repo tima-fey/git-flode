@@ -1,13 +1,7 @@
 import { css, html, LitElement } from 'lit';
 import { defineElement } from './define-element';
 import type { HomeAssistant } from './ha';
-import {
-  formatKeys,
-  isFileEditingCommand,
-  isViewingCommand,
-  SHORTCUTS,
-  type ShortcutGroup,
-} from './shortcuts';
+import { formatKeys, isViewingCommand, SHORTCUTS, type ShortcutGroup } from './shortcuts';
 import { t } from './strings';
 
 const GROUPS: readonly ShortcutGroup[] = ['general', 'edit', 'view'];
@@ -38,8 +32,7 @@ export class FlodeShortcuts extends LitElement {
   render() {
     const language = this.hass?.language ?? 'en';
     const shortcuts = SHORTCUTS.filter(
-      (shortcut) =>
-        isFileEditingCommand(shortcut.id) && (!this.readOnly || isViewingCommand(shortcut.id))
+      (shortcut) => !this.readOnly || isViewingCommand(shortcut.id)
     );
     const groups = GROUPS.filter((group) => shortcuts.some((shortcut) => shortcut.group === group));
     return html`<ha-dialog

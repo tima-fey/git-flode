@@ -3,6 +3,7 @@ import {
   GitChangesSchema,
   type GitCommitDetails,
   GitHistorySchema,
+  GitRevisionSchema,
   GitStatusSchema,
 } from '@flode/shared';
 import type { HomeAssistant } from './ha';
@@ -37,4 +38,8 @@ export async function runGitAction(
 
 export async function readGitChanges(hass: HomeAssistant) {
   return GitChangesSchema.parse(await hass.callWS({ type: 'flode/git/changes' }));
+}
+
+export async function readGitRevision(hass: HomeAssistant, revision: string) {
+  return GitRevisionSchema.parse(await hass.callWS({ type: 'flode/git/show', revision }));
 }

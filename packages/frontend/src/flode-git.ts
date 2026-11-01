@@ -1,7 +1,13 @@
-import type { GitAction, GitChanges, GitHistory, GitStatus } from '@flode/shared';
+import type { GitAction, GitChanges, GitHistory, GitRevision, GitStatus } from '@flode/shared';
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { defineElement } from './define-element';
-import { readGitChanges, readGitHistory, readGitStatus, runGitAction } from './git-source';
+import {
+  readGitChanges,
+  readGitHistory,
+  readGitRevision,
+  readGitStatus,
+  runGitAction,
+} from './git-source';
 import { ensureHaSelector, errorMessage, type HomeAssistant } from './ha';
 import { t } from './strings';
 
@@ -13,6 +19,7 @@ export class FlodeGit extends LitElement {
     hasUnsavedChanges: { type: Boolean },
     status: { state: true },
     history: { state: true },
+    revision: { state: true },
     busy: { state: true },
     error: { state: true },
     changes: { state: true },
@@ -23,6 +30,7 @@ export class FlodeGit extends LitElement {
   hasUnsavedChanges = false;
   private status: GitStatus | null = null;
   private history: GitHistory = { commits: [], has_more: false };
+  private revision: GitRevision | null = null;
   private changes: GitChanges | null = null;
   private message = '';
   private busy = false;
@@ -35,6 +43,7 @@ export class FlodeGit extends LitElement {
     if (changed.has('directory')) {
       this.context++;
       this.status = null;
+      this.revision = null;
       this.changes = null;
       this.history = { commits: [], has_more: false };
       this.message = '';
@@ -88,7 +97,7 @@ export class FlodeGit extends LitElement {
 
   private async act(action: GitAction, revision = ''): Promise<void> {
     if (!this.hass || !this.status || this.busy) return;
-    if (this.hasUnsavedChanges && ['merge', 'checkout', 'revert'].includes(action)) return;
+    if (this.hasUnsavedChanges && ['merge', 'revert'].includes(action)) return;
     const context = this.context;
     const directory = this.status.directory;
     this.busy = true;
@@ -109,7 +118,7 @@ export class FlodeGit extends LitElement {
       this.acceptStatus(status);
       this.changes = null;
       if (action === 'commit') this.message = '';
-      if (['merge', 'prod', 'checkout', 'revert'].includes(action))
+      if (['merge', 'prod', 'revert'].includes(action))
         this.dispatchEvent(new CustomEvent('files-changed', { detail: { directory } }));
       const history = await readGitHistory(this.hass);
       if (context === this.context) this.history = history;
@@ -143,6 +152,22 @@ export class FlodeGit extends LitElement {
         throw new Error('Home Assistant text selectors are unavailable');
       const changes = await readGitChanges(this.hass);
       if (context === this.context) this.changes = changes;
+    } catch (error) {
+      if (context === this.context) this.error = errorMessage(error);
+    } finally {
+      this.finish(context);
+    }
+  }
+
+  private async showRevision(revision: string): Promise<void> {
+    if (!this.hass || this.busy) return;
+    const context = this.context;
+    this.busy = true;
+    this.error = null;
+    this.revision = null;
+    try {
+      const snapshot = await readGitRevision(this.hass, revision);
+      if (context === this.context) this.revision = snapshot;
     } catch (error) {
       if (context === this.context) this.error = errorMessage(error);
     } finally {
@@ -231,11 +256,20 @@ export class FlodeGit extends LitElement {
           <ul>${this.history.commits.map(
             (entry) => html`<li>
             <div><code>${entry.short}</code> · ${entry.date}<br>${entry.subject}</div>
-            <ha-button data-revision=${entry.commit} .disabled=${blocked || !status.prod || entry.commit === status.commit} @click=${() => this.act('checkout', entry.commit)}>${t(language, 'gitCheckout')}</ha-button>
+            <ha-button data-revision=${entry.commit} .disabled=${this.busy} @click=${() => this.showRevision(entry.commit)}>${t(language, 'gitShow')}</ha-button>
           </li>`
           )}</ul>
           ${this.history.has_more ? html`<ha-button .disabled=${this.busy} @click=${() => this.more()}>${t(language, 'gitMore')}</ha-button>` : nothing}
-        </details>`
+        </details>
+        ${
+          this.revision
+            ? html`<section class="review">
+          <code>${this.revision.revision}</code>
+          <pre class="diff">${this.revision.diff || t(language, 'gitNoChanges')}</pre>
+          ${this.revision.truncated ? html`<ha-alert alert-type="warning">${t(language, 'gitDiffTruncated')}</ha-alert>` : nothing}
+        </section>`
+            : nothing
+        }`
           : nothing
       }
     </ha-card>`;

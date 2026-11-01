@@ -61,7 +61,6 @@ function fromNestedStep(event: Event): boolean {
 export class FlodeInspector extends LitElement {
   static properties = {
     readOnly: { type: Boolean },
-    allowRun: { type: Boolean },
     hass: { attribute: false },
     node: { attribute: false },
     /** Where a step inside a choose / if sits ("Auswählen › Option 1 · Schritt 2"). */
@@ -78,7 +77,6 @@ export class FlodeInspector extends LitElement {
     narrow: { state: true },
   };
 
-  allowRun = true;
   declare readOnly: boolean;
   declare hass: HomeAssistant | undefined;
   declare node: FlowNode | null;
@@ -276,10 +274,10 @@ export class FlodeInspector extends LitElement {
   }
 
   private emit(
-    name: 'data-change' | 'step-change' | 'nodes-change' | 'delete' | 'run-from',
+    name: 'data-change' | 'step-change' | 'nodes-change' | 'delete',
     detail: Record<string, unknown> = {}
   ): void {
-    if (this.readOnly || (name === 'run-from' && !this.allowRun)) return;
+    if (this.readOnly) return;
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
 
@@ -423,28 +421,6 @@ export class FlodeInspector extends LitElement {
                 <ha-icon icon="mdi:code-braces"></ha-icon>
               </ha-icon-button>`
             : nothing
-        }
-        ${
-          // The card alone — a trigger (a script's start too) has no step to run.
-          !this.allowRun || node.type === 'trigger'
-            ? nothing
-            : html`<ha-icon-button
-                .label=${t(language, 'runOnly')}
-                @click=${() => this.emit('run-from', { id: node.id, scope: 'only' })}
-              >
-                <ha-icon icon="mdi:play-outline"></ha-icon>
-              </ha-icon-button>`
-        }
-        ${
-          // Run from here starts at a card of the flow, not inside a block.
-          !this.allowRun || isScriptStart(node.data) || this.context
-            ? nothing
-            : html`<ha-icon-button
-                .label=${t(language, 'runFrom')}
-                @click=${() => this.emit('run-from', { id: node.id, scope: 'from' })}
-              >
-                <ha-icon icon="mdi:play-circle-outline"></ha-icon>
-              </ha-icon-button>`
         }
         ${
           // Every script needs its start card.

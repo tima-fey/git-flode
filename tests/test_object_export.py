@@ -5,11 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
+from homeassistant.exceptions import Unauthorized
+
 from custom_components.flode import object_catalog
 from custom_components.flode.object_api import export_objects
 from custom_components.flode.object_source import export_catalog
 from custom_components.flode.project_lock import project_lock
-from homeassistant.exceptions import Unauthorized
 
 
 @pytest.fixture

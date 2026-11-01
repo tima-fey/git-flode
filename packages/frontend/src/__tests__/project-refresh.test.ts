@@ -66,8 +66,6 @@ function tab(): EditorTab {
       nodes: [],
       edges: [],
     },
-    isNew: false,
-    registryEntry: null,
     fileVersion: 'original',
     fileDirectory: '/a',
     haVersion: configFingerprint(config),
@@ -135,7 +133,7 @@ it('refreshes the latest Git directory after an older request completes', async 
   expect(reads).toBe(2);
 });
 
-it('retains and persists edits made while a Git checkout is pending', async () => {
+it('retains and persists edits made while a Git merge is pending', async () => {
   const pending = deferred<GitStatus>();
   const panel = new FlodePanel();
   const entry = tab();
@@ -157,19 +155,19 @@ it('retains and persists edits made while a Git checkout is pending', async () =
   const control = panel.shadowRoot?.querySelector('flode-git');
   if (!(control instanceof FlodeGit)) throw new Error('Missing Git control');
   await vi.waitFor(() => expect(control['status']).not.toBeNull());
-  const operation = control['act']('checkout', 'b'.repeat(40));
-  panel.flow = { ...entry.flow, graph: { ...entry.flow.graph, name: 'Edited during checkout' } };
+  const operation = control['act']('merge');
+  panel.flow = { ...entry.flow, graph: { ...entry.flow.graph, name: 'Edited during merge' } };
   panel.saveState = 'unsaved';
   panel.showHome = false;
   await panel.updateComplete;
-  pending.resolve({ ...status, commit: 'b'.repeat(40), branch: null });
+  pending.resolve({ ...status, commit: 'b'.repeat(40), branch: 'prod' });
   await operation;
-  await vi.waitFor(() => expect(panel.readOnly).toBe(true));
+  await vi.waitFor(() => expect(panel.readOnly).toBe(false));
   panel['persistTabs']();
   expect(panel.tabs).toHaveLength(1);
-  expect(panel.flow?.graph.name).toBe('Edited during checkout');
+  expect(panel.flow?.graph.name).toBe('Edited during merge');
   expect(panel.flow?.fileVersion).toBe('original');
-  expect(readTabs()?.tabs[0]?.flow.graph.name).toBe('Edited during checkout');
+  expect(readTabs()?.tabs[0]?.flow.graph.name).toBe('Edited during merge');
 });
 
 it('does not advance a dirty tab revision when an unchanged config arrives late', async () => {

@@ -1,102 +1,18 @@
 # git-flode
 
-A Home Assistant visual editor for automation YAML stored in Git.
+Edit Home Assistant automation YAML on a visual canvas, review and publish its
+Git changes, and apply updates from `main` to a dedicated `prod` checkout.
+The administrator panel appears as **FLODE** in Home Assistant.
 
-**git-flode is an independent fork of [FLODE](https://github.com/SH1FT-W/flode)
-by [SH1FT-W](https://github.com/SH1FT-W) and its contributors.** FLODE originated
-from [C.A.F.E.](https://github.com/FezVrasta/cafe-hass) by
-[Federico Zivolo](https://github.com/FezVrasta). The canvas, native HA editors,
-and YAML graph conversion build on their work. See [credits](CREDITS.md) and the
-[Apache 2.0 license](LICENSE).
+This is an independent fork of [FLODE](https://github.com/SH1FT-W/flode) by
+SH1FT-W and contributors, built on the earlier
+[C.A.F.E.](https://github.com/FezVrasta/cafe-hass) project by Federico Zivolo.
+See [credits](CREDITS.md), [history](CHANGELOG.md), and [license](LICENSE).
 
-This fork loads automation definitions from a configured directory. It edits
-existing files, synchronizes their Git checkout, exports HA object metadata,
-and runs project tests from inside Home Assistant. The panel still appears as
-**FLODE** in HA and uses the `flode` integration domain.
+## Install the integration
 
-## Current capabilities
-
-- Browse independent automations grouped into collapsible folders; search by
-  name and source path.
-- Edit an existing automation using the inherited canvas and native HA forms.
-  Save back to its original YAML file with revision checks.
-- See the current commit, fetch without changing files, merge main into prod, inspect
-  history, undo the latest merge, and return from a historical view to prod.
-- Review local changes, commit with a message, and push prod. The author comes
-  from Git configuration in the HA runtime.
-- Explicitly check HA configuration and run **Quick reload** without restarting HA.
-- Export devices, entities, and helpers to `objects/` for offline reference.
-- Run Python tests from `tests/` in HA, including the supplied automation ID checker.
-
-The current file workflow edits existing automations. Creation, save-as-copy,
-imports as new automations, script-file editing, and action execution are outside
-that workflow. Inherited code for upstream features is not a promise that those
-features are enabled here. The historical upstream release notes are preserved
-in [CHANGELOG.md](CHANGELOG.md).
-
-## Configuration layout
-
-Choose an existing absolute project root in **Settings → Devices & services →
-FLODE → Configure**. The root name and location are configurable. Git operations
-require this directory to be the checkout root, with an existing `prod` branch, active in HA.
-
-```text
-flode-config/
-  automations/
-    climate/
-      heating.yaml
-      ventilation.yaml
-    security/
-      vacation_alarm.yaml
-  objects/
-    index.yaml
-    helpers/index.yaml
-    integrations/<domain>/<config_entry_id>/
-      integration.yaml
-      devices/<device_id>/
-        device.yaml
-        entities/<entity_id>.yaml
-      entities/<entity_id>.yaml
-  tests/
-    test_object_references.py
-```
-
-Entities without an HA config entry, including YAML entities and storage-backed
-helpers, use `integrations/<domain>/_standalone/`. The indexes map original IDs
-to their canonical files; helper records are not duplicated.
-
-Automation files contain standard YAML lists. For example:
-
-```yaml
-- id: evening_lights
-  alias: Evening lights
-  triggers:
-    - trigger: sun
-      event: sunset
-  conditions: []
-  actions:
-    - action: light.turn_on
-      target:
-        entity_id: light.living_room
-  mode: single
-```
-
-Every automation needs a non-empty ID unique within its file. IDs may repeat
-across separate files. Definitions are read only from `automations/`; `objects/`
-and `tests/` are excluded. Loading a file into FLODE does not register it in HA.
-
-Saving replaces the selected automation in that same file. Other files are
-untouched. The writer preserves unknown fields and comments with `ruamel.yaml`;
-formatting may be normalized within the saved file. External file changes cause
-a stale save to fail. Files using anchors, aliases, blueprints, or unsupported
-values are refused for editing. See the detailed
-[editing contract](dev/container/README.md#editing-existing-automations).
-
-## Install and configure
-
-The integration declares **HA 2026.3+**; the development container is pinned to
-**HA 2026.10.1**. The source build below uses **Node 24** and the repository's
-pinned **Yarn 4**. The panel runs inside HA; there is no standalone web server.
+The application source repository and your HA configuration repository are
+separate repositories. Build this application with Node 24 and pinned Yarn 4:
 
 ```sh
 git clone https://github.com/tima-fey/git-flode.git
@@ -105,133 +21,126 @@ yarn install --immutable
 yarn build
 ```
 
-1. Copy the built `custom_components/flode/` directory, including `www/`, into
-   your HA configuration's `custom_components/` directory.
-2. Create the project root and its `automations/`, `objects/`, and `tests/`
-   directories. Put automation YAML files in `automations/`.
-3. Mount that project into HA with write access for editing, Git changes, and
-   object exports. Git must be installed in the HA runtime for Git controls.
-4. Restart HA, then add **FLODE** in **Settings → Devices & services** and enter
-   the absolute project root as seen by HA. The panel is administrator-only.
+Copy `custom_components/flode/`, including its built `www/` directory, into
+HA's `custom_components/`. HA 2026.3 or later is required.
+The upstream FLODE HACS entry installs upstream; install this fork's build for
+this workflow. They share an integration domain, so install one implementation.
 
-The standard upstream FLODE HACS entry installs upstream FLODE. Use a build
-from this fork for the behavior documented here. Both use the same integration
-domain and `custom_components/flode/` path, so choose one implementation per HA
-instance. Version numbers inherited from upstream are not separate fork releases.
+## Prepare your configuration repository
 
-For a reproducible isolated development installation, follow
-[the Docker setup](dev/container/README.md). It uses synthetic HA configuration
-and a disposable configuration checkout with a local Git remote.
+Use a separate Git repository containing your automation files and optional
+object catalog and project tests:
 
-## Git and applying changes
-
-See [Git operations and recovery](docs/git-workflow.md) for conflict resolution,
-merge undo and reapplication, unexpected prod divergence, and historical-checkout
-pitfalls.
-
-Configure Git identity where the HA process can read it, for example:
-
-```sh
-git -C /flode-config config user.name "Your Name"
-git -C /flode-config config user.email "you@example.com"
+```text
+configuration-repo/
+  automations/
+    climate/heating.yaml
+    security/alarm.yaml
+  objects/
+  tests/
+    test_object_references.py
 ```
 
-Configure origin and its authentication separately. The UI uses that setup;
-commit only requires a message. **Review changes** includes all changed and
-untracked non-ignored files. **Commit all changes** commits that exact reviewed
-snapshot; **Push prod** is a separate action. The diff preview is limited to
-64 KiB, while the commit includes all listed content.
+Each automation file contains a YAML list. IDs must be non-empty and unique
+across **all** automation files included by HA:
 
-The configuration checkout in HA works on **prod**. Only this HA writes and
-pushes prod; external work is committed to **main**. Set up prod before adding
-this checkout to FLODE, or clone an existing `origin/prod`. For a first setup
-inside the HA configuration checkout:
-
-```sh
-git -C /flode-config fetch origin
-git -C /flode-config switch --no-track --create prod origin/main
-git -C /flode-config push --set-upstream origin prod
+```yaml
+- id: evening_lights
+  alias: Evening lights
+  triggers:
+    - trigger: sun
+      event: sunset
+  actions:
+    - action: light.turn_on
+      target:
+        entity_id: light.living_room
+  mode: single
 ```
 
-**Fetch** updates cached `origin/main` and `origin/prod` without changing working
-files. **Merge main into prod** fetches again and merges `origin/main` into
-active prod. Every incoming update gets a dedicated merge commit, including
-updates that could otherwise fast-forward. No automatic push or reload follows.
-The UI shows prod's ahead/behind counts relative to origin/prod separately from
-main commits not yet merged into prod. **Push prod** publishes prod only.
+On your computer, commit and push this repository's `main` branch to its origin.
+In the HA runtime, clone that repository and prepare `prod` (replace the URL):
 
-A conflicting merge is automatically aborted and the previous prod is restored.
-On your computer, merge `origin/prod` into main, resolve conflicts, and push
-main. Retry **Merge main into prod** in HA. Nobody else should push prod.
-Unexpected remote prod commits stop merge/push rather than being overwritten.
+```sh
+git clone --branch main https://example.com/you/configuration.git /config/flode-config
+git -C /config/flode-config switch --no-track --create prod origin/main
+git -C /config/flode-config config user.name "Your Name"
+git -C /config/flode-config config user.email "you@example.com"
+git -C /config/flode-config push --set-upstream origin prod
+```
 
-**Undo latest main merge** creates a revert commit restoring the files from
-before that update. It is available while that FLODE merge is the tip of prod,
-with no pending file/editor changes. Push the revert with **Push prod** when
-ready. History is preserved and force push is never used. Later local commits
-are not discarded to undo an older update.
+If `origin/prod` already exists, clone with `--branch prod` instead. Git and its
+credentials must be available to the HA process; the panel uses that identity
+and authentication. Use the same destination for origin fetch and push URLs.
+HA is the only writer of `prod`; computer changes go to `main`.
 
-Git still considers reverted main commits merged. To reapply the same changes,
-merge prod into main on your computer and revert the undo commit there, resolving
-any conflicts. Push main, then merge it into prod from HA. This keeps prod's
-single-writer rule intact.
-
-Opening history uses detached HEAD in viewing mode. **Return to prod** restores
-the working branch. Saving and object export are refused on historical Git
-revisions. Merge, undo, and checkout require clean files and saved/discarded
-editor drafts. There is no legacy main-only mode, automatic reset, stash, or
-force push. The application source repository's development branches are
-independent of this configuration-repository workflow.
-
-Save, commit, push, tests, config check, and reload are explicit actions. To
-apply this checkout to HA, connect its files to your HA configuration includes.
-A dedicated setup can use:
+Restart HA, then add **FLODE** under **Settings → Devices & services** and
+set its project directory to `/config/flode-config`. It must be the checkout root, writable by HA, with `automations/`
+and active `prod`. Connect those files to HA in `/config/configuration.yaml`:
 
 ```yaml
 automation: !include_dir_merge_list flode-config/automations
 ```
 
-Integrate this with your existing includes. **Check configuration** and
-**Quick reload** operate on HA's configured files; they apply to the FLODE
-checkout only when it is included there. Quick reload calls
-`homeassistant.reload_all`; it is not a full HA restart.
+Combine this with your existing automation configuration. A separate Container
+mount at `/flode-config` also works: configure FLODE with `/flode-config` and
+use `automation: !include_dir_merge_list /flode-config/automations` in HA.
+The paths must refer to the same files inside HA's runtime. Opening files in
+FLODE alone does not load them into HA.
 
-## Object snapshots and tests
+The top-level HA include is supported by HA. Inside the automation files,
+FLODE accepts ordinary YAML lists; `!include` and `!secret` tags are not resolved.
+Anchors, aliases, blueprints, symlinked paths, and values outside the editable
+schema are refused. Unknown ordinary automation fields and comments are retained;
+formatting within the saved file may be normalized.
 
-1. Click **Export HA objects** to replace the entire `objects/` directory with
-   current metadata, removing obsolete files. Keep hand-written tests in `tests/`.
-2. Add the portable [reference test](dev/container/fixtures/tests/test_object_references.py)
-   to your project's `tests/` directory.
-3. Click **Run tests** in HA. Failures identify the YAML file, automation, field,
-   and missing ID.
+## Edit and publish
 
-Exports include registered entities, disabled registry entries, current
-unregistered entities, and helpers. Connection settings, credentials, current
-state values, and arbitrary state attributes are omitted. The catalog is a
-snapshot; browsing, Git operations, and test runs do not refresh it.
+Browse by folder or search by name/path, open an automation, edit its steps using
+HA's native forms, and Save. This replaces that automation in its original file.
+Other files remain untouched. External changes invalidate a stale save; reopen
+the file before retrying. Unsaved drafts survive browser reloads.
 
-The supplied test scans every automation YAML file for explicit entity, device,
-area, label, and config-entry references, including supported literal Jinja
-lookups. Computed references fail explicitly when they cannot be validated
-statically. It reads the snapshot and never runs HA actions. Export again before
-running it when you need current inventory. Existence in the snapshot does not
-prove live device availability.
+1. **Review changes** shows local modified and untracked files. **Commit all
+   changes** requires that review and a message. Its snapshot includes
+   `objects/` and `tests/`; the diff display limit is 64 KiB.
+2. **Push prod** publishes committed prod separately.
+3. For computer changes, push `main`, then **Merge main into prod** in HA.
+   This fetches origin and creates a merge commit. Resolve conflicts on your
+   computer by merging prod into main, then push main and retry.
+4. **Check configuration**, then **Quick reload** to load HA's configured files.
+   Reload is explicit and coordinated with project operations; Git changes do
+   not reload HA automatically. It reloads supported domains without a restart.
 
-Project tests run Python `unittest` in the HA environment, in a separate process,
-with a 60-second limit and 64-KiB output limit. They execute trusted project code
-with the HA process's filesystem permissions; the runner is not a sandbox.
-Details and offline ID-check examples are in the
-[container guide](dev/container/README.md#offline-ha-object-catalog).
+History opens a read-only commit diff without changing the live checkout.
+**Undo latest main merge** creates a revert commit while that merge remains
+prod's tip. Publish the revert separately. See
+[Git operations and recovery](docs/git-workflow.md) for divergence, conflicts,
+and reapplying reverted changes.
+
+## Object catalog and project tests
+
+**Export HA objects** replaces `objects/` with devices, entities, helpers, and
+registry relationships. It omits credentials, connection settings, state values,
+and arbitrary attributes. Keep handwritten files under `tests/`, since export
+removes obsolete catalog files. Export is explicit and creates no commit.
+
+Copy the [portable reference test](dev/container/fixtures/tests/test_object_references.py)
+into your configuration repository's `tests/`. **Run tests** runs `test_*.py`
+using HA's Python environment. The checker validates automation IDs globally
+and static entity/device/area/label/config-entry references against the latest
+export, including supported literal Jinja lookups. Computed references report
+that static validation is unavailable. Duplicate files stay available to open
+and repair in the panel.
+
+Tests run trusted project Python with HA's permissions in a separate process,
+with a 60-second timeout and 64-KiB output limit. Export again when tests should
+use current metadata; tests do not refresh the catalog. A snapshot does not
+prove that an entity is available at runtime.
 
 ## Development and support
 
-- [Contributing and checks](CONTRIBUTING.md)
-- [Architecture and storage behavior](docs/architecture.md)
-- [Isolated HA Container setup and browser checks](dev/container/README.md)
-- [Fork changes and upstream history](CHANGELOG.md)
-- [Credits and lineage](CREDITS.md)
-- [Fork issue tracker](https://github.com/tima-fey/git-flode/issues)
-
-Report fork-specific behavior to this repository. Credit for the original FLODE
-editor and the earlier C.A.F.E. foundations remains with their authors and
-contributors.
+Use the [disposable HA Container](dev/container/README.md) for development and
+browser checks. See [contributing](CONTRIBUTING.md),
+[architecture](docs/architecture.md), and the [release gate](dev/gate/README.md).
+Report fork issues in [this repository](https://github.com/tima-fey/git-flode/issues)
+with the commit, HA version, and a minimal redacted example.

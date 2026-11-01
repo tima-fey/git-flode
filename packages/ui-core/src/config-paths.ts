@@ -1,7 +1,7 @@
 import { isConditionStep, isPlainObject } from '@flode/shared';
 
 /**
- * Maps Home Assistant trace step paths (`trigger/0`, `condition/0`,
+ * Maps Home Assistant configuration step paths (`trigger/0`, `condition/0`,
  * `action/1`, `action/0/then/0`, `action/0/if/condition/0`, …) to FLODE node
  * ids by walking the flow graph the same way the native transpiler lays it
  * out:
@@ -19,14 +19,14 @@ import { isConditionStep, isPlainObject } from '@flode/shared';
  * routing) resolve to `undefined` — the caller counts those as unmapped.
  */
 
-export interface TraceGraphNode {
+export interface ConfigGraphNode {
   id: string;
   type?: string;
   /** Card data — tells a condition step of the actions (`isConditionStep`) from an `if`. */
   data?: unknown;
 }
 
-export interface TraceGraphEdge {
+export interface ConfigGraphEdge {
   source: string;
   target: string;
   sourceHandle?: string | null;
@@ -36,9 +36,9 @@ export interface TraceGraphEdge {
 /** Visual-only / back edges that don't describe the forward execution order. */
 const IGNORED_EDGE_TYPES = new Set(['hint', 'loop-back', 'choose-chain', 'choose-default']);
 
-export function createTracePathResolver(
-  nodes: readonly TraceGraphNode[],
-  edges: readonly TraceGraphEdge[]
+export function createConfigPathResolver(
+  nodes: readonly ConfigGraphNode[],
+  edges: readonly ConfigGraphEdge[]
 ): (path: string) => string | undefined {
   const typeOf = new Map(nodes.map((n) => [n.id, n.type]));
   const dataOf = new Map(nodes.map((n) => [n.id, n.data]));
@@ -185,77 +185,4 @@ export function createTracePathResolver(
         return undefined;
     }
   };
-}
-
-/** Keys that hold nested steps / conditions — their layout decides the trace paths. */
-const NESTED_KEYS = [
-  'triggers',
-  'conditions',
-  'if',
-  'then',
-  'else',
-  'choose',
-  'default',
-  'sequence',
-  'parallel',
-  'repeat',
-  'while',
-  'until',
-  'wait_for_trigger',
-];
-
-/** What kind of step an object is, as far as paths go (`action` and the old `service` are one). */
-const STEP_KINDS = [
-  'action',
-  'service',
-  'delay',
-  'wait_template',
-  'wait_for_trigger',
-  'condition',
-  'if',
-  'choose',
-  'repeat',
-  'parallel',
-  'sequence',
-  'variables',
-  'event',
-  'stop',
-  'scene',
-  'device_id',
-  'set_conversation_response',
-];
-
-/** Old root key spellings (`trigger:`, `condition:`, `action:`) → current ones. */
-const ROOT_ALIASES: Record<string, string> = {
-  trigger: 'triggers',
-  condition: 'conditions',
-  action: 'actions',
-};
-
-function stepShape(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stepShape).join(',')}]`;
-  if (value === null || typeof value !== 'object') return '';
-  const entries = Object.entries(value);
-  const kind = STEP_KINDS.find((key) => entries.some(([k]) => k === key)) ?? '';
-  const nested = entries
-    .filter(([key]) => NESTED_KEYS.includes(key))
-    .map(([key, child]) => `${key}:${stepShape(Array.isArray(child) ? child : [child])}`)
-    .sort();
-  return `${kind === 'service' ? 'action' : kind}{${nested.join(';')}}`;
-}
-
-/**
- * The layout of a saved automation / script that trace paths are made of —
- * how many triggers, conditions and steps, of which kind, nested how. Values
- * (entities, data, aliases, mode) are left out: a run of an older version
- * maps onto the current cards exactly when both shapes are equal.
- */
-export function configShape(config: Record<string, unknown>): string {
-  return ['triggers', 'conditions', 'actions', 'sequence']
-    .map((root) => {
-      const key = Object.keys(config).find((k) => (ROOT_ALIASES[k] ?? k) === root);
-      const value = key === undefined ? [] : config[key];
-      return `${root}=${stepShape(Array.isArray(value) ? value : [value])}`;
-    })
-    .join('|');
 }

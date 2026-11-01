@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+
 from custom_components.flode.object_source import export_catalog
 from custom_components.flode.test_source import run_tests
 
@@ -158,3 +159,33 @@ def test_known_higher_order_jinja_references(project, checker, template):
     root, _ = project
     write(root, [{'variables': {'value': template}}])
     assert checker(root) == []
+
+
+@pytest.mark.parametrize('separate_files', [False, True])
+def test_automation_ids_are_unique_across_the_entire_project(project, checker, separate_files):
+    root, _ = project
+    write(root, [])
+    if separate_files:
+        write(root, [], file='automations/climate/nested/other.yml')
+    else:
+        path = root / 'automations/climate/heating.yaml'
+        entries = yaml.safe_load(path.read_text())
+        path.write_text(yaml.safe_dump(entries + entries))
+    errors = checker(root)
+    assert len(errors) == 1
+    assert 'duplicate automation id' in errors[0]
+    assert 'first defined at automations/climate/heating.yaml[0]' in errors[0]
+
+
+@pytest.mark.parametrize('automation_id', [None, '', '   ', False, [], {}])
+def test_automation_id_must_be_nonempty_scalar(project, checker, automation_id):
+    root, _ = project
+    write(root, [], id=automation_id)
+    assert any('expected a non-empty automation id' in error for error in checker(root))
+
+
+def test_numeric_and_string_automation_ids_share_one_namespace(project, checker):
+    root, _ = project
+    write(root, [], id=12)
+    write(root, [], file='automations/climate/nested/other.yml', id='12')
+    assert any("duplicate automation id '12'" in error for error in checker(root))

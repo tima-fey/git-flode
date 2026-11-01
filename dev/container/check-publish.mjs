@@ -9,7 +9,7 @@ const { ENGINES, gotoPanel, label, openBrowser, report, ws } = await import('../
 const runtime = new URL('./runtime/', import.meta.url).pathname;
 const relative = 'tests/test_publish_ui.py';
 const target = new URL(`./runtime/repository/${relative}`, import.meta.url);
-const result = report('git-publish');
+const result = report('publish');
 
 function remoteHead() {
   return execFileSync('git', ['-C', `${runtime}/remote.git`, 'rev-parse', 'prod'], {

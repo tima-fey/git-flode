@@ -44,10 +44,8 @@ function draft(
       edges,
       metadata: { mode: 'single', ...(kind === 'script' ? { kind } : {}) },
     },
-    isNew: false,
     fileDirectory: '/project',
     fileVersion: 'version',
-    registryEntry: null,
   };
 }
 async function mountPanel(flow: OpenFlow, readOnly = false): Promise<FlodePanel> {
@@ -237,7 +235,6 @@ describe('existing-file editing', () => {
       [trigger, action],
       [{ id: 'e1', source: trigger.id, target: action.id }]
     );
-    flow.isNew = false;
     flow.item.source = { file: 'automations/climate/heating.yaml', id: 'existing' };
     const panel = await mountPanel(flow);
     const tabs = panel.tabs.length;

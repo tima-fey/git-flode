@@ -36,10 +36,33 @@ for (const line of lines) {
 const flaky = Object.entries(steps).flatMap(([name, step]) =>
   step.tests.filter((test) => test.status === 'flaky').map((test) => `${name}: ${test.name}`)
 );
-const ok = Object.values(steps).every((step) => step.status === 'ok');
+const required = [
+  'static',
+  'backend',
+  'test-ha',
+  'cards',
+  'edit-files',
+  'readonly',
+  'git',
+  'publish',
+  'ha-controls',
+  'objects',
+  'visual',
+];
+const complete = required.every((name) => steps[name]?.status === 'ok');
+const ok =
+  Object.keys(steps).length > 0 &&
+  Object.values(steps).every((step) => step.status === 'ok') &&
+  (Boolean(args.only) || complete);
 const clean = args.clean === 'true';
-// A gate only counts for a release when it ran in full, on a clean tree, with the HA restarted.
-const counts = ok && !args.only && args.restart === '1' && clean;
+// A gate only counts for a release when it ran in full, on a clean tree, with a fresh disposable HA startup.
+const counts =
+  ok &&
+  complete &&
+  /^[0-9a-f]{40}$/.test(args.commit ?? '') &&
+  !args.only &&
+  args.restart === '1' &&
+  clean;
 
 const result = {
   commit: args.commit,

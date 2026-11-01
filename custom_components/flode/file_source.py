@@ -67,6 +67,7 @@ class FileSource:
         """List entries and report errors per file without hiding valid groups."""
         items = []
         errors = []
+        ids: dict[str, str] = {}
         for path in sorted(self.automations.rglob("*")):
             if path.suffix.lower() not in (".yaml", ".yml"):
                 continue
@@ -75,6 +76,10 @@ class FileSource:
                 entries = self._entries(file)
                 for entry in entries:
                     key = str(entry["id"])
+                    if key in ids:
+                        errors.append({"file": file, "error": f"Duplicate automation id: {key} (also in {ids[key]})"})
+                    else:
+                        ids[key] = file
                     name = entry.get("alias")
                     items.append({
                         "file": file,

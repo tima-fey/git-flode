@@ -154,23 +154,9 @@ for (const engine of ENGINES) {
         assert.equal(git(remote, 'rev-parse', 'main'), incoming);
         await control.locator('summary').click();
         await control.locator(`[data-revision="${before.commit}"]`).click();
-        const historical = await waitStatus(
-          control,
-          (status) => status.commit === before.commit && status.branch === null
-        );
-        assert.equal(historical.prod, reverted.commit);
-        await waitForPanel(page, (panel) => panel.readOnly === true);
-        assert.equal(
-          await page
-            .locator('flode-ha-controls [data-action=objects]')
-            .evaluate((button) => button.disabled),
-          true
-        );
-        await click(control, page, 'gitProd');
-        await waitStatus(
-          control,
-          (status) => status.commit === reverted.commit && status.branch === 'prod'
-        );
+        await control.locator('.review code').filter({ hasText: before.commit }).waitFor();
+        assert.equal(git(checkout, 'rev-parse', 'HEAD'), reverted.commit);
+        assert.equal(git(checkout, 'branch', '--show-current'), 'prod');
         await waitForPanel(page, (panel) => panel.readOnly === false);
         assert.deepEqual(services, []);
       }

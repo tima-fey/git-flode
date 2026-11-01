@@ -5,13 +5,14 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.exceptions import Unauthorized
+
 from custom_components.flode.file_api import (
     _directory,
     _respond,
     list_files,
 )
 from custom_components.flode.file_source import FileSource
-from homeassistant.exceptions import Unauthorized
 
 VALID = """# Keep this comment unchanged.
 - id: first
@@ -172,3 +173,16 @@ def test_real_climate_groups_remain_independent_read_only_files():
         for item in items:
             assert str(source.read(file, item["id"])["id"]) == item["id"]
         assert (source.automations / "climate" / name).read_bytes() == before[name]
+
+
+def test_duplicate_ids_across_files_are_reported_without_hiding_repairable_entries(tmp_path):
+    directory = tmp_path / "automations"
+    directory.mkdir()
+    for name in ("first.yaml", "second.yml"):
+        (directory / name).write_text("- id: duplicate\n  alias: Repair me\n  actions: []\n")
+    source = FileSource(str(tmp_path))
+    result = source.list()
+    assert len(result["items"]) == 2
+    assert len(result["errors"]) == 1
+    assert "Duplicate automation id: duplicate" in result["errors"][0]["error"]
+    assert source.read("automations/second.yml", "duplicate")["alias"] == "Repair me"

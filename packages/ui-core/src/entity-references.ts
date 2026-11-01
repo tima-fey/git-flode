@@ -1,83 +1,10 @@
 import { isPlainObject, isTemplateString, toList } from '@flode/shared';
 
-/**
- * Dependency map over every automation and script: which entities each one
- * listens to, checks and controls, which of them set each other off, where
- * two pull the same entity in opposite directions, and which references point
- * at entities that no longer exist (typically after a rename).
- *
- * Works on the raw HA configs (what `config/automation/config/…` and
- * `config/script/config/…` return), not on FLODE graphs, so it covers
- * automations that were never opened in FLODE too.
- */
-
-export type DependencyItemKind = 'automation' | 'script';
-
-/** Where in the config an entity shows up. */
+/** Static references used by card validation. */
 export type ReferenceRole = 'trigger' | 'condition' | 'action' | 'template';
-
-export interface DependencyItemInput {
-  kind: DependencyItemKind;
-  /** Config id (`automation_id` / script object id). */
-  id: string;
-  entityId: string;
-  name: string;
-  config: Record<string, unknown>;
-  /** `false` for a disabled automation — it can't contradict another one. */
-  enabled?: boolean;
-}
 
 export interface EntityReference {
   entityId: string;
-  role: ReferenceRole;
-  /** `domain.service` for action references, e.g. `light.turn_on`. */
-  service?: string;
-}
-
-export interface DependencyItem extends Omit<DependencyItemInput, 'config'> {
-  references: EntityReference[];
-}
-
-/** `from` changes something `to` is triggered by (or calls/switches `to` directly). */
-export interface DependencyChain {
-  from: string;
-  to: string;
-  /** Entity that links them. */
-  via: string;
-}
-
-/** Two items driving the same entity in opposite directions. */
-export interface DependencyConflict {
-  entityId: string;
-  a: { item: string; service: string };
-  b: { item: string; service: string };
-}
-
-/** An item that is triggered by an entity it changes itself — may retrigger itself. */
-export interface SelfTrigger {
-  item: string;
-  entityId: string;
-}
-
-export interface MissingReference {
-  item: string;
-  entityId: string;
-  role: ReferenceRole;
-}
-
-export interface DependencyMap {
-  /** Keyed by entity id of the automation/script. */
-  items: Record<string, DependencyItem>;
-  /** entity id → items using it, per role. */
-  usage: Record<string, EntityReferenceUsage[]>;
-  chains: DependencyChain[];
-  conflicts: DependencyConflict[];
-  selfTriggers: SelfTrigger[];
-  missing: MissingReference[];
-}
-
-export interface EntityReferenceUsage {
-  item: string;
   role: ReferenceRole;
   service?: string;
 }
@@ -158,31 +85,11 @@ const ENTITY_DOMAINS = new Set([
   'zone',
 ]);
 
-/** Pairs of services that undo each other, per service name (domain-independent). */
-const OPPOSITES: readonly (readonly [string, string])[] = [
-  ['turn_on', 'turn_off'],
-  ['open_cover', 'close_cover'],
-  ['open_valve', 'close_valve'],
-  ['lock', 'unlock'],
-  ['start', 'return_to_base'],
-  ['media_play', 'media_pause'],
-  ['media_play', 'media_stop'],
-  ['alarm_arm_away', 'alarm_disarm'],
-  ['alarm_arm_home', 'alarm_disarm'],
-  ['alarm_arm_night', 'alarm_disarm'],
-];
-
 /** Domains that are not real entities (a service like `notify.mobile_app_x` or `persistent_notification`). */
 const NON_ENTITY_DOMAINS = new Set(['notify', 'tts', 'persistent_notification', 'homeassistant']);
 
 function serviceName(service: string): string {
   return service.slice(service.indexOf('.') + 1);
-}
-
-export function areOppositeServices(a: string, b: string): boolean {
-  const x = serviceName(a);
-  const y = serviceName(b);
-  return OPPOSITES.some(([p, q]) => (x === p && y === q) || (x === q && y === p));
 }
 
 function entityIdsIn(value: unknown): string[] {
@@ -364,94 +271,4 @@ export function collectReferences(config: Record<string, unknown>): EntityRefere
   walkActions(config.actions ?? config.action ?? config.sequence);
   walkTemplates(config.variables);
   return refs;
-}
-
-/**
- * Builds the whole map. `exists(entityId)` answers whether HA knows an
- * entity — references to unknown ones are reported as missing.
- */
-export function buildDependencyMap(
-  inputs: readonly DependencyItemInput[],
-  exists: (entityId: string) => boolean
-): DependencyMap {
-  const items: Record<string, DependencyItem> = {};
-  const usage: Record<string, EntityReferenceUsage[]> = {};
-  const missing: MissingReference[] = [];
-
-  for (const input of inputs) {
-    const references = collectReferences(input.config);
-    items[input.entityId] = {
-      kind: input.kind,
-      id: input.id,
-      entityId: input.entityId,
-      name: input.name,
-      references,
-      ...(input.enabled === undefined ? {} : { enabled: input.enabled }),
-    };
-    const reportedMissing = new Set<string>();
-    for (const ref of references) {
-      const uses = usage[ref.entityId] ?? [];
-      uses.push({ item: input.entityId, role: ref.role, service: ref.service });
-      usage[ref.entityId] = uses;
-      if (!exists(ref.entityId) && !reportedMissing.has(ref.entityId)) {
-        reportedMissing.add(ref.entityId);
-        missing.push({ item: input.entityId, entityId: ref.entityId, role: ref.role });
-      }
-    }
-  }
-
-  const chains: DependencyChain[] = [];
-  const selfTriggers: SelfTrigger[] = [];
-  const chainKeys = new Set<string>();
-  for (const item of Object.values(items)) {
-    const controlled = new Set(
-      item.references.filter((r) => r.role === 'action').map((r) => r.entityId)
-    );
-    for (const entityId of controlled) {
-      // Calling / switching another automation or script directly.
-      if (items[entityId] && entityId !== item.entityId) {
-        const key = `${item.entityId}>${entityId}`;
-        if (!chainKeys.has(key)) {
-          chainKeys.add(key);
-          chains.push({ from: item.entityId, to: entityId, via: entityId });
-        }
-      }
-      for (const use of usage[entityId] ?? []) {
-        if (use.role !== 'trigger') continue;
-        if (use.item === item.entityId) {
-          selfTriggers.push({ item: item.entityId, entityId });
-          continue;
-        }
-        const key = `${item.entityId}>${use.item}`;
-        if (chainKeys.has(key)) continue;
-        chainKeys.add(key);
-        chains.push({ from: item.entityId, to: use.item, via: entityId });
-      }
-    }
-  }
-
-  const conflicts: DependencyConflict[] = [];
-  const conflictKeys = new Set<string>();
-  for (const [entityId, uses] of Object.entries(usage)) {
-    const actions = uses.filter((u) => u.role === 'action' && u.service);
-    for (let i = 0; i < actions.length; i++) {
-      for (let j = i + 1; j < actions.length; j++) {
-        const a = actions[i];
-        const b = actions[j];
-        if (!a?.service || !b?.service || a.item === b.item) continue;
-        if (items[a.item]?.enabled === false || items[b.item]?.enabled === false) continue;
-        if (!areOppositeServices(a.service, b.service)) continue;
-        const key = [entityId, ...[a.item, b.item].sort()].join('|');
-        if (conflictKeys.has(key)) continue;
-        conflictKeys.add(key);
-        conflicts.push({
-          entityId,
-          a: { item: a.item, service: a.service },
-          b: { item: b.item, service: b.service },
-        });
-      }
-    }
-  }
-
-  return { items, usage, chains, conflicts, selfTriggers, missing };
 }

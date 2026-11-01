@@ -5,9 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
+from homeassistant.exceptions import Unauthorized
+
 from custom_components.flode.file_api import open_file, save_file
 from custom_components.flode.file_writer import open_automation, save_automation
-from homeassistant.exceptions import Unauthorized
 
 
 @pytest.fixture
