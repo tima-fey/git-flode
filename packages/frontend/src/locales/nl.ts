@@ -2,6 +2,10 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Dutch (the keys and placeholders of `strings.ts`). */
 export const nl: Strings = {
+  objectsExport: 'HA-objecten exporteren',
+  objectsScope:
+    'Vervangt objects/ door de huidige apparaten, entiteiten en helpers. Alleen na een klik.',
+  objectsExported: 'Geëxporteerd: {devices} apparaten, {entities} entiteiten, {helpers} helpers.',
   gitUnsavedEditors: 'Sla editorwijzigingen op of verwerp ze voordat je bestanden bijwerkt.',
   gitReview: 'Wijzigingen bekijken',
   gitPush: 'Main pushen',
@@ -9,7 +13,8 @@ export const nl: Strings = {
   gitCommitScope:
     'Commit alle getoonde bestandswijzigingen, inclusief nieuwe bestanden. Push publiceert alleen commits.',
   gitNoChanges: 'Geen bestandswijzigingen.',
-  gitDiffTruncated: 'De diff is groter dan 64 KiB. Commit deze wijziging met Git buiten FLODE.',
+  gitDiffTruncated:
+    'Voorbeeld beperkt tot 64 KiB. De commit bevat alle getoonde bestanden, inclusief inhoud buiten dit voorbeeld.',
   gitCommitMessage: 'Commitbericht',
   testsRun: 'Tests uitvoeren',
   testsScope: 'Voert vertrouwde Python-unittest-tests uit de map tests/ van het project uit.',

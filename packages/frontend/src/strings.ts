@@ -11,6 +11,10 @@ import { pt } from './locales/pt.ts';
  */
 const STRINGS = {
   de: {
+    objectsExport: 'HA-Objekte exportieren',
+    objectsScope:
+      'Ersetzt objects/ durch einen aktuellen Geräte-, Entitäten- und Helfer-Snapshot. Nur auf Knopfdruck.',
+    objectsExported: 'Exportiert: {devices} Geräte, {entities} Entitäten, {helpers} Helfer.',
     gitUnsavedEditors:
       'Ungespeicherte Editoränderungen vor Dateiaktualisierungen speichern oder verwerfen.',
     gitReview: 'Änderungen prüfen',
@@ -20,7 +24,7 @@ const STRINGS = {
       'Committet alle aufgeführten Dateiänderungen, einschließlich neuer Dateien. Push veröffentlicht nur Commits.',
     gitNoChanges: 'Keine Dateiänderungen.',
     gitDiffTruncated:
-      'Der Diff überschreitet 64 KiB. Diese Änderung außerhalb von FLODE mit Git committen.',
+      'Vorschau auf 64 KiB begrenzt. Der Commit enthält alle aufgeführten Änderungen einschließlich nicht angezeigter Inhalte.',
     gitCommitMessage: 'Commit-Nachricht',
     testsRun: 'Tests ausführen',
     testsScope: 'Führt vertrauenswürdige Python-unittest-Tests aus dem Projektordner tests/ aus.',
@@ -432,6 +436,10 @@ const STRINGS = {
       'Neu: Niederländisch, Französisch, Spanisch, Italienisch und Portugiesisch. FLODE folgt der Sprache, die du in Home Assistant eingestellt hast.',
   },
   en: {
+    objectsExport: 'Export HA objects',
+    objectsScope:
+      'Replaces objects/ with a current device, entity, and helper snapshot. Runs only when clicked.',
+    objectsExported: 'Exported: {devices} devices, {entities} entities, {helpers} helpers.',
     gitUnsavedEditors: 'Save or discard unsaved editor changes before updating files.',
     gitReview: 'Review changes',
     gitPush: 'Push main',
@@ -439,7 +447,8 @@ const STRINGS = {
     gitCommitScope:
       'Commits all listed working-file changes, including new files. Push publishes commits only.',
     gitNoChanges: 'No working-file changes.',
-    gitDiffTruncated: 'The diff exceeds 64 KiB. Commit this change with Git outside FLODE.',
+    gitDiffTruncated:
+      'Preview limited to 64 KiB. Commit includes all listed changes, including content beyond this preview.',
     gitCommitMessage: 'Commit message',
     testsRun: 'Run tests',
     testsScope: 'Runs trusted Python unittest tests from the project’s tests/ folder.',

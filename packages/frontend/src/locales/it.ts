@@ -2,6 +2,10 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Italian (the keys and placeholders of `strings.ts`). */
 export const it: Strings = {
+  objectsExport: 'Esporta oggetti HA',
+  objectsScope:
+    'Sostituisce objects/ con dispositivi, entità e helper attuali. Solo premendo il pulsante.',
+  objectsExported: 'Esportati: {devices} dispositivi, {entities} entità, {helpers} helper.',
   gitUnsavedEditors: 'Salva o scarta le modifiche dell’editor prima di aggiornare i file.',
   gitReview: 'Esamina modifiche',
   gitPush: 'Push di main',
@@ -9,7 +13,8 @@ export const it: Strings = {
   gitCommitScope:
     'Include tutte le modifiche elencate, compresi i nuovi file. Push pubblica solo i commit.',
   gitNoChanges: 'Nessuna modifica ai file.',
-  gitDiffTruncated: 'Il diff supera 64 KiB. Esegui il commit con Git fuori da FLODE.',
+  gitDiffTruncated:
+    'Anteprima limitata a 64 KiB. Il commit include tutte le modifiche elencate, anche il contenuto non mostrato.',
   gitCommitMessage: 'Messaggio del commit',
   testsRun: 'Esegui test',
   testsScope: 'Esegue i test Python unittest attendibili dalla cartella tests/ del progetto.',

@@ -2,6 +2,10 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in French (the keys and placeholders of `strings.ts`). */
 export const fr: Strings = {
+  objectsExport: 'Exporter les objets HA',
+  objectsScope:
+    'Remplace objects/ par les appareils, entités et assistants actuels. Uniquement sur demande.',
+  objectsExported: 'Exportés : {devices} appareils, {entities} entités, {helpers} assistants.',
   gitUnsavedEditors:
     'Enregistrez ou abandonnez les modifications de l’éditeur avant de mettre à jour les fichiers.',
   gitReview: 'Examiner les modifications',
@@ -11,7 +15,7 @@ export const fr: Strings = {
     'Commite toutes les modifications affichées, y compris les nouveaux fichiers. Push publie uniquement les commits.',
   gitNoChanges: 'Aucune modification de fichier.',
   gitDiffTruncated:
-    'Le diff dépasse 64 Kio. Commitez cette modification avec Git en dehors de FLODE.',
+    'Aperçu limité à 64 Kio. Le commit inclut toutes les modifications listées, y compris le contenu non affiché.',
   gitCommitMessage: 'Message du commit',
   testsRun: 'Lancer les tests',
   testsScope: 'Exécute les tests Python unittest de confiance du dossier tests/ du projet.',

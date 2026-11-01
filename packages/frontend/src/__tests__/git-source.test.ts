@@ -38,7 +38,7 @@ async function mount(branch: string | null = 'main') {
               files: ['automations/example.yaml'],
               diff: '-old\n+new',
               version: 'reviewed',
-              truncated: false,
+              truncated: true,
             }
           : message.type === 'flode/git/history'
             ? history

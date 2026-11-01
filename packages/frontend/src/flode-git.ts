@@ -162,7 +162,7 @@ export class FlodeGit extends LitElement {
             @value-changed=${(event: CustomEvent<{ value: unknown }>) => {
               this.message = typeof event.detail.value === 'string' ? event.detail.value : '';
             }}></ha-selector>
-          <ha-button data-action="commit" .disabled=${this.busy || status.branch !== 'main' || !this.changes.files.length || !this.message.trim() || this.changes.truncated} @click=${() => this.act('commit')}>${t(language, 'gitCommit')}</ha-button>
+          <ha-button data-action="commit" .disabled=${this.busy || status.branch !== 'main' || !this.changes.files.length || !this.message.trim()} @click=${() => this.act('commit')}>${t(language, 'gitCommit')}</ha-button>
         </section>`
             : nothing
         }

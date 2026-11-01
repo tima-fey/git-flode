@@ -3261,7 +3261,7 @@ export class FlodePanel extends LitElement {
             void this.loadHaList();
           }}
         ></flode-git>
-        <flode-ha-controls .hass=${this.hass}></flode-ha-controls>
+        <flode-ha-controls .hass=${this.hass} .directory=${this.fileDirectory}></flode-ha-controls>
         ${this.renderAiSetup()}
         <div class="home-bar">
           <div class="kinds" role="tablist">

@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 from .file_api import async_register_file_commands
 from .git_api import async_register_git_commands
+from .object_api import export_objects
 from .panel import async_register_panel, async_unregister_panel
 from .test_api import run_project_tests
 
@@ -23,6 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async_register_file_commands(hass)
     async_register_git_commands(hass)
     websocket_api.async_register_command(hass, run_project_tests)
+    websocket_api.async_register_command(hass, export_objects)
     _LOGGER.info("FLODE integration set up successfully")
     return True
 

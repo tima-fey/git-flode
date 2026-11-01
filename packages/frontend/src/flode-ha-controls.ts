@@ -1,6 +1,8 @@
 import {
   type HaConfigCheck,
   HaConfigCheckSchema,
+  type ObjectExportResult,
+  ObjectExportResultSchema,
   type ProjectTestResult,
   ProjectTestResultSchema,
 } from '@flode/shared';
@@ -18,17 +20,23 @@ export class FlodeHaControls extends LitElement {
     reloaded: { state: true },
     error: { state: true },
     tests: { state: true },
+    directory: { type: String },
+    objects: { state: true },
   };
   declare hass: HomeAssistant | undefined;
+  directory = '';
+  private objects: ObjectExportResult | null = null;
   private tests: ProjectTestResult | null = null;
   private busy = false;
   private result: HaConfigCheck | null = null;
   private reloaded = false;
   private error: string | null = null;
 
-  private async run(action: 'check' | 'reload' | 'tests'): Promise<void> {
+  private async run(action: 'check' | 'reload' | 'tests' | 'objects'): Promise<void> {
     if (!this.hass?.user?.is_admin || this.busy) return;
+    if (action === 'objects' && !this.directory) return;
     this.busy = true;
+    this.objects = null;
     this.result = null;
     this.tests = null;
     this.reloaded = false;
@@ -37,6 +45,10 @@ export class FlodeHaControls extends LitElement {
       if (action === 'check') {
         this.result = HaConfigCheckSchema.parse(
           await this.hass.callApi('POST', 'config/core/check_config')
+        );
+      } else if (action === 'objects') {
+        this.objects = ObjectExportResultSchema.parse(
+          await this.hass.callWS({ type: 'flode/objects/export', directory: this.directory })
         );
       } else if (action === 'tests') {
         this.tests = ProjectTestResultSchema.parse(
@@ -71,6 +83,8 @@ export class FlodeHaControls extends LitElement {
         <ha-button data-action="tests" .disabled=${this.busy} @click=${() => this.run('tests')}>${t(language, 'testsRun')}</ha-button>
       </div>
       <p>${t(language, 'testsScope')}</p>
+      <ha-button data-action="objects" .disabled=${this.busy || !this.directory} @click=${() => this.run('objects')}>${t(language, 'objectsExport')}</ha-button>
+      <p>${t(language, 'objectsScope')}</p>
       <div role="status" aria-live="polite">
         ${this.busy ? html`<p>${t(language, 'loading')}</p>` : nothing}
         ${this.error ? html`<ha-alert alert-type="error">${this.error}</ha-alert>` : nothing}
@@ -81,6 +95,12 @@ export class FlodeHaControls extends LitElement {
             ? html`<ha-alert alert-type=${this.tests.success ? 'success' : 'error'}>${t(language, this.tests.timed_out ? 'testsTimeout' : this.tests.success ? 'testsPassed' : 'testsFailed')} (${this.tests.duration}s)</ha-alert>
           <pre class="test-output">${this.tests.output}</pre>
           ${this.tests.truncated ? html`<p>${t(language, 'testsTruncated')}</p>` : nothing}`
+            : nothing
+        }
+        ${
+          this.objects
+            ? html`<ha-alert alert-type="success">${t(language, 'objectsExported').replace('{devices}', String(this.objects.devices)).replace('{entities}', String(this.objects.entities)).replace('{helpers}', String(this.objects.helpers))}</ha-alert>
+          ${this.objects.warnings.map((warning) => html`<ha-alert alert-type="warning">${warning}</ha-alert>`)}`
             : nothing
         }
         ${this.reloaded ? html`<ha-alert alert-type="success">${t(language, 'haReloaded')}</ha-alert>` : nothing}

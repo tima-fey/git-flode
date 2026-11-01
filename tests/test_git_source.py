@@ -293,12 +293,16 @@ def test_commit_disables_hooks_and_signing(checkout):
     assert not (repo.root / "not-executed").exists()
 
 
-def test_oversized_review_cannot_be_committed_from_ui(checkout):
+def test_large_snapshots_are_committed_completely_with_a_bounded_preview(checkout):
     repo, _, _ = checkout
-    (repo.root / "README.md").write_text("x" * 70000)
-    assert repo.request("changes")["truncated"]
-    with pytest.raises(GitError, match="64 KiB"):
-        commit_review(repo)
+    content = 'x' * 70000
+    (repo.root / "README.md").write_text(content)
+    review = repo.request("changes")
+    assert review["truncated"]
+    assert len(review["diff"].encode()) <= 64 * 1024
+    committed = commit_review(repo)
+    assert not committed['dirty']
+    assert git(repo.root, 'show', 'HEAD:README.md') == content
 
 
 def test_configured_commit_author_overrides_server_environment(checkout, monkeypatch):

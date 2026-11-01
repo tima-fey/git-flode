@@ -6,7 +6,7 @@ not the production configuration repository. No privileged mode, host network,
 device passthrough, or production mounts are used.
 
 The configured directory is the FLODE project root. Automation definitions
-come only from its `automations/` subtree; `objects/` is reserved and never
+come only from its `automations/` subtree; `objects/` holds explicit HA metadata exports and is never
 scanned or read as automation data. A disposable Git checkout initialized from
 `dev/container/fixtures/` lives in `runtime/repository/` and is mounted at
 `/flode-config`. It is not included by HA. The original fixture files are never
@@ -171,8 +171,8 @@ The checkout root and HEAD are checked again on requests. Pull and version
 switches are also blocked while editor drafts have unsaved changes; commit and
 push do not close editor tabs. Git hooks and commit
 signing are disabled for these non-interactive operations. Remote access uses
-the existing Git authentication setup. Reviews are limited to 64 KiB; larger
-changes must be committed with Git outside FLODE. Errors do not discard files;
+the existing Git authentication setup. Diff previews are limited to 64 KiB; a commit includes all listed changes,
+including content beyond the preview. The review token covers their full contents. Errors do not discard files;
 a failed commit may leave reviewed files staged for retry.
 
 The test origin is a local bare repository, `runtime/remote.git`, mounted
@@ -227,3 +227,110 @@ docker compose -f dev/container/compose.yaml down
 
 For a fresh instance, stop it and move `dev/container/runtime/` aside before
 starting again. Do not reuse this setup with production configuration or devices.
+
+
+## Offline HA object catalog
+
+Click **Export HA objects** in the administrator controls to replace the configured
+project's entire `objects/` directory with current registry metadata. Nothing is
+exported on startup, navigation, Git operations, checks, or reloads. Export does
+not commit, push, reload HA, or change automations and tests. Treat `objects/` as
+generated data: any old or hand-written files there are removed on a successful
+export. Keep local tests under `tests/`.
+
+The snapshot contains all devices, registered entities (including disabled ones),
+and current entities without registry entries. Helpers use HA's native helper
+integration classification, including YAML and UI-created helpers. Integration
+settings, options, tokens, state values, and arbitrary state attributes are omitted.
+IDs, unique IDs, names, area/label references, and device/integration relationships
+are retained. Unavailable integration metadata produces a warning; entities are
+still included even when helper classification is unavailable.
+
+```text
+objects/
+  index.yaml
+  helpers/index.yaml
+  integrations/<domain>/<config_entry_id>/
+    integration.yaml
+    devices/<device_id>/
+      device.yaml
+      entities/<entity_id>.yaml
+    entities/<entity_id>.yaml
+  integrations/<domain>/_standalone/
+    integration.yaml
+    entities/<entity_id>.yaml
+```
+
+`_standalone` groups entities without an HA config entry, including YAML entities
+and storage-backed helpers. Each device is stored once under its primary owner;
+a shared device lists every associated config entry. Each entity retains its own
+integration/config-entry references. Path segments are percent-encoded when needed;
+original IDs are preserved in records and index keys.
+
+`index.yaml` has `schema_version: 1`, maps `integrations`, `devices`, `entities`, and
+`helpers` to paths relative to `objects/`, and includes area and label metadata.
+`helpers/index.yaml` maps helper entity IDs to the same canonical files, without
+duplicating records. Snapshot output is deterministic and has no export timestamp,
+so unchanged inventories do not create Git content changes.
+
+The complete new tree is built before the old tree is replaced. Serialization and
+publication failures preserve or restore the previous snapshot. File editing,
+Git changes, project tests, and export share the project operation lock. Export
+requires an administrator and rejects a changed project root or a symlinked
+`objects/` directory.
+
+For example, a project test can check a required entity and stable unique ID:
+
+```python
+from pathlib import Path
+import unittest
+import yaml
+
+
+class ObjectReferenceTests(unittest.TestCase):
+    def test_heating_sensor_identity(self):
+        objects = Path(__file__).resolve().parents[1] / "objects"
+        index = yaml.safe_load((objects / "index.yaml").read_text())
+        entity_path = index["entities"]["sensor.heating_temperature"]
+        entity = yaml.safe_load((objects / entity_path).read_text())
+        self.assertEqual(entity["unique_id"], "expected-hardware-channel-id")
+```
+
+A missing or renamed entity fails the lookup after a fresh explicit export; a
+replaced underlying entity fails the unique-ID assertion. Export first when you
+want tests to reflect the current HA inventory; an offline snapshot does not
+update itself.
+
+
+## Automation reference test on HA
+
+The portable `fixtures/tests/test_object_references.py` belongs in the configured
+project's `tests/` directory. **Run tests** executes it through HA's existing
+isolated Python worker, alongside the smoke test. It recursively scans all
+`.yaml` and `.yml` automation files and validates explicit `entity_id`,
+`device_id`, `area_id`, `label_id`, and `config_entry_id` references against the
+last exported catalog. Helpers are entities and are checked the same way.
+Device automation registry IDs and their device associations are checked too.
+Nested blocks, comma-separated targets, static scene/script actions, time
+entity triggers, and numeric entity thresholds are included.
+
+Jinja is parsed without rendering or executing it. Literal references in native
+lookups such as `states(...)`, `is_state(...)`, `state_attr(...)`, `expand(...)`,
+`device_attr(...)`, area/label lookups, and `states.sensor.example` or
+`states['sensor.example']` are checked. Constant template targets are supported.
+Computed targets and lookup arguments fail explicitly when they cannot be
+resolved statically. Custom template functions, service availability, runtime
+values, and general HA configuration validity are outside this static ID check.
+Use HA's configuration check for its separate validation.
+
+Errors include the relative YAML filename, automation alias/ID, field path,
+and missing reference. Invalid YAML and recursive aliases also fail; the test
+continues checking other files. A missing/inconsistent catalog fails with an
+instruction to export objects. It reads files only and does not contact HA or
+modify the catalog. **Export HA objects** first when you need current inventory;
+**Run tests** intentionally does not refresh it automatically. Existence in a
+snapshot does not prove live availability or that an entity is enabled.
+
+The disposable container's climate excerpts reference production IDs absent
+from test HA. Their missing-reference failures are expected and are asserted by
+`check-ha.mjs`, including rendering those failures in the browser.

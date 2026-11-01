@@ -17,6 +17,7 @@ async function mount(admin = true) {
   };
   const control = new FlodeHaControls();
   control.hass = hass;
+  control.directory = '/flode-config';
   document.body.append(control);
   await settle(control);
   return { control, callApi, callWS };
@@ -136,6 +137,50 @@ describe('HA configuration controls', () => {
     expect(control.shadowRoot?.textContent).toContain(text);
     expect(control.shadowRoot?.textContent).toContain('Python test output');
     expect(control.shadowRoot?.textContent).toContain('Output truncated');
+  });
+
+  it('exports objects only after a click and reports the returned counts', async () => {
+    const { control, callApi, callWS } = await mount();
+    expect(callWS).not.toHaveBeenCalled();
+    callWS.mockResolvedValue({
+      directory: '/flode-config/objects',
+      devices: 2,
+      entities: 4,
+      helpers: 1,
+      integrations: 2,
+      files: 9,
+      warnings: [],
+    });
+    click(control, 'objects');
+    await settle(control);
+    expect(callWS).toHaveBeenCalledExactlyOnceWith({
+      type: 'flode/objects/export',
+      directory: '/flode-config',
+    });
+    expect(callApi).not.toHaveBeenCalled();
+    expect(control.shadowRoot?.textContent).toContain('2 devices, 4 entities, 1 helpers');
+  });
+
+  it('does not export before a project root is available', async () => {
+    const { control, callWS } = await mount();
+    control.directory = '';
+    await settle(control);
+    click(control, 'objects');
+    await settle(control);
+    expect(callWS).not.toHaveBeenCalled();
+    expect(control.shadowRoot?.querySelector('[data-action="objects"]')).toHaveProperty(
+      'disabled',
+      true
+    );
+  });
+
+  it('shows export errors and allows retry without claiming success', async () => {
+    const { control, callWS } = await mount();
+    callWS.mockRejectedValueOnce(new Error('Snapshot could not be replaced'));
+    click(control, 'objects');
+    await settle(control);
+    expect(control.shadowRoot?.textContent).toContain('Snapshot could not be replaced');
+    expect(control.shadowRoot?.textContent).not.toContain('Exported:');
   });
 
   it('hides maintenance controls from non-administrators', async () => {

@@ -25,7 +25,7 @@ for (const engine of ENGINES) {
   try {
     await gotoPanel(page, { reload: true });
     await result.check(
-      `${engine}: native config check, Quick reload, and Python project test`,
+      `${engine}: native config check, Quick reload, and missing-reference test output`,
       async () => {
         const control = page.locator('flode-ha-controls');
         assert.equal(services.length, 0);
@@ -46,12 +46,17 @@ for (const engine of ENGINES) {
         await control
           .getByRole('button', { name: await label(page, 'testsRun'), exact: true })
           .click();
-        await control.getByText(await label(page, 'testsPassed'), { exact: false }).waitFor();
-        assert.match(await control.locator('.test-output').innerText(), /Ran 1 test/);
+        await control.getByText(await label(page, 'testsFailed'), { exact: false }).waitFor();
+        assert.match(await control.locator('.test-output').innerText(), /Ran 2 tests/);
         assert.match(
           await control.locator('.test-output').innerText(),
           /test_example_automations_can_be_read/
         );
+        assert.match(await control.locator('.test-output').innerText(), /test_all_automation_object_references_exist/);
+        const output = await control.locator('.test-output').innerText();
+        assert.match(output, /unknown entities reference 'input_boolean.summer'|Export HA objects first/);
+        if (output.includes("unknown entities reference 'input_boolean.summer'"))
+          assert.match(output, /automations\/climate\/heating.yaml/);
         assert.equal(services.length, 1);
         assert.deepEqual(checks, ['POST']);
         assert.equal(await fs.readFile(source, 'utf8'), original);

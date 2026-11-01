@@ -181,8 +181,6 @@ class GitRepository:
                     review = self._changes()
                     if review["version"] != expected_changes:
                         raise GitError("Files or staging changed; review changes again before committing")
-                    if review["truncated"]:
-                        raise GitError("The diff exceeds 64 KiB; commit this change outside FLODE")
                     if not review["files"]:
                         raise GitError("No working-file changes to commit")
                     self._git("add", "--all", "--", ".")

@@ -29,3 +29,16 @@ as its own graph; group relationships are a separate future feature.
 `tests/test_automations.py` is a Python unittest smoke test. It reads only the
 synthetic example YAML and never invokes Home Assistant actions. The Run tests
 button discovers it from the same Git checkout as the automation files.
+
+
+`tests/test_object_references.py` validates every YAML automation against the
+last explicitly exported `objects/index.yaml` and its records. The same file is
+portable: copy it into another FLODE project's `tests/` directory and click
+**Run tests** in HA. It requires only PyYAML and Jinja2, already present in HA.
+It makes no API calls, runs no actions, and never updates the object snapshot.
+
+The isolated HA intentionally lacks the real climate devices/helpers, so this
+test reports missing references for those development excerpts. These failures
+are expected; do not fabricate catalog entries or skip climate automations to
+make them green. Export matching objects on the intended HA to validate a real
+configuration. The synthetic smoke automations reference only the test helper.
