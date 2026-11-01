@@ -4,7 +4,7 @@ This repository is [git-flode](https://github.com/tima-fey/git-flode), an indepe
 fork of [FLODE](https://github.com/SH1FT-W/flode) by SH1FT-W and contributors.
 See [CREDITS.md](CREDITS.md) for project lineage.
 
-## git-flode — unreleased
+## [1.0.0] — Unreleased
 
 - Load automation definitions exclusively from a configurable project's
   `automations/` directory, with collapsible folder groups and source paths.

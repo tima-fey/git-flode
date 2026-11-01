@@ -73,9 +73,10 @@ Documentation and code edits do not authorize a release.
 
 ## Authorized releases
 
-1. Derive user-facing notes from commits since the last release. Use
-   `dev/next-version` to calculate the next calendar version `YY.M.N` (year,
-   month without leading zero, release number starting at 1). Keep
+1. Derive user-facing notes from commits since the last release. The first
+   standalone git-flode release is `1.0.0`. Use the maintainer-selected version
+   for later releases; the inherited `dev/next-version` calendar helper does not
+   determine git-flode release versions. Keep
    `custom_components/flode/manifest.json` and `packages/frontend/package.json`
    synchronized. Update the welcome sheet and all associated translations.
    Preserve `CHANGELOG.md` as git-flode's change history and upstream archive;

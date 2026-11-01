@@ -13,6 +13,30 @@ See [credits](CREDITS.md), [history](CHANGELOG.md), and [license](LICENSE).
 
 ## Install the integration
 
+Requires **Home Assistant 2026.3** or newer.
+
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=tima-fey&repository=git-flode&category=integration)
+
+1. Open the repository in HACS using the button above. Alternatively, add
+   `https://github.com/tima-fey/git-flode` under **Custom repositories** with
+   type **Integration**. Download **git-flode**.
+2. Restart Home Assistant.
+3. After [preparing your configuration repository](#prepare-your-configuration-repository),
+   go to **Settings → Devices & services → Add integration → git-flode** and
+   select its absolute directory, for example `/config/flode-config`.
+   The panel appears in the sidebar for administrators.
+
+HACS installs published releases containing `flode.zip`; merging changes into
+`main` alone does not publish an installable release.
+
+For a manual installation, extract `flode.zip` from the
+[latest git-flode release](https://github.com/tima-fey/git-flode/releases/latest)
+into `/config/custom_components/flode/`, then follow steps 2 and 3 above.
+The upstream FLODE HACS entry installs upstream. Both implementations share the
+`flode` integration domain, so install only one of them.
+
+### Build from source
+
 The application source repository and your HA configuration repository are
 separate repositories. Build this application with Node 24 and pinned Yarn 4:
 
@@ -24,9 +48,7 @@ yarn build
 ```
 
 Copy `custom_components/flode/`, including its built `www/` directory, into
-HA's `custom_components/`. HA 2026.3 or later is required.
-The upstream FLODE HACS entry installs upstream; install the git-flode build for
-this workflow. They share an integration domain, so install one implementation.
+HA's `custom_components/`, then follow installation steps 2 and 3 above.
 
 ## Prepare your configuration repository
 
