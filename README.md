@@ -125,7 +125,8 @@ the file before retrying. Unsaved drafts survive browser reloads.
 
 1. **Review changes** shows local modified and untracked files. **Commit all
    changes** requires that review and a message. Its snapshot includes
-   `objects/` and `tests/`; the diff display limit is 64 KiB.
+   `objects/` and `tests/`. The `objects/` diff is collapsed by default.
+   Each diff preview is limited to 64 KiB.
 2. **Push prod** publishes committed prod separately.
 3. For computer changes, push `main`, then **Merge main into prod** in HA.
    This fetches origin and creates a merge commit. Resolve conflicts on your

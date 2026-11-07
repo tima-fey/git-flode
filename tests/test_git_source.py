@@ -331,6 +331,29 @@ def test_large_snapshots_are_committed_completely_with_a_bounded_preview(checkou
     assert git(repo.root, 'show', 'HEAD:README.md') == content
 
 
+def test_review_separates_large_object_changes_from_other_changes(checkout):
+    repo, _, _ = checkout
+    objects = repo.root / "objects"
+    objects.mkdir()
+    content = "x" * 70000
+    (objects / "catalog.yaml").write_text(content)
+    (repo.root / "tests").mkdir()
+    (repo.root / "tests/test_catalog.py").write_text("# Verify catalog references\n")
+
+    review = request(repo, "changes")
+    assert set(review["files"]) == {"objects/catalog.yaml", "tests/test_catalog.py"}
+    assert "Verify catalog references" in review["diff"]
+    assert "objects/catalog.yaml" not in review["diff"]
+    assert not review["truncated"]
+    assert "objects/catalog.yaml" in review["objects_diff"]["diff"]
+    assert "tests/test_catalog.py" not in review["objects_diff"]["diff"]
+    assert review["objects_diff"]["truncated"]
+    assert len(review["objects_diff"]["diff"].encode()) <= 64 * 1024
+
+    commit_review(repo, expected_changes=review["version"])
+    assert git(repo.root, "show", "HEAD:objects/catalog.yaml") == content
+
+
 def test_configured_commit_author_overrides_server_environment(checkout, monkeypatch):
     repo, _, _ = checkout
     monkeypatch.setenv('GIT_AUTHOR_NAME', 'Unrelated server name')

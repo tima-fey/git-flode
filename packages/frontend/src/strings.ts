@@ -23,6 +23,7 @@ const STRINGS = {
     gitCommitScope:
       'Committet alle aufgeführten Dateiänderungen, einschließlich neuer Dateien. Push veröffentlicht nur Commits.',
     gitNoChanges: 'Keine Dateiänderungen.',
+    gitObjectsDiff: 'Änderungen an objects/',
     gitDiffTruncated:
       'Vorschau auf 64 KiB begrenzt. Der Commit enthält alle aufgeführten Änderungen einschließlich nicht angezeigter Inhalte.',
     gitCommitMessage: 'Commit-Nachricht',
@@ -253,6 +254,7 @@ const STRINGS = {
       'Python-Projekttests ausführen, die Konfiguration prüfen und Home Assistant ausdrücklich neu laden.',
     whatsNewTitle: 'Neu in git-flode {version}',
     whatsNewAll: 'Alle Änderungen',
+    whatsNewObjectsDiff: 'Die Git-Übersicht klappt Änderungen am Objektkatalog standardmäßig ein.',
     continue: 'Weiter',
   },
   en: {
@@ -268,6 +270,7 @@ const STRINGS = {
     gitCommitScope:
       'Commits all listed working-file changes, including new files. Push publishes commits only.',
     gitNoChanges: 'No working-file changes.',
+    gitObjectsDiff: 'Changes in objects/',
     gitDiffTruncated:
       'Preview limited to 64 KiB. Commit includes all listed changes, including content beyond this preview.',
     gitCommitMessage: 'Commit message',
@@ -496,6 +499,7 @@ const STRINGS = {
       'Run your project’s Python tests, check configuration, and reload Home Assistant explicitly.',
     whatsNewTitle: 'New in git-flode {version}',
     whatsNewAll: 'All changes',
+    whatsNewObjectsDiff: 'Git review collapses the object catalog diff by default.',
     continue: 'Continue',
   },
 } as const;

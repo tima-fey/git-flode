@@ -4,7 +4,13 @@ This repository is [git-flode](https://github.com/tima-fey/git-flode), an indepe
 fork of [FLODE](https://github.com/SH1FT-W/flode) by SH1FT-W and contributors.
 See [CREDITS.md](CREDITS.md) for project lineage.
 
-## [1.0.0] — Unreleased
+## [1.0.1] — Unreleased
+
+- Collapse the `objects/` diff by default in Git review. Other diffs stay visible
+  and have their own preview limit.
+- Clarify configuration repository setup and refresh the Home Assistant integration icons.
+
+## [1.0.0] — 2026-11-01
 
 - Load automation definitions exclusively from a configurable project's
   `automations/` directory, with collapsible folder groups and source paths.

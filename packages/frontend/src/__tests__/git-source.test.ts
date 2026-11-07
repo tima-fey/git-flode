@@ -43,10 +43,11 @@ async function mount(branch: string | null = 'prod') {
       const reply =
         message.type === 'flode/git/changes'
           ? {
-              files: ['automations/example.yaml'],
+              files: ['automations/example.yaml', 'objects/catalog.yaml'],
               diff: '-old\n+new',
               version: 'reviewed',
               truncated: true,
+              objects_diff: { diff: '+updated catalog', truncated: false },
             }
           : message.type === 'flode/git/history'
             ? history
@@ -124,7 +125,13 @@ describe('Git controls', () => {
     control.addEventListener('files-changed', () => changes++);
     control.shadowRoot?.querySelector('[data-action="review"]')?.dispatchEvent(new Event('click'));
     await settle(control);
-    expect(control.shadowRoot?.textContent).toContain('-old');
+    const review = control.shadowRoot?.querySelector('section.review');
+    expect(review?.querySelector(':scope > pre')?.textContent).toContain('-old');
+    expect(review?.querySelector('li:last-child')?.textContent).toContain('objects/catalog.yaml');
+    const objectsDiff = review?.querySelector('details');
+    expect(objectsDiff?.open).toBe(false);
+    expect(objectsDiff?.querySelector('summary')?.textContent).toBe('Changes in objects/');
+    expect(objectsDiff?.querySelector('pre')?.textContent).toBe('+updated catalog');
     expect(control.shadowRoot?.querySelector('[data-field="author-name"]')).toBeNull();
     expect(control.shadowRoot?.querySelector('[data-field="author-email"]')).toBeNull();
     expect(control.shadowRoot?.querySelectorAll('ha-selector')).toHaveLength(1);

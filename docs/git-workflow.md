@@ -28,10 +28,10 @@ prod requires clean files, including ignored paths that Git might overwrite.
 Object exports also dirty the checkout. **Commit all changes** includes every
 listed changed/untracked non-ignored file, including `objects/` and `tests/`.
 It builds a private tree from the reviewed working-file contents and commits
-that exact tree. External writes after snapshot capture remain uncommitted. The
-64-KiB preview is a display limit; content beyond it is committed too. A changed
-file, index, root, or HEAD invalidates the relevant review/action and requires
-refreshing it.
+that exact tree. External writes after snapshot capture remain uncommitted.
+The `objects/` diff is collapsed by default. Each preview shows up to 64 KiB,
+and the commit includes the full contents. A changed file, index, root, or HEAD
+invalidates the relevant review/action and requires refreshing it.
 
 **Push prod** publishes committed history even if working files are dirty. Those
 uncommitted files and editor drafts are not included. It fetches both main and
