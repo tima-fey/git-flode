@@ -1,6 +1,6 @@
 # git-flode
 
-<img src="docs/images/flode.svg" alt="git-flode logo" width="96" height="96">
+<img src="https://raw.githubusercontent.com/tima-fey/git-flode/main/docs/images/flode.svg" alt="git-flode logo" width="96" height="96">
 
 Edit Home Assistant automation YAML on a visual canvas, review and publish its
 Git changes, and apply updates from `main` to a dedicated `prod` checkout.
@@ -56,13 +56,12 @@ Use a separate Git repository containing your automation files and optional
 object catalog and project tests:
 
 ```text
-configuration-repo/
+flode-config/
   automations/
     climate/heating.yaml
     security/alarm.yaml
-  objects/
-  tests/
-    test_object_references.py
+  objects/  # Optional; managed by Export HA objects
+  tests/    # Optional; project Python tests
 ```
 
 Each automation file contains a YAML list. IDs must be non-empty and unique
@@ -143,12 +142,16 @@ and reapplying reverted changes.
 
 ## Object catalog and project tests
 
+Neither `objects/` nor `tests/` is required to start or use git-flode. Only
+`automations/` is required inside the configured project root.
+
 **Export HA objects** replaces `objects/` with devices, entities, helpers, and
 registry relationships. It omits credentials, connection settings, state values,
 and arbitrary attributes. Keep handwritten files under `tests/`, since export
 removes obsolete catalog files. Export is explicit and creates no commit.
 
-Copy the [portable reference test](dev/container/fixtures/tests/test_object_references.py)
+To optionally enable reference validation, copy the
+[portable reference test](dev/container/fixtures/tests/test_object_references.py)
 into your configuration repository's `tests/`. **Run tests** runs `test_*.py`
 using HA's Python environment. The checker validates automation IDs globally
 and static entity/device/area/label/config-entry references against the latest
