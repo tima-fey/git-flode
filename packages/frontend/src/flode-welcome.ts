@@ -20,7 +20,9 @@ const WELCOME: Feature[] = [
 ];
 
 /** Current workflow highlights shown after a version update. */
-const WHATS_NEW: Feature[] = WELCOME;
+const WHATS_NEW: Feature[] = [
+  { icon: 'mdi:database-export-outline', title: 'gitObjectsDiff', text: 'whatsNewObjectsDiff' },
+];
 
 const SEEN_KEY = 'flode3.seenVersion';
 const CHANGELOG_URL = 'https://github.com/tima-fey/git-flode/blob/main/CHANGELOG.md';

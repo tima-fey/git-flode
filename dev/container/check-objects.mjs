@@ -118,6 +118,18 @@ for (const engine of ENGINES) {
         assert.equal(index.helpers[entity.entity_id], originalPath);
         assert.deepEqual(commands, ['flode/objects/export']);
 
+        const gitControl = page.locator('flode-git');
+        await gitControl.getByRole('button', { name: await label(page, 'gitReview') }).click();
+        const review = gitControl.locator('section.review');
+        const objectDiff = review.locator('details');
+        assert.match(await review.locator('ul').innerText(), /objects\/index\.yaml/);
+        await objectDiff.locator('pre').waitFor({ state: 'attached' });
+        assert.equal(await objectDiff.locator('pre').isVisible(), false);
+        await objectDiff.locator('summary').click();
+        await objectDiff.locator('pre').waitFor({ state: 'visible' });
+        await objectDiff.locator('summary').click();
+        await objectDiff.locator('pre').waitFor({ state: 'hidden' });
+
         const stale = path.join(objects, 'obsolete.yaml');
         await fs.writeFile(stale, 'obsolete: true\n');
         const renamed = `${entity.entity_id}_renamed`;

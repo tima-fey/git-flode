@@ -196,6 +196,7 @@ export class FlodeGit extends LitElement {
   render() {
     const language = this.hass?.language ?? 'en';
     const status = this.status;
+    const objectsDiff = this.changes?.objects_diff;
     const blocked = this.busy || status?.dirty || this.hasUnsavedChanges;
     return html`<ha-card>
       <header><strong>Git</strong>
@@ -238,8 +239,17 @@ export class FlodeGit extends LitElement {
             ? html`<section class="review">
           <p>${t(language, 'gitCommitScope')}</p>
           <ul>${this.changes.files.map((file) => html`<li><code>${file}</code></li>`)}</ul>
-          <pre class="diff">${this.changes.diff || t(language, 'gitNoChanges')}</pre>
+          ${this.changes.diff || !this.changes.files.length ? html`<pre class="diff">${this.changes.diff || t(language, 'gitNoChanges')}</pre>` : nothing}
           ${this.changes.truncated ? html`<ha-alert alert-type="warning">${t(language, 'gitDiffTruncated')}</ha-alert>` : nothing}
+          ${
+            objectsDiff?.diff
+              ? html`<details>
+                  <summary>${t(language, 'gitObjectsDiff')}</summary>
+                  <pre class="diff">${objectsDiff.diff}</pre>
+                  ${objectsDiff.truncated ? html`<ha-alert alert-type="warning">${t(language, 'gitDiffTruncated')}</ha-alert>` : nothing}
+                </details>`
+              : nothing
+          }
           <ha-selector data-field="message" .hass=${this.hass} .selector=${{ text: {} }}
             .label=${t(language, 'gitCommitMessage')} .required=${true}
             .value=${this.message} .disabled=${this.busy}

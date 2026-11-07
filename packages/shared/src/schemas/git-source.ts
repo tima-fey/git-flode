@@ -36,6 +36,7 @@ export const GitChangesSchema = z.object({
   diff: z.string(),
   version: z.string(),
   truncated: z.boolean(),
+  objects_diff: z.object({ diff: z.string(), truncated: z.boolean() }).optional(),
 });
 export type GitChanges = z.infer<typeof GitChangesSchema>;
 export const GitCommitDetailsSchema = z.object({

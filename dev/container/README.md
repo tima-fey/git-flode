@@ -176,9 +176,10 @@ git -C /flode-config config user.email "you@example.com"
 ```
 
 Review shows all changed and untracked non-ignored files without staging.
+The `objects/` diff is collapsed by default.
 Commit requires that exact review and a message, stages all listed changes,
-and commits only on prod. The 64-KiB diff preview limit does not truncate commit
-contents; the review token covers complete file contents and staging state.
+and commits only on prod. Each preview shows up to 64 KiB. The review token
+covers complete file contents and staging state.
 Git hooks and signing are disabled. Authentication and origin are configured
 outside the UI; Git must be installed inside the HA runtime. The pinned test
 image includes it. All action requests include expected root and HEAD guards.

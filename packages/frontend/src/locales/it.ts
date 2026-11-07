@@ -14,6 +14,7 @@ export const it: Strings = {
   gitCommitScope:
     'Include tutte le modifiche elencate, compresi i nuovi file. Push pubblica solo i commit.',
   gitNoChanges: 'Nessuna modifica ai file.',
+  gitObjectsDiff: 'Modifiche in objects/',
   gitDiffTruncated:
     'Anteprima limitata a 64 KiB. Il commit include tutte le modifiche elencate, anche il contenuto non mostrato.',
   gitCommitMessage: 'Messaggio del commit',
@@ -243,5 +244,7 @@ export const it: Strings = {
     'Esegui i test Python, verifica la configurazione e ricarica Home Assistant esplicitamente.',
   whatsNewTitle: 'Novità in git-flode {version}',
   whatsNewAll: 'Tutte le modifiche',
+  whatsNewObjectsDiff:
+    'Nella revisione Git, le modifiche al catalogo degli oggetti sono compresse per impostazione predefinita.',
   continue: 'Continua',
 };

@@ -180,13 +180,16 @@ class GitRepository:
 
     def _review(self, tree: str) -> dict[str, Any]:
         options = ("--binary", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames")
-        patch = self._git("diff", *options, "HEAD", tree, "--")
+        patch = self._git("diff", *options, "HEAD", tree, "--", ":(exclude,top)objects/").encode()
+        objects_patch = self._git("diff", *options, "HEAD", tree, "--", ":(top)objects/").encode()
         staged = self._git("diff", "--cached", *options, "HEAD", "--")
         digest = sha256(json.dumps([str(self.root), self._ref("HEAD"), tree, staged]).encode())
         files = list(filter(None, self._git("diff", "--name-only", "--no-renames", "-z", "HEAD", tree, "--").split("\0")))
         limit = 64 * 1024
-        return {"files": files, "diff": patch.encode()[:limit].decode("utf-8", errors="replace"),
-                "version": digest.hexdigest(), "truncated": len(patch.encode()) > limit}
+        return {"files": files, "diff": patch[:limit].decode("utf-8", errors="replace"),
+                "version": digest.hexdigest(), "truncated": len(patch) > limit,
+                "objects_diff": {"diff": objects_patch[:limit].decode("utf-8", errors="replace"),
+                                 "truncated": len(objects_patch) > limit}}
 
     def _changes(self) -> dict[str, Any]:
         """Review the exact tree that committing will validate and publish."""

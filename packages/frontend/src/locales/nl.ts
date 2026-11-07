@@ -14,6 +14,7 @@ export const nl: Strings = {
   gitCommitScope:
     'Commit alle getoonde bestandswijzigingen, inclusief nieuwe bestanden. Push publiceert alleen commits.',
   gitNoChanges: 'Geen bestandswijzigingen.',
+  gitObjectsDiff: 'Wijzigingen in objects/',
   gitDiffTruncated:
     'Voorbeeld beperkt tot 64 KiB. De commit bevat alle getoonde bestanden, inclusief inhoud buiten dit voorbeeld.',
   gitCommitMessage: 'Commitbericht',
@@ -243,5 +244,7 @@ export const nl: Strings = {
     'Voer Python-projecttests uit, controleer de configuratie en herlaad Home Assistant expliciet.',
   whatsNewTitle: 'Nieuw in git-flode {version}',
   whatsNewAll: 'Alle wijzigingen',
+  whatsNewObjectsDiff:
+    'In het Git-overzicht zijn wijzigingen in de objectcatalogus standaard ingeklapt.',
   continue: 'Doorgaan',
 };
