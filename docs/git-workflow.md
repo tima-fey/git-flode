@@ -17,6 +17,26 @@ are identified explicitly.
 - Merge and undo create local commits. Publishing them and applying their files
   to HA are separate operations.
 
+## Bring HA changes back into main
+
+After HA commits and pushes prod, incorporate that history on the computer
+before starting the next feature. Use a regular merge, preserving the original
+prod commits and their ancestry:
+
+```sh
+git fetch origin
+git switch main
+git merge --ff-only origin/main
+git merge origin/prod
+git push origin main
+```
+
+If main has not moved since deployment, merging prod fast-forwards main without
+another merge commit. If both branches have changed, resolve the ordinary merge
+on main. Avoid squash merges and replaying published prod commits through rebase
+or cherry-pick: keeping their original ancestry lets later deployments recognize
+changes already shared by both branches.
+
 ## What can block an update
 
 There are two independent kinds of pending work: saved filesystem changes and
@@ -24,6 +44,18 @@ unsaved editor drafts. Merge and undo require both to be clear. Git can report
 a clean tree while an editor has a draft. History inspection reads commit data
 without changing the checkout. Returning an externally detached checkout to
 prod requires clean files, including ignored paths that Git might overwrite.
+
+The home page orders scenarios as Update from main, Publish changes from HA,
+and Rollback. In the update and rollback scenarios, **Check, test and quick
+reload** stops on the first failed step and displays all step outcomes. Its
+three constituent actions are also available under **Individual actions**.
+
+**Commit and push** in the publication scenario makes Review changes optional.
+Without an explicit review it captures a fresh snapshot before committing. With
+an explicit review it uses that exact snapshot and retains stale-review guards.
+A commit failure skips push; a push failure preserves and reports the successful
+local commit. Retrying with no changed files pushes the existing commits.
+Separate commit and push controls remain under **Individual actions**.
 
 Object exports also dirty the checkout. **Commit all changes** includes every
 listed changed/untracked non-ignored file, including `objects/` and `tests/`.

@@ -65,13 +65,17 @@ async function action(name, revision = '') {
 }
 
 async function click(control, page, key) {
+  if (key === 'gitPush' || key === 'gitCommit')
+    await control.locator('[data-manual-publish]').evaluate((element) => {
+      element.open = true;
+    });
   await control.getByRole('button', { name: await label(page, key), exact: true }).click();
 }
 
 async function commitThroughUi(control, page, message) {
-  await control.locator('ha-icon-button').click();
+  await control.locator('header > ha-icon-button').click();
   await waitStatus(control, (status) => status.dirty);
-  await click(control, page, 'gitReview');
+  await click(control, page, 'workflowOptionalReview');
   await control.locator('[data-field="message"] input').fill(message);
   await click(control, page, 'gitCommit');
   return waitStatus(control, (status) => !status.dirty);
@@ -112,12 +116,23 @@ for (const engine of ENGINES) {
         const fetched = await waitStatus(control, (status) => status.remote_main === incoming);
         assert.equal(fetched.commit, before.commit);
         assert.equal(fetched.incoming, 1);
+        const incomingList = control.locator('.incoming');
+        assert.match(
+          await incomingList.innerText(),
+          new RegExp(`Update synthetic fixture for ${engine}`)
+        );
+        assert.match(await incomingList.innerText(), /FLODE Test/);
+        await incomingList.locator(`[data-revision="${incoming}"]`).click();
+        await control.locator('.review code').filter({ hasText: incoming }).waitFor();
+        assert.equal(git(checkout, 'rev-parse', 'HEAD'), before.commit);
+        await control.screenshot({ path: path.join(runtime, `git-incoming-${engine}.png`) });
         assert.equal(await fs.readFile(local, 'utf8'), initialFiles);
         await click(control, page, 'gitMerge');
         const merged = await waitStatus(
           control,
           (status) => status.commit !== before.commit && status.incoming === 0
         );
+        assert.equal(await control.locator('.incoming li').count(), 0);
         assert.equal(merged.branch, 'prod');
         assert.equal(merged.merge_to_revert, merged.commit);
         assert.deepEqual(git(checkout, 'show', '-s', '--format=%P', 'HEAD').split(' '), [
@@ -152,7 +167,7 @@ for (const engine of ENGINES) {
           (status) => status.remote_prod === reverted.commit && status.ahead === 0
         );
         assert.equal(git(remote, 'rev-parse', 'main'), incoming);
-        await control.locator('summary').click();
+        await control.locator('.history > summary').click();
         await control.locator(`[data-revision="${before.commit}"]`).click();
         await control.locator('.review code').filter({ hasText: before.commit }).waitFor();
         assert.equal(git(checkout, 'rev-parse', 'HEAD'), reverted.commit);

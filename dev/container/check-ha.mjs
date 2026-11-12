@@ -12,6 +12,8 @@ const source = new URL('./runtime/repository/automations/examples/simple.yaml', 
 const original = await fs.readFile(source, 'utf8');
 for (const engine of ENGINES) {
   const objects = new URL('./runtime/repository/objects/', import.meta.url).pathname;
+  const tests = new URL('./runtime/repository/tests/', import.meta.url).pathname;
+  let testsMoved = false;
   const backup = await fs.mkdtemp(path.join(os.tmpdir(), 'flode-controls-'));
   await fs.cp(objects, path.join(backup, 'objects'), { recursive: true, preserveTimestamps: true });
   const { browser, page, errors } = await openBrowser(engine);
@@ -34,7 +36,9 @@ for (const engine of ENGINES) {
     await result.check(
       `${engine}: native config check, Quick reload, and missing-reference test output`,
       async () => {
-        const control = page.locator('flode-ha-controls');
+        const control = page.locator('[data-scenario="update"] flode-ha-controls');
+        const exportControl = page.locator('flode-ha-controls[mode="objects"]');
+        await control.locator('details.individual > summary').click();
         assert.equal(services.length, 0);
         assert.equal(checks.length, 0);
         await control
@@ -50,10 +54,10 @@ for (const engine of ENGINES) {
         assert.equal(services.length, 0);
         assert.equal(reloads.length, 1);
         assert.equal(reloads[0].directory, '/flode-config');
-        await control
+        await exportControl
           .getByRole('button', { name: await label(page, 'objectsExport'), exact: true })
           .click();
-        await control.locator('ha-alert[alert-type="success"]').waitFor();
+        await exportControl.locator('ha-alert[alert-type="success"]').waitFor();
         await control
           .getByRole('button', { name: await label(page, 'testsRun'), exact: true })
           .click();
@@ -71,7 +75,35 @@ for (const engine of ENGINES) {
         assert.equal(services.length, 0);
         assert.equal(reloads.length, 1);
         assert.deepEqual(checks, ['POST']);
+        await control.locator('[data-action="apply"]').click();
+        await control.locator('[data-step="tests"][data-state="failed"]').waitFor();
+        assert.equal(await control.locator('[data-step="check"]').getAttribute('data-state'), 'ok');
+        assert.equal(
+          await control.locator('[data-step="reload"]').getAttribute('data-state'),
+          'skipped'
+        );
+        assert.equal(reloads.length, 1);
+        // Replace only the disposable project's tests, then restore them in finally.
+        await fs.rename(tests, path.join(backup, 'tests'));
+        testsMoved = true;
+        await fs.mkdir(tests);
+        await fs.writeFile(
+          path.join(tests, 'test_workflow.py'),
+          'import unittest\nclass WorkflowTest(unittest.TestCase):\n    def test_configuration(self):\n        self.assertTrue(True)\n'
+        );
+        await control.locator('[data-action="apply"]').click();
+        await control.locator('[data-step="reload"][data-state="ok"]').waitFor();
+        for (const step of ['check', 'tests', 'reload'])
+          assert.equal(
+            await control.locator(`[data-step="${step}"]`).getAttribute('data-state'),
+            'ok'
+          );
+        assert.equal(reloads.length, 2);
+        assert.deepEqual(checks, ['POST', 'POST', 'POST']);
         assert.equal(await fs.readFile(source, 'utf8'), original);
+        await page
+          .locator('flode-git')
+          .screenshot({ path: `dev/container/runtime/workflows-${engine}.png` });
         await page.setViewportSize({ width: 390, height: 844 });
         await control.scrollIntoViewIfNeeded();
         await page.screenshot({ path: `dev/container/runtime/ha-controls-${engine}.png` });
@@ -80,6 +112,10 @@ for (const engine of ENGINES) {
     );
   } finally {
     await browser.close();
+    if (testsMoved) {
+      await fs.rm(tests, { recursive: true, force: true });
+      await fs.rename(path.join(backup, 'tests'), tests);
+    }
     await fs.rm(objects, { recursive: true, force: true });
     await fs.cp(path.join(backup, 'objects'), objects, {
       recursive: true,

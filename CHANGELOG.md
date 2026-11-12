@@ -4,7 +4,19 @@ This repository is [git-flode](https://github.com/tima-fey/git-flode), an indepe
 fork of [FLODE](https://github.com/SH1FT-W/flode) by SH1FT-W and contributors.
 See [CREDITS.md](CREDITS.md) for project lineage.
 
-## [1.0.1] — Unreleased
+## [1.0.2] — 2026-11-12
+
+- Organize the home page around three scenarios: update from main, publish
+  changes from HA, and rollback.
+- Show incoming commit subjects, authors, dates, and read-only diffs after Fetch,
+  with independent pagination for commits not yet merged into prod.
+- Add one-button configuration check, project tests, and Quick reload. Show each
+  step's outcome, stop on failure, and keep individual actions in expandable controls.
+- Add Commit and push with optional Review, snapshot guards, separate commit/push
+  results, and preservation of local commits when pushing fails.
+- Document regular merge-based synchronization from prod back into main.
+
+## [1.0.1] — 2026-11-07
 
 - Collapse the `objects/` diff by default in Git review. Other diffs stay visible
   and have their own preview limit.

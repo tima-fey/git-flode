@@ -30,7 +30,7 @@ def _execute(directory: str, message: dict[str, Any]) -> dict[str, Any]:
         expected_head=message.get("expected_head", ""),
         revision=message.get("revision", ""), offset=message.get("offset", 0),
         expected_changes=message.get("expected_changes", ""), message=message.get("message", ""),
-        expected_directory=message.get("expected_directory", ""),
+        expected_directory=message.get("expected_directory", ""), scope=message.get("scope", "all"),
     )
 
 
@@ -46,6 +46,7 @@ async def git_status(
 
 @websocket_api.websocket_command({
     vol.Required("type"): "flode/git/history",
+    vol.Optional("scope", default="all"): vol.In(("all", "incoming")),
     vol.Optional("offset", default=0): vol.All(int, vol.Range(min=0, max=100000)),
 })
 @websocket_api.require_admin

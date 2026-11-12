@@ -29,11 +29,14 @@
     <li><code>objects/</code>: manually exported HA integration, device, entity, and helper metadata for reference checks.</li>
     <li><code>tests/</code>: trusted Python project tests, run explicitly in the HA environment.</li>
   </ul>
-  <h2>Explicit operations</h2>
-  <p>Review and commit local changes to <code>prod</code>, push them separately,
-    and merge fetched updates from <code>main</code>. History displays commit diffs
-    without switching the live checkout. Configuration checking and Quick reload
-    use separate controls; saving or merging never reloads HA automatically.</p>
+  <h2>Project workflows</h2>
+  <p>First, fetch and merge updates from <code>main</code>, then check, test and
+    quick reload with one button. Each step reports its result and failures stop
+    the sequence. Second, export HA objects, optionally review changes, then
+    commit and push <code>prod</code>. Third, undo the latest main merge and
+    validate and reload the restored configuration. Individual actions remain
+    available in expandable sections. History shows commit diffs without
+    switching the checkout; saving or merging does not reload HA.</p>
   <p>The panel edits existing automation files. Creating automations, script-file
     editing, AI assistance, and running automation actions are outside this workflow.</p>
   <h2>Documentation</h2>

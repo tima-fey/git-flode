@@ -2,6 +2,30 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in French (the keys and placeholders of `strings.ts`). */
 export const fr: Strings = {
+  whatsNewWorkflows:
+    'Trois scénarios organisent les mises à jour depuis main, la publication depuis HA et le retour arrière. Vérification, tests et rechargement s’exécutent dans l’ordre et affichent chaque résultat.',
+  whatsNewIncoming:
+    'Les commits entrants récupérés affichent leur titre, auteur, date et diff avant la fusion dans prod.',
+  whatsNewPublish:
+    'L’examen est facultatif. Commiter et pousser capture les modifications locales et affiche séparément les résultats du commit et du push.',
+  workflowTitle: 'Scénarios du projet',
+  workflowUpdate: 'Mettre à jour depuis main',
+  workflowPublish: 'Publier les modifications de HA',
+  workflowRollback: 'Retour arrière',
+  workflowApply: 'Vérifier, tester et recharger',
+  workflowApplyHint:
+    'Vérifie la configuration, exécute les tests du projet, puis recharge. S’arrête au premier échec.',
+  workflowIndividual: 'Actions individuelles',
+  workflowOptionalReview: 'Examiner les modifications (facultatif)',
+  workflowCommitPush: 'Commiter et pousser',
+  workflowRollbackHint:
+    'Après l’annulation, vérifiez et appliquez la configuration restaurée. Publiez le revert dans le scénario 2.',
+  workflowNoRollback: 'Aucune dernière fusion de main à annuler au sommet de prod.',
+  workflowOk: 'OK',
+  workflowFailed: 'Échec',
+  workflowRunning: 'En cours…',
+  workflowSkipped: 'Ignoré',
+  workflowWaiting: 'En attente',
   objectsExport: 'Exporter les objets HA',
   objectsScope:
     'Remplace objects/ par les appareils, entités et assistants actuels. Uniquement sur demande.',

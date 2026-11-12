@@ -85,7 +85,7 @@ for (const engine of ENGINES) {
     await result.check(
       `${engine}: explicit export, registry and YAML helpers, renamed/deleted IDs, file isolation`,
       async () => {
-        const control = page.locator('flode-ha-controls');
+        const control = page.locator('flode-ha-controls[mode="objects"]');
         assert.deepEqual(commands, []);
         assert.deepEqual(existed ? await snapshot(objects) : {}, initialObjects);
         helper = await ws({ type: 'input_boolean/create', name: `FLODE export ${engine}` });
@@ -119,7 +119,9 @@ for (const engine of ENGINES) {
         assert.deepEqual(commands, ['flode/objects/export']);
 
         const gitControl = page.locator('flode-git');
-        await gitControl.getByRole('button', { name: await label(page, 'gitReview') }).click();
+        await gitControl
+          .getByRole('button', { name: await label(page, 'workflowOptionalReview') })
+          .click();
         const review = gitControl.locator('section.review');
         const objectDiff = review.locator('details');
         assert.match(await review.locator('ul').innerText(), /objects\/index\.yaml/);

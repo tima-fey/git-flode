@@ -2,6 +2,30 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Spanish (the keys and placeholders of `strings.ts`). */
 export const es: Strings = {
+  whatsNewWorkflows:
+    'Tres escenarios organizan las actualizaciones desde main, la publicación desde HA y la reversión. La comprobación, las pruebas y la recarga se ejecutan en orden y muestran cada resultado.',
+  whatsNewIncoming:
+    'Los commits entrantes descargados muestran título, autor, fecha y diff antes de fusionarlos en prod.',
+  whatsNewPublish:
+    'La revisión es opcional. Crear commit y hacer push captura los cambios locales y muestra cada resultado por separado.',
+  workflowTitle: 'Flujos del proyecto',
+  workflowUpdate: 'Actualizar desde main',
+  workflowPublish: 'Publicar cambios de HA',
+  workflowRollback: 'Revertir',
+  workflowApply: 'Comprobar, probar y recargar',
+  workflowApplyHint:
+    'Comprueba la configuración, ejecuta las pruebas del proyecto y recarga. Se detiene ante el primer fallo.',
+  workflowIndividual: 'Acciones individuales',
+  workflowOptionalReview: 'Revisar cambios (opcional)',
+  workflowCommitPush: 'Crear commit y hacer push',
+  workflowRollbackHint:
+    'Tras deshacer la fusión, comprueba y aplica la configuración restaurada. Publica la reversión en el escenario 2.',
+  workflowNoRollback: 'No hay una última fusión de main para deshacer en la punta de prod.',
+  workflowOk: 'OK',
+  workflowFailed: 'Error',
+  workflowRunning: 'En curso…',
+  workflowSkipped: 'Omitido',
+  workflowWaiting: 'En espera',
   objectsExport: 'Exportar objetos de HA',
   objectsScope:
     'Reemplaza objects/ con los dispositivos, entidades y ayudantes actuales. Solo al pulsar el botón.',

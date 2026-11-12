@@ -16,7 +16,6 @@ import { live } from 'lit/directives/live.js';
 import { repeat } from 'lit/directives/repeat.js';
 import './flode-canvas';
 import './flode-git';
-import './flode-ha-controls';
 import './flode-inspector';
 import type { NodeDataEdit, NodesChange } from './flode-inspector';
 import './flode-palette';
@@ -2279,7 +2278,6 @@ export class FlodePanel extends LitElement {
               }>
             ) => void this.filesChanged(event.detail.directory)}
           ></flode-git>
-          <flode-ha-controls .hass=${this.hass} .directory=${this.readOnly ? '' : this.fileDirectory}></flode-ha-controls>
           <div class="home-bar">${this.renderSearch()}${this.renderMenu([
             {
               id: 'shortcuts',

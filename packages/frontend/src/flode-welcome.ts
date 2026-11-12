@@ -21,6 +21,9 @@ const WELCOME: Feature[] = [
 
 /** Current workflow highlights shown after a version update. */
 const WHATS_NEW: Feature[] = [
+  { icon: 'mdi:format-list-numbered', title: 'workflowTitle', text: 'whatsNewWorkflows' },
+  { icon: 'mdi:source-merge', title: 'workflowUpdate', text: 'whatsNewIncoming' },
+  { icon: 'mdi:cloud-upload-outline', title: 'workflowCommitPush', text: 'whatsNewPublish' },
   { icon: 'mdi:database-export-outline', title: 'gitObjectsDiff', text: 'whatsNewObjectsDiff' },
 ];
 

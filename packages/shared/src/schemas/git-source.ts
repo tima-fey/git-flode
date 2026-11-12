@@ -23,6 +23,7 @@ export const GitHistorySchema = z.object({
       short: z.string(),
       date: z.string(),
       subject: z.string(),
+      author: z.string(),
     })
   ),
   has_more: z.boolean(),

@@ -194,6 +194,149 @@ describe('HA configuration controls', () => {
     expect(control.shadowRoot?.textContent).not.toContain('Exported:');
   });
 
+  it('runs check, tests and reload in order and keeps all three successful results', async () => {
+    const { control, callApi, callWS } = await mount();
+    const order: string[] = [];
+    callApi.mockImplementation(async () => {
+      order.push('check');
+      return { result: 'valid', errors: null, warnings: 'A warning' };
+    });
+    callWS.mockImplementation(async (message) => {
+      order.push(message.type);
+      return message.type === 'flode/tests/run'
+        ? {
+            success: true,
+            timed_out: false,
+            exit_code: 0,
+            truncated: false,
+            output: 'Passed',
+            duration: 0.1,
+          }
+        : {};
+    });
+    click(control, 'apply');
+    await settle(control);
+    expect(order).toEqual(['check', 'flode/tests/run', 'flode/ha/reload']);
+    for (const step of ['check', 'tests', 'reload']) {
+      expect(
+        control.shadowRoot?.querySelector(`[data-step="${step}"]`)?.getAttribute('data-state')
+      ).toBe('ok');
+    }
+    expect(control.shadowRoot?.textContent).toContain('A warning');
+    expect(control.shadowRoot?.querySelector('details.individual')).toHaveProperty('open', false);
+  });
+
+  it.each([
+    'invalid',
+    'exception',
+  ])('stops after a failed configuration check: %s', async (failure) => {
+    const { control, callApi, callWS } = await mount();
+    if (failure === 'invalid')
+      callApi.mockResolvedValue({ result: 'invalid', errors: 'Broken YAML' });
+    else callApi.mockRejectedValue(new Error('Check unavailable'));
+    click(control, 'apply');
+    await settle(control);
+    expect(callWS).not.toHaveBeenCalled();
+    expect(
+      control.shadowRoot?.querySelector('[data-step="check"]')?.getAttribute('data-state')
+    ).toBe('failed');
+    for (const step of ['tests', 'reload']) {
+      expect(
+        control.shadowRoot?.querySelector(`[data-step="${step}"]`)?.getAttribute('data-state')
+      ).toBe('skipped');
+    }
+    expect(control.shadowRoot?.textContent).toContain(
+      failure === 'invalid' ? 'Broken YAML' : 'Check unavailable'
+    );
+  });
+
+  it.each([
+    'failed',
+    'timeout',
+    'exception',
+  ])('never reloads after unsuccessful tests: %s', async (failure) => {
+    const { control, callWS } = await mount();
+    if (failure === 'exception') callWS.mockRejectedValue(new Error('Test runner unavailable'));
+    else
+      callWS.mockResolvedValue({
+        success: false,
+        timed_out: failure === 'timeout',
+        exit_code: 1,
+        truncated: false,
+        output: 'A failing test',
+        duration: 0.1,
+      });
+    click(control, 'apply');
+    await settle(control);
+    expect(callWS).toHaveBeenCalledExactlyOnceWith({ type: 'flode/tests/run' });
+    expect(
+      control.shadowRoot?.querySelector('[data-step="check"]')?.getAttribute('data-state')
+    ).toBe('ok');
+    expect(
+      control.shadowRoot?.querySelector('[data-step="tests"]')?.getAttribute('data-state')
+    ).toBe('failed');
+    expect(
+      control.shadowRoot?.querySelector('[data-step="reload"]')?.getAttribute('data-state')
+    ).toBe('skipped');
+  });
+
+  it('reports reload failure after successful validation and allows the whole workflow to retry', async () => {
+    const { control, callWS } = await mount();
+    const tests = {
+      success: true,
+      timed_out: false,
+      exit_code: 0,
+      truncated: false,
+      output: '',
+      duration: 0.1,
+    };
+    callWS.mockResolvedValueOnce(tests).mockRejectedValueOnce(new Error('Reload failed'));
+    click(control, 'apply');
+    await settle(control);
+    expect(
+      control.shadowRoot?.querySelector('[data-step="tests"]')?.getAttribute('data-state')
+    ).toBe('ok');
+    expect(
+      control.shadowRoot?.querySelector('[data-step="reload"]')?.getAttribute('data-state')
+    ).toBe('failed');
+    expect(control.shadowRoot?.textContent).toContain('Reload failed');
+    callWS.mockResolvedValueOnce(tests).mockResolvedValueOnce({});
+    click(control, 'apply');
+    await settle(control);
+    expect(
+      control.shadowRoot?.querySelector('[data-step="reload"]')?.getAttribute('data-state')
+    ).toBe('ok');
+    expect(control.shadowRoot?.textContent).not.toContain('Reload failed');
+  });
+
+  it('stops a pending workflow if the project changes before validation completes', async () => {
+    const { control, callApi, callWS } = await mount();
+    let finish: (value: unknown) => void = () => undefined;
+    callApi.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    click(control, 'apply');
+    await settle(control);
+    control.directory = '/another-project';
+    await settle(control);
+    finish({ result: 'valid', errors: null });
+    await settle(control);
+    expect(callWS).not.toHaveBeenCalled();
+    expect(control.shadowRoot?.querySelector('[data-step]')).toBeNull();
+  });
+
+  it('ignores workflow clicks while another scenario is busy', async () => {
+    const { control, callApi, callWS } = await mount();
+    control.blocked = true;
+    await settle(control);
+    click(control, 'apply');
+    expect(callApi).not.toHaveBeenCalled();
+    expect(callWS).not.toHaveBeenCalled();
+  });
+
   it('hides maintenance controls from non-administrators', async () => {
     const { control, callApi, callWS } = await mount(false);
     expect(control.shadowRoot?.querySelector('ha-button')).toBeNull();

@@ -85,6 +85,51 @@ def test_fetch_downloads_history_without_changing_files_then_merge_updates_prod(
     assert "Updated" in (repo.root / "automations" / "test.yaml").read_text()
 
 
+def test_incoming_history_matches_count_and_excludes_prod_work(checkout):
+    repo, writer, _ = checkout
+    git(repo.root, "commit", "--allow-empty", "-m", "Local prod edit")
+    publish(writer)
+    # Only fetched commits are visible; reading history never fetches.
+    assert request(repo, "history", scope="incoming")["commits"] == []
+    fetched = request(repo, "fetch")
+    head = git(repo.root, "rev-parse", "HEAD")
+    incoming = request(repo, "history", scope="incoming")
+    assert len(incoming["commits"]) == fetched["incoming"] == 1
+    assert incoming["commits"][0] == {
+        "commit": fetched["remote_main"],
+        "short": git(writer, "rev-parse", "--short", "HEAD"),
+        "date": git(writer, "show", "-s", "--format=%cs", "HEAD"),
+        "subject": "Update automation",
+        "author": "FLODE Test",
+    }
+    assert not incoming["has_more"]
+    assert git(repo.root, "rev-parse", "HEAD") == head
+    request(repo, "merge", expected_head=head)
+    assert request(repo, "history", scope="incoming")["commits"] == []
+
+
+def test_incoming_history_pages_from_prod_even_when_head_is_detached(checkout):
+    repo, writer, _ = checkout
+    for number in range(26):
+        git(writer, "commit", "--allow-empty", "-m", f"Incoming {number}")
+    git(writer, "push", "origin", "main")
+    fetched = request(repo, "fetch")
+    git(repo.root, "switch", "--detach", "HEAD~1")
+    first = request(repo, "history", scope="incoming")
+    second = request(repo, "history", scope="incoming", offset=25)
+    assert fetched["incoming"] == 26
+    assert len(first["commits"]) == 25
+    assert first["has_more"]
+    assert [entry["subject"] for entry in second["commits"]] == ["Incoming 0"]
+    assert not second["has_more"]
+
+
+def test_incoming_history_without_fetched_main_is_empty(checkout):
+    repo, _, _ = checkout
+    git(repo.root, "update-ref", "-d", "refs/remotes/origin/main")
+    assert request(repo, "history", scope="incoming") == {"commits": [], "has_more": False}
+
+
 def test_history_view_does_not_change_live_files_or_branch(checkout):
     repo, _, _ = checkout
     before = request(repo, "status")
