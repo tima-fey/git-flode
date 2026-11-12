@@ -235,21 +235,27 @@ class GitRepository:
         finally:
             lock_path.unlink(missing_ok=True)
 
-    def _history(self, offset: int) -> dict[str, Any]:
+    def _history(self, offset: int, scope: str) -> dict[str, Any]:
         refs = [ref for ref in ("refs/heads/prod", "refs/remotes/origin/main", "refs/remotes/origin/prod") if self._ref(ref)]
+        if scope == "incoming":
+            if not self._ref("refs/remotes/origin/main"):
+                return {"commits": [], "has_more": False}
+            refs = ["refs/heads/prod..refs/remotes/origin/main"]
+        elif scope != "all":
+            raise GitError("Unknown Git history scope")
         if not refs:
             refs = ["HEAD"]
-        lines = self._git("log", "--date-order", "--format=%H%x09%h%x09%cs%x09%s",
+        lines = self._git("log", "--date-order", "--format=%H%x00%h%x00%cs%x00%an%x00%s",
                           f"--skip={offset}", "--max-count=26", *refs, "--").splitlines()
         commits = []
         for line in lines[:25]:
-            commit, short, date, subject = line.split("\t", 3)
-            commits.append({"commit": commit, "short": short, "date": date, "subject": subject})
+            commit, short, date, author, subject = line.split("\0", 4)
+            commits.append({"commit": commit, "short": short, "date": date, "author": author, "subject": subject})
         return {"commits": commits, "has_more": len(lines) > 25}
 
     def request(
         self, action: str, *, expected_head: str = "", revision: str = "", offset: int = 0,
-        expected_changes: str = "", message: str = "", expected_directory: str = ""
+        expected_changes: str = "", message: str = "", expected_directory: str = "", scope: str = "all"
     ) -> dict[str, Any]:
         """Serialize clients; stale requests cannot change a newer checkout."""
         lock = project_lock(str(self.root))
@@ -263,7 +269,7 @@ class GitRepository:
             if action == "show":
                 return self._show(revision)
             if action == "history":
-                return self._history(offset)
+                return self._history(offset, scope)
             if action not in ("fetch", "merge", "prod", "commit", "push", "revert"):
                 raise GitError("Unsupported Git operation")
             if expected_directory != str(self.root):

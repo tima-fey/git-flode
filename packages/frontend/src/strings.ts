@@ -11,6 +11,31 @@ import { pt } from './locales/pt.ts';
  */
 const STRINGS = {
   de: {
+    whatsNewWorkflows:
+      'Drei Abläufe ordnen Updates aus main, Veröffentlichungen aus HA und die Rücknahme. Konfigurationsprüfung, Tests und schnelles Neuladen laufen nacheinander und zeigen jedes Ergebnis.',
+    whatsNewIncoming:
+      'Abgerufene eingehende Commits zeigen Titel, Autoren, Datum und Diffs vor dem Merge in prod.',
+    whatsNewPublish:
+      'Die Prüfung ist optional. Committen und pushen erfasst lokale Änderungen und zeigt Commit- und Push-Ergebnisse getrennt.',
+    workflowTitle: 'Projektabläufe',
+    workflowUpdate: 'Aus main aktualisieren',
+    workflowPublish: 'Änderungen aus HA veröffentlichen',
+    workflowRollback: 'Zurückrollen',
+    workflowApply: 'Prüfen, testen und schnell neu laden',
+    workflowApplyHint:
+      'Prüft die Konfiguration, führt Projekttests aus und lädt dann schnell neu. Stoppt beim ersten Fehler.',
+    workflowIndividual: 'Einzelne Aktionen',
+    workflowOptionalReview: 'Änderungen prüfen (optional)',
+    workflowCommitPush: 'Committen und pushen',
+    workflowRollbackHint:
+      'Nach der Rücknahme die wiederhergestellte Konfiguration prüfen und anwenden. Den Revert in Ablauf 2 veröffentlichen.',
+    workflowNoRollback:
+      'An der Spitze von prod ist kein letzter main-Merge zum Rückgängigmachen verfügbar.',
+    workflowOk: 'OK',
+    workflowFailed: 'Fehlgeschlagen',
+    workflowRunning: 'Läuft…',
+    workflowSkipped: 'Übersprungen',
+    workflowWaiting: 'Wartet',
     objectsExport: 'HA-Objekte exportieren',
     objectsScope:
       'Ersetzt objects/ durch einen aktuellen Geräte-, Entitäten- und Helfer-Snapshot. Nur auf Knopfdruck.',
@@ -258,6 +283,30 @@ const STRINGS = {
     continue: 'Weiter',
   },
   en: {
+    whatsNewWorkflows:
+      'Three scenarios organize updates from main, publication from HA, and rollback. Configuration check, tests, and Quick reload run in order and show each result.',
+    whatsNewIncoming:
+      'Fetched incoming commits show their subjects, authors, dates, and diffs before merging into prod.',
+    whatsNewPublish:
+      'Review is optional. Commit and push captures local changes and reports commit and push results separately.',
+    workflowTitle: 'Project workflows',
+    workflowUpdate: 'Update from main',
+    workflowPublish: 'Publish changes from HA',
+    workflowRollback: 'Rollback',
+    workflowApply: 'Check, test and quick reload',
+    workflowApplyHint:
+      'Runs configuration check, then project tests, then Quick reload. Stops on the first failure.',
+    workflowIndividual: 'Individual actions',
+    workflowOptionalReview: 'Review changes (optional)',
+    workflowCommitPush: 'Commit and push',
+    workflowRollbackHint:
+      'After undoing the merge, check and apply the restored configuration. Publish the revert in scenario 2.',
+    workflowNoRollback: 'No latest main merge is available to undo at the tip of prod.',
+    workflowOk: 'OK',
+    workflowFailed: 'Failed',
+    workflowRunning: 'Running…',
+    workflowSkipped: 'Skipped',
+    workflowWaiting: 'Waiting',
     objectsExport: 'Export HA objects',
     objectsScope:
       'Replaces objects/ with a current device, entity, and helper snapshot. Runs only when clicked.',

@@ -123,21 +123,29 @@ HA's native forms, and Save. This replaces that automation in its original file.
 Other files remain untouched. External changes invalidate a stale save; reopen
 the file before retrying. Unsaved drafts survive browser reloads.
 
-1. **Review changes** shows local modified and untracked files. **Commit all
-   changes** requires that review and a message. Its snapshot includes
-   `objects/` and `tests/`. The `objects/` diff is collapsed by default.
-   Each diff preview is limited to 64 KiB.
-2. **Push prod** publishes committed prod separately.
-3. For computer changes, push `main`, then **Merge main into prod** in HA.
-   This fetches origin and creates a merge commit. Resolve conflicts on your
-   computer by merging prod into main, then push main and retry.
-4. **Check configuration**, then **Quick reload** to load HA's configured files.
-   Reload is explicit and coordinated with project operations; Git changes do
-   not reload HA automatically. It reloads supported domains without a restart.
+The home page groups operations into three scenarios, in this order:
 
-History opens a read-only commit diff without changing the live checkout.
-**Undo latest main merge** creates a revert commit while that merge remains
-prod's tip. Publish the revert separately. See
+1. **Update from main:** Fetch, inspect incoming commit subjects and authors,
+   then Merge main into prod. **Check, test and quick reload** runs the native
+   configuration check, project tests, and Quick reload in order. Each step
+   keeps its own result; a failure stops the remaining steps. The same three
+   actions remain available individually under **Individual actions**.
+2. **Publish changes from HA:** Export HA objects, optionally Review changes,
+   enter a commit message, then **Commit and push**. This captures all local
+   modified and untracked files, including `objects/` and `tests/`, and publishes
+   prod. An explicit review binds the commit to that snapshot; without a review,
+   the button captures a snapshot immediately before committing. Commit and push
+   results are shown separately; a failed push leaves the local commit intact.
+   Individual commit and push controls remain under **Individual actions**.
+3. **Rollback:** Undo latest main merge, then check, test and reload the restored
+   configuration. Undo creates a revert commit while the merge remains prod's
+   tip. Publish the revert through scenario 2.
+
+The `objects/` review diff is collapsed by default. Each diff preview is limited
+to 64 KiB. History opens a read-only commit diff without changing the checkout.
+Saving, exporting, committing, and merging do not reload HA automatically. Quick
+reload loads supported HA domains without a restart. Resolve merge conflicts on
+your computer by merging prod into main, then push main and retry in HA. See
 [Git operations and recovery](docs/git-workflow.md) for divergence, conflicts,
 and reapplying reverted changes.
 

@@ -2,6 +2,30 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Italian (the keys and placeholders of `strings.ts`). */
 export const it: Strings = {
+  whatsNewWorkflows:
+    'Tre scenari organizzano gli aggiornamenti da main, la pubblicazione da HA e il ripristino. Verifica, test e ricaricamento vengono eseguiti in ordine e mostrano ogni risultato.',
+  whatsNewIncoming:
+    'I commit in arrivo scaricati mostrano titolo, autore, data e diff prima del merge in prod.',
+  whatsNewPublish:
+    'La revisione è facoltativa. Commit e push acquisisce le modifiche locali e mostra separatamente i risultati di commit e push.',
+  workflowTitle: 'Flussi del progetto',
+  workflowUpdate: 'Aggiorna da main',
+  workflowPublish: 'Pubblica modifiche da HA',
+  workflowRollback: 'Ripristino',
+  workflowApply: 'Verifica, testa e ricarica',
+  workflowApplyHint:
+    'Verifica la configurazione, esegue i test del progetto e ricarica. Si ferma al primo errore.',
+  workflowIndividual: 'Azioni singole',
+  workflowOptionalReview: 'Esamina modifiche (facoltativo)',
+  workflowCommitPush: 'Commit e push',
+  workflowRollbackHint:
+    'Dopo aver annullato il merge, verifica e applica la configurazione ripristinata. Pubblica il revert nello scenario 2.',
+  workflowNoRollback: 'Nessun ultimo merge di main da annullare in cima a prod.',
+  workflowOk: 'OK',
+  workflowFailed: 'Errore',
+  workflowRunning: 'In corso…',
+  workflowSkipped: 'Saltato',
+  workflowWaiting: 'In attesa',
   objectsExport: 'Esporta oggetti HA',
   objectsScope:
     'Sostituisce objects/ con dispositivi, entità e helper attuali. Solo premendo il pulsante.',

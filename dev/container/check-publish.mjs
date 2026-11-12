@@ -50,14 +50,16 @@ for (const engine of ENGINES) {
     await gotoPanel(page, { reload: true });
     const control = page.locator('flode-git');
     await result.check(
-      `${engine}: review, message only, configured author, commit locally, push prod`,
+      `${engine}: optional review, configured author, commit and push prod`,
       async () => {
         await waitGit(control, (status) => status.dirty);
-        await control
-          .getByRole('button', { name: await label(page, 'gitReview'), exact: true })
-          .click();
-        await control.locator('.diff').waitFor();
-        assert.match(await control.locator('.diff').innerText(), /commit and push check/);
+        if (engine === 'chromium') {
+          await control
+            .getByRole('button', { name: await label(page, 'workflowOptionalReview'), exact: true })
+            .click();
+          await control.locator('.diff').waitFor();
+          assert.match(await control.locator('.diff').innerText(), /commit and push check/);
+        }
         assert.equal(await control.locator('ha-selector').count(), 1);
         assert.equal(
           await control.locator('[data-field="author-name"], [data-field="author-email"]').count(),
@@ -67,28 +69,33 @@ for (const engine of ENGINES) {
           .locator('[data-field="message"] input')
           .fill(`Commit smoke test for ${engine}`);
         await control
-          .getByRole('button', { name: await label(page, 'gitCommit'), exact: true })
+          .getByRole('button', { name: await label(page, 'workflowCommitPush'), exact: true })
           .click();
         const committed = await waitGit(
           control,
-          (status) => !status.dirty && status.commit !== before.commit
+          (status) =>
+            !status.dirty &&
+            status.commit !== before.commit &&
+            status.ahead === 0 &&
+            status.remote_prod === status.commit
         );
-        assert.equal(remoteHead(), beforeRemote);
+        assert.notEqual(remoteHead(), beforeRemote);
         assert.equal(
           execFileSync('git', ['-C', `${runtime}/repository`, 'log', '-1', '--format=%an <%ae>'], {
             encoding: 'utf8',
           }).trim(),
           `${authorName} <${authorEmail}>`
         );
-        assert.equal(committed.ahead, 1);
-        assert.equal(await fs.readFile(target, 'utf8'), content);
-        await control
-          .getByRole('button', { name: await label(page, 'gitPush'), exact: true })
-          .click();
-        await waitGit(
-          control,
-          (status) => status.ahead === 0 && status.remote_prod === committed.commit
+        assert.equal(committed.ahead, 0);
+        assert.equal(
+          await control.locator('[data-publication="commit"]').getAttribute('data-state'),
+          'ok'
         );
+        assert.equal(
+          await control.locator('[data-publication="push"]').getAttribute('data-state'),
+          'ok'
+        );
+        assert.equal(await fs.readFile(target, 'utf8'), content);
         assert.equal(remoteHead(), committed.commit);
         assert.equal(
           execFileSync('git', ['-C', `${runtime}/remote.git`, 'show', `prod:${relative}`], {

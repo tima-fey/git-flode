@@ -2,6 +2,30 @@ import type { Strings } from '../strings.ts';
 
 /** FLODE's own UI strings in Dutch (the keys and placeholders of `strings.ts`). */
 export const nl: Strings = {
+  whatsNewWorkflows:
+    'Drie scenario’s organiseren updates vanuit main, publicatie vanuit HA en terugdraaien. Configuratiecontrole, tests en snel herladen worden achtereenvolgens uitgevoerd met een resultaat per stap.',
+  whatsNewIncoming:
+    'Opgehaalde inkomende commits tonen hun titel, auteur, datum en diff voordat ze in prod worden samengevoegd.',
+  whatsNewPublish:
+    'Bekijken is optioneel. Committen en pushen legt lokale wijzigingen vast en toont de resultaten van commit en push afzonderlijk.',
+  workflowTitle: 'Projectworkflows',
+  workflowUpdate: 'Bijwerken vanuit main',
+  workflowPublish: 'Wijzigingen vanuit HA publiceren',
+  workflowRollback: 'Terugdraaien',
+  workflowApply: 'Controleren, testen en snel herladen',
+  workflowApplyHint:
+    'Controleert de configuratie, voert projecttests uit en herlaadt daarna. Stopt bij de eerste fout.',
+  workflowIndividual: 'Afzonderlijke acties',
+  workflowOptionalReview: 'Wijzigingen bekijken (optioneel)',
+  workflowCommitPush: 'Committen en pushen',
+  workflowRollbackHint:
+    'Controleer na het terugdraaien de herstelde configuratie en pas deze toe. Publiceer de revert in scenario 2.',
+  workflowNoRollback: 'Er is geen laatste main-merge aan de top van prod om terug te draaien.',
+  workflowOk: 'OK',
+  workflowFailed: 'Mislukt',
+  workflowRunning: 'Bezig…',
+  workflowSkipped: 'Overgeslagen',
+  workflowWaiting: 'Wachten',
   objectsExport: 'HA-objecten exporteren',
   objectsScope:
     'Vervangt objects/ door de huidige apparaten, entiteiten en helpers. Alleen na een klik.',

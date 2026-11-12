@@ -595,6 +595,17 @@ runtime. Only HA writes prod; external updates enter through a dedicated
 prod. The latest FLODE merge at the tip can be reverted with first-parent
 semantics; no local main branch or legacy main-only API is required. Push targets
 prod only and rejects unexpected remote prod changes. History is inspected with `git show`, without changing HEAD or working files.
+The home page groups controls by scenario: update from main, publish HA changes,
+and rollback. Update and rollback expose a sequential check/test/reload workflow
+with persistent per-step outcomes; failures skip later steps. Individual commands
+remain under expandable controls. Publication can capture a fresh review snapshot
+on demand, commit it, then push the returned HEAD; failures preserve partial
+success and stale-review, root, and HEAD guards remain enforced. A shared UI busy
+state prevents overlapping scenario actions. Changing the project or revision
+invalidates pending maintenance results and stops the sequence before its next step.
+The Git panel lists fetched incoming commits from `prod..origin/main` with subjects,
+authors, dates, and read-only diffs. Incoming and combined history are paginated
+separately through the history API; neither view contacts the remote.
 Externally detached checkouts refuse file saves, export, and Quick reload.
 A recovery action returns to prod only after checking ignored and untracked
 files. It never resets, stashes, or
